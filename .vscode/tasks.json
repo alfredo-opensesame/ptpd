@@ -1,0 +1,103 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure Debug",
+            "type": "shell",
+            "command": "./@build-scripts/config-debug.sh",
+            "args": [],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Configure Release",
+            "type": "shell",
+            "command": "./@build-scripts/config-release.sh",
+            "args": [],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Build Debug",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "cd build/debug && make clean && make -j$(nproc 2>/dev/null || echo 4)"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "Configure Debug",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Build Release",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "cd build/release && make clean && make -j$(nproc 2>/dev/null || echo 4)"
+            ],
+            "group": "build",
+            "dependsOn": "Configure Release",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "Distclean",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "rm -rf build/debug build/release && ./macos/clean-ptpd.sh -a"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        }
+    ]
+}

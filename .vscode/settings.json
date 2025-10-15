@@ -1,0 +1,69 @@
+{
+    // CMake configuration
+    "cmake.buildDirectory": "${workspaceFolder}/build/${buildKit}-${buildType}-macos",
+    "cmake.generator": "Ninja",
+    "cmake.preferredGenerators": ["Ninja", "Unix Makefiles"],
+    "cmake.buildTask": true,
+    "cmake.configureOnOpen": false,
+    "cmake.configureOnEdit": false,
+    "cmake.buildBeforeRun": true,
+    "cmake.clearOutputBeforeBuild": true,
+    "cmake.saveBeforeBuild": true,
+
+    // C/C++ configuration
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.intelliSenseMode": "macos-clang-x64",
+    "C_Cpp.default.cStandard": "c99",
+    "C_Cpp.default.compilerPath": "/usr/bin/clang",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.autocompleteAddParentheses": true,
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.intelliSenseEngineFallback": "enabled",
+    "C_Cpp.workspaceParsingPriority": "highest",
+    "C_Cpp.enhancedColorization": "enabled",
+    "C_Cpp.dimInactiveRegions": true,
+
+    // Editor settings
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "editor.rulers": [80, 120],
+    "editor.renderWhitespace": "boundary",
+
+    // Files settings
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c",
+        "*.conf": "ini",
+        "*.in": "c"
+    },
+
+    // Search exclusions
+    "search.exclude": {
+        "**/build/**": true,
+        "**/build-*/**": true,
+        "**/.git/**": true,
+        "**/autom4te.cache/**": true,
+        "**/ptp_logs/**": true
+    },
+
+    // File watcher exclusions
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/build-*/**": true,
+        "**/.git/**": true,
+        "**/autom4te.cache/**": true,
+        "**/ptp_logs/**": true
+    },
+
+    // Terminal settings
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.cwd": "${workspaceFolder}",
+
+    // Debug settings
+    "debug.allowBreakpointsEverywhere": true,
+    "debug.showBreakpointsInOverviewRuler": true
+}

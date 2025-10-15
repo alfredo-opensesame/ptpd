@@ -1,0 +1,46 @@
+{
+    "configurations": [
+        {
+            "name": "macOS-Clang",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/dep",
+                "${workspaceFolder}/src/def",
+                "${workspaceFolder}/build/ninja-debug-macos",
+                "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
+                "/usr/include",
+                "/usr/local/include",
+                "/opt/homebrew/include"
+            ],
+            "defines": [
+                "HAVE_CMAKE_CONFIG_H",
+                "PTPD_PCAP",
+                "PTPD_SNMP",
+                "PTPD_STATISTICS",
+                "PTPD_PTIMERS",
+                "PTPD_DBG",
+                "PTPD_DBG2",
+                "PTPD_DBGV",
+                "RUNTIME_DEBUG",
+                "__APPLE__",
+                "__MACH__",
+                "ETHER_ADDR_LEN=6",
+                "PACKAGE_VERSION=\"2.3.2\"",
+                "PTPD_VERSION=\"2.3.2\"",
+                "_GNU_SOURCE"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c99",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-clang-x64",
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
+            },
+            "compileCommands": "${workspaceFolder}/build/ninja-debug-macos/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

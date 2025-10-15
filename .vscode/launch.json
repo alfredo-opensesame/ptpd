@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug PTPd (Autoconf Debug)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/src/ptpd2",
+            "args": [
+                "-f",
+                "ptpd.conf",
+                "-m"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build Debug",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run PTPd (Autoconf Release)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/release/src/ptpd2",
+            "args": [
+                "-f",
+                "ptpd.conf",
+                "-m"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build Release",
+            "console": "integratedTerminal"
+        }
+    ]
+}

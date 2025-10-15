@@ -1,0 +1,76 @@
+{
+    "buildType": {
+        "default": "debug",
+        "description": "The build type to use",
+        "choices": {
+            "debug": {
+                "short": "Debug",
+                "long": "Debug build with full symbols and runtime checks",
+                "buildType": "Debug",
+                "settings": {
+                    "PTPD_DEBUG_LEVEL": "all",
+                    "PTPD_RUNTIME_DEBUG": "ON",
+                    "CMAKE_BUILD_TYPE": "Debug"
+                }
+            },
+            "release": {
+                "short": "Release",
+                "long": "Optimized release build",
+                "buildType": "Release",
+                "settings": {
+                    "PTPD_DEBUG_LEVEL": "none",
+                    "PTPD_RUNTIME_DEBUG": "OFF",
+                    "CMAKE_BUILD_TYPE": "Release"
+                }
+            },
+            "relwithdebinfo": {
+                "short": "RelWithDebInfo",
+                "long": "Release build with debug information",
+                "buildType": "RelWithDebInfo",
+                "settings": {
+                    "PTPD_DEBUG_LEVEL": "basic",
+                    "PTPD_RUNTIME_DEBUG": "OFF",
+                    "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+                }
+            },
+            "gtest": {
+                "short": "GTest",
+                "long": "Debug build optimized for testing with Google Test",
+                "buildType": "Debug",
+                "settings": {
+                    "PTPD_DEBUG_LEVEL": "medium",
+                    "PTPD_RUNTIME_DEBUG": "OFF",
+                    "PTPD_ENABLE_TESTING": "ON",
+                    "CMAKE_BUILD_TYPE": "Debug"
+                }
+            }
+        }
+    },
+    "buildKit": {
+        "default": "ninja",
+        "description": "The build system to use",
+        "choices": {
+            "ninja": {
+                "short": "Ninja",
+                "long": "Fast parallel build system",
+                "settings": {
+                    "CMAKE_GENERATOR": "Ninja"
+                }
+            },
+            "make": {
+                "short": "Unix Makefiles",
+                "long": "Traditional Make build system",
+                "settings": {
+                    "CMAKE_GENERATOR": "Unix Makefiles"
+                }
+            },
+            "xcode": {
+                "short": "Xcode",
+                "long": "Xcode project generator",
+                "settings": {
+                    "CMAKE_GENERATOR": "Xcode"
+                }
+            }
+        }
+    }
+}
