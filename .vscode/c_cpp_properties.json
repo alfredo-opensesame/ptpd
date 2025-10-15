@@ -1,33 +1,32 @@
 {
     "configurations": [
         {
-            "name": "macOS-Clang",
+            "name": "macOS-Autoconf-Debug",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/src",
                 "${workspaceFolder}/src/dep",
                 "${workspaceFolder}/src/def",
-                "${workspaceFolder}/build/ninja-debug-macos",
+                "${workspaceFolder}/build/debug",
                 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
                 "/usr/include",
                 "/usr/local/include",
                 "/opt/homebrew/include"
             ],
             "defines": [
-                "HAVE_CMAKE_CONFIG_H",
+                "HAVE_CONFIG_H",
+                "PTPD_NO_DAEMON",
+                "RUNTIME_DEBUG",
                 "PTPD_PCAP",
                 "PTPD_SNMP",
                 "PTPD_STATISTICS",
-                "PTPD_PTIMERS",
-                "PTPD_DBG",
-                "PTPD_DBG2",
+                "PTPD_UNICAST_MAX=128",
                 "PTPD_DBGV",
-                "RUNTIME_DEBUG",
                 "__APPLE__",
                 "__MACH__",
                 "ETHER_ADDR_LEN=6",
-                "PACKAGE_VERSION=\"2.3.2\"",
-                "PTPD_VERSION=\"2.3.2\"",
+                "PACKAGE_VERSION=\"6.6.6\"",
+                "PTPD_VERSION=\"6.6.6\"",
                 "_GNU_SOURCE"
             ],
             "compilerPath": "/usr/bin/clang",
@@ -37,9 +36,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
-            },
-            "compileCommands": "${workspaceFolder}/build/ninja-debug-macos/compile_commands.json",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            }
         }
     ],
     "version": 4

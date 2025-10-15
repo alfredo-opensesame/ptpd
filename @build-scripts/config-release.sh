@@ -24,7 +24,8 @@ echo "Configuring with release options..."
 ../../configure \
     --enable-pcap \
     --enable-snmp \
-    --enable-statistics
+    --enable-statistics \
+    --disable-daemon
 
 echo "=== Release configuration completed successfully ==="
 echo "Next step: run 'make clean && make' in build/release directory"

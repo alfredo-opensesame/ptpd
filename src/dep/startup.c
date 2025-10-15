@@ -462,7 +462,7 @@ checkSignals(RunTimeOpts * rtOpts, PtpClock * ptpClock)
 	if(sigusr1_received){
 	    if(ptpClock->portDS.portState == PTP_SLAVE){
 		    WARNING("SIGUSR1 received, stepping clock to current known OFM\n");
-                    stepClock(rtOpts, ptpClock);                                                                                                        
+                    stepClock(rtOpts, ptpClock);
 //		    ptpClock->clockControl.stepRequired = TRUE;
 	    } else {
 		    ERROR("SIGUSR1 received - will not step clock, not in PTP_SLAVE state\n");
@@ -515,14 +515,14 @@ checkSignals(RunTimeOpts * rtOpts, PtpClock * ptpClock)
 void enable_runtime_debug(void )
 {
 	extern RunTimeOpts rtOpts;
-	
+
 	rtOpts.debug_level = max(LOG_DEBUGV, rtOpts.debug_level);
 }
 
 void disable_runtime_debug(void )
 {
 	extern RunTimeOpts rtOpts;
-	
+
 	rtOpts.debug_level = LOG_INFO;
 }
 #endif
@@ -573,7 +573,7 @@ ptpdShutdown(PtpClock * ptpClock)
 {
 
 	extern RunTimeOpts rtOpts;
-	
+
 	/*
          * go into DISABLED state so the FSM can call any PTP-specific shutdown actions,
 	 * such as canceling unicast transmission
@@ -653,7 +653,7 @@ void dump_command_line_parameters(int argc, char **argv)
 	char sbuf[1000];
 	char *st = sbuf;
 	int len = 0;
-	
+
 	*st = '\0';
 	for(i=0; i < argc; i++){
 		if(strcmp(argv[i],"") == 0)
@@ -850,17 +850,18 @@ configcheck:
 	/* Init to 0 net buffer */
 	memset(ptpClock->msgIbuf, 0, PACKET_SIZE);
 	memset(ptpClock->msgObuf, 0, PACKET_SIZE);
-	
+
 	/* Init outgoing management message */
 	ptpClock->outgoingManageTmp.tlv = NULL;
-	
+
 
 	/*  DAEMON */
 #ifdef PTPD_NO_DAEMON
 	if(!rtOpts->nonDaemon){
 		rtOpts->nonDaemon=TRUE;
+        INFO("Running in non-daemon mode (forced by compile option)\n");
 	}
-#endif
+#else
 
 	if(!rtOpts->nonDaemon){
 		/*
@@ -896,6 +897,7 @@ configcheck:
 			goto fail;
 		}
 	}
+#endif
 
 #if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
 	/* Try binding to a single CPU core if configured to do so */
@@ -980,7 +982,7 @@ configcheck:
 	*ret = 0;
 
 	return ptpClock;
-	
+
 fail:
 	dictionary_del(&rtOpts->cliConfig);
 	dictionary_del(&rtOpts->candidateConfig);
@@ -1014,7 +1016,3 @@ ntpSetup (RunTimeOpts *rtOpts, PtpClock *ptpClock)
 	    }
 	}
 }
-
-
-
-

@@ -26,7 +26,8 @@ echo "Configuring with debug options..."
     --enable-debug-level=all \
     --enable-pcap \
     --enable-snmp \
-    --enable-statistics
+    --enable-statistics \
+    --disable-daemon
 
 echo "=== Debug configuration completed successfully ==="
 echo "Next step: run 'make clean && make' in build/debug directory"
