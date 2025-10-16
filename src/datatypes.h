@@ -107,7 +107,7 @@ typedef struct{
     int maxOutput;
     Integer32 input;
     double output;
-    double observedDrift;
+    double observedDrift; // Parts per billion ppb
     double kP, kI;
     TimeInternal lastUpdate;
     Boolean runningMaxOutput;
@@ -551,7 +551,7 @@ typedef struct {
 
 /*
 	20110630: These variables were deprecated in favor of the ones that appear in the stats log (delayMS and delaySM)
-	
+
 	TimeInternal  master_to_slave_delay;
 	TimeInternal  slave_to_master_delay;
 
@@ -584,7 +584,7 @@ typedef struct {
 	UInteger16  recvPdelayRespSequenceId;
 	Boolean  waitingForFollow;
 	Boolean  waitingForDelayResp;
-	
+
 	offset_from_master_filter  ofm_filt;
 	one_way_delay_filter  mpd_filt;
 

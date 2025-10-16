@@ -78,7 +78,7 @@ static
 const char*
 reasonToString(int reason) {
 	switch(reason) {
-	
+
 	case REASON_IDLE:
 	    return("idle");
 	case REASON_ELECTION:
@@ -259,7 +259,7 @@ prepareLeapFlags(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
 			if(rtOpts->leapInfo.leapType == -1) {
 			    ptpClock->clockStatus.leapDelete = TRUE;
 			}
-			
+
 			ptpClock->clockStatus.override = TRUE;
 
 		}
@@ -285,7 +285,7 @@ prepareLeapFlags(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
 		    ptpClock->clockStatus.leapInsert = leapInsert;
 		    ptpClock->clockStatus.leapDelete = leapDelete;
 	    }
-	   
+
 }
 
 static int
@@ -396,8 +396,7 @@ ptpServiceUpdate (TimingService* service)
 	return 1;
 }
 
-static int
-ptpServiceClockUpdate (TimingService* service)
+static int ptpServiceClockUpdate (TimingService* service)
 {
 	RunTimeOpts *rtOpts = (RunTimeOpts*)service->config;
 	PtpClock *ptpClock  = (PtpClock*)service->controller;
@@ -435,7 +434,7 @@ ptpServiceClockUpdate (TimingService* service)
             unsetTimexFlags(STA_UNSYNC, TRUE);
 	}
 
-	    informClockSource(ptpClock);
+	informClockSource(ptpClock);
 
     if(rtOpts->leapSecondHandling == LEAP_ACCEPT) {
 	/* withdraw kernel flags if needed, unless this is during the event */
@@ -727,7 +726,7 @@ timingDomainUpdate(TimingDomain *domain)
 	TimingService *service = NULL;
 
 
-	/* update the election delay timer */	
+	/* update the election delay timer */
 	if(domain->electionLeft > 0) {
 		if(domain->electionLeft == domain->electionDelay) {
 			NOTIFY_LOCAL("election hold timer started: %d seconds\n", domain->electionDelay);
@@ -814,7 +813,7 @@ timingDomainUpdate(TimingDomain *domain)
 						service->released = TRUE;
 						domain->electionLeft = domain->electionDelay;
 						domain->current = NULL;
-					   
+
 					}
 
 			}
@@ -838,7 +837,7 @@ timingDomainUpdate(TimingDomain *domain)
 
 	/* second pass: elect the best service, establish preferred */
 	best = domain->services[0];
-	preferred = domain->services[0];	
+	preferred = domain->services[0];
 
 	for(i=0; i < domain->serviceCount; i++) {
 		service = domain->services[i];
@@ -971,4 +970,3 @@ timingDomainUpdate(TimingDomain *domain)
 
 	return 1;
 }
-

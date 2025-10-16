@@ -275,12 +275,12 @@ updateDelay(one_way_delay_filter * mpd_filt, const RunTimeOpts * rtOpts, PtpCloc
 
 		/* Compute one-way delay */
 		div2Time(&ptpClock->currentDS.meanPathDelay);
-		
+
 		if (ptpClock->currentDS.meanPathDelay.seconds) {
 			DBG("update delay: cannot filter with large OFM, "
 				"clearing filter\n");
 			INFO("Servo: Ignoring delayResp because of large OFM\n");
-			
+
 			mpd_filt->s_exp = mpd_filt->nsec_prev = 0;
 			/* revert back to previous value */
 			ptpClock->currentDS.meanPathDelay = prev_meanPathDelay;
@@ -366,7 +366,7 @@ updatePeerDelay(one_way_delay_filter * mpd_filt, const RunTimeOpts * rtOpts, Ptp
 
 	DBGV("updatePeerDelay\n");
 
-	ptpClock->char_last_msg = 'P';	
+	ptpClock->char_last_msg = 'P';
 
 	if (twoStep) {
 		/* calc 'slave_to_master_delay' */
@@ -606,7 +606,7 @@ DBG("UpdateOffset: max delay hit: %d\n", maxDelayHit);
 	} else {
 		SET_ALARM(ALRM_OFM_SECONDS, FALSE);
 		if(rtOpts->ofmAlarmThreshold) {
-		    if( abs(ptpClock->currentDS.offsetFromMaster.nanoseconds) 
+		    if( abs(ptpClock->currentDS.offsetFromMaster.nanoseconds)
 			> rtOpts->ofmAlarmThreshold) {
 			SET_ALARM(ALRM_OFM_THRESHOLD, TRUE);
 		    } else {
@@ -653,6 +653,7 @@ DBG("UpdateOffset: max delay hit: %d\n", maxDelayHit);
 	}
 #endif /* PTPD_STATISTICS */
 
+
 finish:
 	logStatistics(ptpClock);
 
@@ -664,19 +665,19 @@ finish:
 	DBGV("\n--Offset and Delay filtered-- \n");
 
 	if (ptpClock->portDS.delayMechanism == P2P) {
-		DBGV("one-way delay averaged (P2P):  %10ds %11dns\n",
+		DBGV("\tone-way delay averaged (P2P):  %10ds %11dns\n",
 		    ptpClock->portDS.peerMeanPathDelay.seconds,
 		    ptpClock->portDS.peerMeanPathDelay.nanoseconds);
 	} else if (ptpClock->portDS.delayMechanism == E2E) {
-		DBGV("one-way delay averaged (E2E):  %10ds %11dns\n",
+		DBGV("\tone-way delay averaged (E2E):  %10ds %11dns\n",
 		    ptpClock->currentDS.meanPathDelay.seconds,
 		    ptpClock->currentDS.meanPathDelay.nanoseconds);
 	}
 
-	DBGV("offset from master:      %10ds %11dns\n",
+	DBGV("\toffset from master: %10ds %11dns\n",
 	    ptpClock->currentDS.offsetFromMaster.seconds,
 	    ptpClock->currentDS.offsetFromMaster.nanoseconds);
-	DBGV("observed drift:          %10d\n", ptpClock->servo.observedDrift);
+	DBGV("\tobserved drift: %10d ppb\n", ptpClock->servo.observedDrift);
 
 }
 
@@ -742,7 +743,7 @@ warn_operator_slow_slewing(const RunTimeOpts * rtOpts, PtpClock * ptpClock )
 			ptpClock->currentDS.offsetFromMaster.seconds,
 			estimated
 		);
-		
+
 	}
 }
 
@@ -750,8 +751,7 @@ warn_operator_slow_slewing(const RunTimeOpts * rtOpts, PtpClock * ptpClock )
  * this is a wrapper around adjFreq to abstract extra operations
  */
 
-void
-adjFreq_wrapper(const RunTimeOpts * rtOpts, PtpClock * ptpClock, double adj)
+void adjFreq_wrapper(const RunTimeOpts * rtOpts, PtpClock * ptpClock, double adj)
 {
     if (rtOpts->noAdjust){
 		DBGV("adjFreq2: noAdjust on, returning\n");
@@ -858,7 +858,7 @@ void checkOffset(const RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
 		if(!rtOpts->enablePanicMode) {
 			if (!rtOpts->noResetClock)
-				CRITICAL("Offset above 1 second (%.09f s). Clock will step.\n", 
+				CRITICAL("Offset above 1 second (%.09f s). Clock will step.\n",
 					    timeInternalToDouble(&ptpClock->currentDS.offsetFromMaster));
 			ptpClock->clockControl.stepRequired = TRUE;
 			ptpClock->clockControl.updateOK = TRUE;
@@ -962,7 +962,7 @@ updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
 		DBGV("updateClock: noAdjust - skipped clock update\n");
 		return;
 	}
-	
+
 	if(!ptpClock->clockControl.updateOK) {
 		DBGV("updateClock: !clockUpdateOK - skipped clock update\n");
 		return;
@@ -1209,7 +1209,7 @@ updatePtpEngineStats (PtpClock* ptpClock, const RunTimeOpts* rtOpts)
 {
 
 	DBG("Refreshing slave engine stats counters\n");
-	
+
 		DBG("samples used: %d/%d = %.03f\n", ptpClock->acceptedUpdates, ptpClock->offsetUpdates, (ptpClock->acceptedUpdates + 0.0) / (ptpClock->offsetUpdates + 0.0));
 
 	ptpClock->slaveStats.mpdMean = ptpClock->slaveStats.mpdStats.meanContainer.mean;
