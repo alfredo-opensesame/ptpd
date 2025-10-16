@@ -174,8 +174,8 @@ eventTimerIsExpired_posix(EventTimer *timer)
 
 	ret = timer->expired;
 
-	DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
-		timer->expired ? "is" : "is not");
+	//DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
+	//	timer->expired ? "is" : "is not");
 
 	/* the five monkeys experiment */
 	if(ret) {

@@ -183,8 +183,8 @@ eventTimerIsExpired_itimer(EventTimer *timer)
 
 	ret = timer->expired;
 
-	DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
-		timer->expired ? "is" : "is not");
+	//DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
+	//	timer->expired ? "is" : "is not");
 
 	if(ret) {
 	    timer->expired = FALSE;
