@@ -181,9 +181,11 @@ ptpServiceAcquire (TimingService* service)
 //	RunTimeOpts *rtOpts = (RunTimeOpts*)service->config;
 	PtpClock *ptpClock  = (PtpClock*)service->controller;
 	ptpClock->clockControl.granted = TRUE;
-	INFO_LOCAL_ID(service,"acquired clock control\n");
-        FLAGS_SET(service->flags, TIMINGSERVICE_IN_CONTROL);
-	return 1;
+
+    INFO_LOCAL_ID(service,"ACQUIRED CLOCK CONTROL\n");
+    FLAGS_SET(service->flags, TIMINGSERVICE_IN_CONTROL);
+
+    return 1;
 }
 
 static int
@@ -192,10 +194,13 @@ ptpServiceRelease (TimingService* service, int reason)
 //	RunTimeOpts *rtOpts = (RunTimeOpts*)service->config;
 	PtpClock *ptpClock  = (PtpClock*)service->controller;
 	ptpClock->clockControl.granted = FALSE;
-	if(!service->released) INFO_LOCAL_ID(service,"released clock control, reason: %s\n",
-		reasonToString(reason));
-        FLAGS_UNSET(service->flags, TIMINGSERVICE_IN_CONTROL);
-	return 1;
+
+	if(!service->released)
+        INFO_LOCAL_ID(service,"RELEASED CLOCK CONTROL, reason: %s\n",reasonToString(reason));
+
+    FLAGS_UNSET(service->flags, TIMINGSERVICE_IN_CONTROL);
+
+    return 1;
 }
 
 /*
