@@ -442,8 +442,7 @@ restartSubsystems(RunTimeOpts *rtOpts, PtpClock *ptpClock)
  * Synchronous signal processing:
  * This function should be called regularly from the main loop
  */
-void
-checkSignals(RunTimeOpts * rtOpts, PtpClock * ptpClock)
+void checkSignals(RunTimeOpts * rtOpts, PtpClock * ptpClock)
 {
 	/*
 	 * note:
@@ -456,18 +455,17 @@ checkSignals(RunTimeOpts * rtOpts, PtpClock * ptpClock)
 
 	if(sighup_received){
 		do_signal_sighup(rtOpts, ptpClock);
-	sighup_received=0;
+	    sighup_received=0;
 	}
 
 	if(sigusr1_received){
 	    if(ptpClock->portDS.portState == PTP_SLAVE){
-		    WARNING("SIGUSR1 received, stepping clock to current known OFM\n");
-                    stepClock(rtOpts, ptpClock);
-//		    ptpClock->clockControl.stepRequired = TRUE;
+		    WARNING("SIGUSR1 received, stepping clock to current known OFM\n"); stepClock(rtOpts, ptpClock);
+            //ptpClock->clockControl.stepRequired = TRUE;
 	    } else {
 		    ERROR("SIGUSR1 received - will not step clock, not in PTP_SLAVE state\n");
 	    }
-	sigusr1_received = 0;
+	    sigusr1_received = 0;
 	}
 
 	if(sigusr2_received){
@@ -527,10 +525,8 @@ void disable_runtime_debug(void )
 }
 #endif
 
-int
-writeLockFile(RunTimeOpts * rtOpts)
+int writeLockFile(RunTimeOpts * rtOpts)
 {
-
 	int lockPid = 0;
 
 	DBGV("Checking lock file: %s\n", rtOpts->lockFile);
@@ -539,7 +535,8 @@ writeLockFile(RunTimeOpts * rtOpts)
 		PERROR("Could not open lock file %s for writing", rtOpts->lockFile);
 		return(0);
 	}
-	if (lockFile(fileno(G_lockFilePointer)) < 0) {
+
+    if (lockFile(fileno(G_lockFilePointer)) < 0) {
 		if ( checkLockStatus(fileno(G_lockFilePointer),
 			DEFAULT_LOCKMODE, &lockPid) == 0) {
 			     ERROR("Another "PTPD_PROGNAME" instance is running: %s locked by PID %d\n",
@@ -549,7 +546,8 @@ writeLockFile(RunTimeOpts * rtOpts)
 		}
 		goto failure;
 	}
-	if(ftruncate(fileno(G_lockFilePointer), 0) == -1) {
+
+    if(ftruncate(fileno(G_lockFilePointer), 0) == -1) {
 		PERROR("Could not truncate %s: %s",
 			rtOpts->lockFile, strerror(errno));
 		goto failure;
@@ -568,29 +566,31 @@ writeLockFile(RunTimeOpts * rtOpts)
 
 }
 
-void
-ptpdShutdown(PtpClock * ptpClock)
+void ptpdShutdown(PtpClock * ptpClock)
 {
-
 	extern RunTimeOpts rtOpts;
 
 	/*
-         * go into DISABLED state so the FSM can call any PTP-specific shutdown actions,
-	 * such as canceling unicast transmission
-         */
+    * go into DISABLED state so the FSM can call any PTP-specific shutdown actions,
+	* such as canceling unicast transmission
+    */
 	toState(PTP_DISABLED, &rtOpts, ptpClock);
-	/* process any outstanding events before exit */
+
+    // process any outstanding events before exit
 	updateAlarms(ptpClock->alarms, ALRM_MAX);
 	netShutdown(&ptpClock->netPath);
 	free(ptpClock->foreign);
 
-	/* free management and signaling messages, they can have dynamic memory allocated */
+	// free management and signaling messages, they can have dynamic memory allocated
 	if(ptpClock->msgTmpHeader.messageType == MANAGEMENT)
 		freeManagementTLV(&ptpClock->msgTmp.manage);
+
 	freeManagementTLV(&ptpClock->outgoingManageTmp);
-	if(ptpClock->msgTmpHeader.messageType == SIGNALING)
+
+    if(ptpClock->msgTmpHeader.messageType == SIGNALING)
 		freeSignalingTLV(&ptpClock->msgTmp.signaling);
-	freeSignalingTLV(&ptpClock->outgoingSignalingTmp);
+
+    freeSignalingTLV(&ptpClock->outgoingSignalingTmp);
 
 #ifdef PTPD_SNMP
 	snmpShutdown();
@@ -603,8 +603,8 @@ ptpdShutdown(PtpClock * ptpClock)
 #else
 	ptpClock->oFilterMS.shutdown(&ptpClock->oFilterMS);
 	ptpClock->oFilterSM.shutdown(&ptpClock->oFilterSM);
-        freeDoubleMovingStatFilter(&ptpClock->filterMS);
-        freeDoubleMovingStatFilter(&ptpClock->filterSM);
+    freeDoubleMovingStatFilter(&ptpClock->filterMS);
+    freeDoubleMovingStatFilter(&ptpClock->filterSM);
 
 	/* We are running statistics code - save drift on exit only if we're not monitoring servo stability */
 	if(!rtOpts.servoStabilityDetection && !ptpClock->servo.runningMaxOutput)
@@ -613,7 +613,8 @@ ptpdShutdown(PtpClock * ptpClock)
 
 	if (rtOpts.currentConfig != NULL)
 		dictionary_del(&rtOpts.currentConfig);
-	if(rtOpts.cliConfig != NULL)
+
+    if(rtOpts.cliConfig != NULL)
 		dictionary_del(&rtOpts.cliConfig);
 
 	timerShutdown(ptpClock->timers);
@@ -624,17 +625,16 @@ ptpdShutdown(PtpClock * ptpClock)
 	extern PtpClock* G_ptpClock;
 	G_ptpClock = NULL;
 
-
-
 	/* properly clean lockfile (eventough new deaemons can acquire the lock after we die) */
 	if(!rtOpts.ignore_daemon_lock && G_lockFilePointer != NULL) {
 	    fclose(G_lockFilePointer);
 	    G_lockFilePointer = NULL;
 	}
-	unlink(rtOpts.lockFile);
+
+    unlink(rtOpts.lockFile);
 
 	if(rtOpts.statusLog.logEnabled) {
-		/* close and remove the status file */
+		// close and remove the status file
 		if(rtOpts.statusLog.logFP != NULL) {
 			fclose(rtOpts.statusLog.logFP);
 			rtOpts.statusLog.logFP = NULL;
@@ -648,7 +648,6 @@ ptpdShutdown(PtpClock * ptpClock)
 
 void dump_command_line_parameters(int argc, char **argv)
 {
-
 	int i = 0;
 	char sbuf[1000];
 	char *st = sbuf;
@@ -666,11 +665,19 @@ void dump_command_line_parameters(int argc, char **argv)
 }
 
 
-
-PtpClock *
-ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
+/**
+ * Main startup function called from main()
+ *
+ * @param argc
+ * @param argv
+ * @param ret    Pointer to return PtptClock instance.
+ * @param rtOpts Pointer to runtime options structure
+ *
+ * @return Pointer to newly created PtpClock structure, or NULL on error
+ */
+PtpClock* ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
 {
-	PtpClock * ptpClock;
+	PtpClock*    ptpClock;
 	TimeInternal tmpTime;
 	int i = 0;
 
@@ -706,21 +713,24 @@ ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
 	 * for config file and section:key long options.
 	 */
 	loadDefaultSettings(rtOpts);
+
 	/* initialise the config dictionary */
 	rtOpts->candidateConfig = dictionary_new(0);
-	rtOpts->cliConfig = dictionary_new(0);
+	rtOpts->cliConfig       = dictionary_new(0);
 
 	/* parse all long section:key options and clean up argv for getopt */
 	loadCommandLineKeys(rtOpts->cliConfig,argc,argv);
-	/* parse the normal short and long options, exit on error */
+
+    /* parse the normal short and long options, exit on error */
 	if (!loadCommandLineOptions(rtOpts, rtOpts->cliConfig, argc, argv, ret)) {
 	    goto fail;
 	}
 
 	/* Display startup info and argv if not called with -? or -H */
-		NOTIFY("%s version %s starting\n",USER_DESCRIPTION, USER_VERSION);
-		dump_command_line_parameters(argc, argv);
-	/*
+	NOTIFY("%s version %s starting\n",USER_DESCRIPTION, USER_VERSION);
+	dump_command_line_parameters(argc, argv);
+
+    /*
 	 * we try to catch as many error conditions as possible, but before we call daemon().
 	 * the exception is the lock file, as we get a new pid when we call daemon(),
 	 * so this is checked twice: once to read, second to read/write
@@ -728,9 +738,9 @@ ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
 	if(geteuid() != 0)
 	{
 		printf("Error: "PTPD_PROGNAME" daemon can only be run as root\n");
-			*ret = 1;
-			goto fail;
-		}
+		*ret = 1;
+		goto fail;
+	}
 
 	/* Have we got a config file? */
 	if(strlen(rtOpts->configFile) > 0) {
@@ -746,6 +756,7 @@ ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
 	} else {
 		dictionary_merge(rtOpts->cliConfig, rtOpts->candidateConfig, 1, 1, "from command line");
 	}
+
 	/**
 	 * This is where the final checking  of the candidate settings container happens.
 	 * A dictionary is returned with only the known options, explicitly set to defaults
@@ -774,7 +785,8 @@ ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOpts)
 	    *ret = 1;
 	    goto configcheck;
 	}
-	if(rtOpts->backupIfaceEnabled && !testInterface(rtOpts->backupIfaceName, rtOpts)) {
+
+    if(rtOpts->backupIfaceEnabled && !testInterface(rtOpts->backupIfaceName, rtOpts)) {
 	    ERROR("Error: Cannot use %s interface as backup\n",rtOpts->backupIfaceName);
 	    *ret = 1;
 	    goto configcheck;
@@ -787,12 +799,13 @@ configcheck:
 	 */
 	if(rtOpts->checkConfigOnly) {
 	    if(*ret != 0) {
-		printf("Configuration has errors\n");
-		*ret = 1;
+		    printf("Configuration has errors\n");
+		    *ret = 1;
 		}
-	    else
-		printf("Configuration OK\n");
-	    goto fail;
+	    else{
+		    printf("Configuration OK\n");
+	    }
+        goto fail;
 	}
 
 	/* Previous errors - exit */
@@ -819,28 +832,25 @@ configcheck:
 
 	/* Allocate memory after we're done with other checks but before going into daemon */
 	ptpClock = (PtpClock *) calloc(1, sizeof(PtpClock));
-	if (!ptpClock) {
+
+    if (!ptpClock) {
 		PERROR("Error: Failed to allocate memory for protocol engine data");
 		*ret = 2;
 		goto fail;
 	} else {
-		DBG("allocated %d bytes for protocol engine data\n",
-		    (int)sizeof(PtpClock));
+		DBG("allocated %d bytes for protocol engine data\n", (int)sizeof(PtpClock));
 
-
-		ptpClock->foreign = (ForeignMasterRecord *)
-			calloc(rtOpts->max_foreign_records,
-			       sizeof(ForeignMasterRecord));
+		ptpClock->foreign = (ForeignMasterRecord *) calloc(rtOpts->max_foreign_records,
+			                                               sizeof(ForeignMasterRecord));
 		if (!ptpClock->foreign) {
-			PERROR("failed to allocate memory for foreign "
-			       "master data");
+			PERROR("failed to allocate memory for foreign master data");
 			*ret = 2;
 			free(ptpClock);
 			goto fail;
 		} else {
 			DBG("allocated %d bytes for foreign master data\n",
 			    (int)(rtOpts->max_foreign_records *
-				  sizeof(ForeignMasterRecord)));
+				sizeof(ForeignMasterRecord)));
 		}
 	}
 
@@ -912,7 +922,7 @@ configcheck:
 
 	/* set up timers */
 	if(!timerSetup(ptpClock->timers)) {
-		PERROR("failed to set up event timers");
+		PERROR("Failed to set up event timers");
 		*ret = 2;
 		free(ptpClock);
 		goto fail;
@@ -924,11 +934,11 @@ configcheck:
 	initAlarms(ptpClock->alarms, ALRM_MAX, (void*)ptpClock);
 	configureAlarms(ptpClock->alarms, ALRM_MAX, (void*)ptpClock);
 	ptpClock->alarmDelay = rtOpts->alarmInitialDelay;
-	/* we're delaying alarm processing - disable alarms for now */
+
+    /* we're delaying alarm processing - disable alarms for now */
 	if(ptpClock->alarmDelay) {
 	    enableAlarms(ptpClock->alarms, ALRM_MAX, FALSE);
 	}
-
 
 	/* establish signal handlers */
 	signal(SIGINT,  catchSignals);
@@ -944,13 +954,11 @@ configcheck:
 		snmpInit(rtOpts, ptpClock);
 #endif
 
+	NOTICE( USER_DESCRIPTION" started successfully on %s using \"%s\" preset (PID %d)\n",
+		    rtOpts->ifaceName,
+		    (getPtpPreset(rtOpts->selectedPreset,rtOpts)).presetName, getpid());
 
-
-	NOTICE(USER_DESCRIPTION" started successfully on %s using \"%s\" preset (PID %d)\n",
-			    rtOpts->ifaceName,
-			    (getPtpPreset(rtOpts->selectedPreset,rtOpts)).presetName,
-			    getpid());
-	ptpClock->resetStatisticsLog = TRUE;
+    ptpClock->resetStatisticsLog = TRUE;
 
 #ifdef PTPD_STATISTICS
 
@@ -972,12 +980,12 @@ configcheck:
 #endif
 
 #ifdef PTPD_PCAP
-		ptpClock->netPath.pcapEventSock = -1;
+		ptpClock->netPath.pcapEventSock   = -1;
 		ptpClock->netPath.pcapGeneralSock = -1;
 #endif /* PTPD_PCAP */
 
 		ptpClock->netPath.generalSock = -1;
-		ptpClock->netPath.eventSock = -1;
+		ptpClock->netPath.eventSock   = -1;
 
 	*ret = 0;
 
@@ -990,29 +998,28 @@ fail:
 	return 0;
 }
 
-void
-ntpSetup (RunTimeOpts *rtOpts, PtpClock *ptpClock)
+void ntpSetup (RunTimeOpts *rtOpts, PtpClock *ptpClock)
 {
 	TimingService *ts = &ptpClock->ntpControl.timingService;
-
-
 
 	if (rtOpts->ntpOptions.enableEngine) {
 	    timingDomain.services[1] = ts;
 	    strncpy(ts->id, "NTP0", TIMINGSERVICE_MAX_DESC);
-	    ts->dataSet.priority1 = 0;
-	    ts->dataSet.type = TIMINGSERVICE_NTP;
-	    ts->config = &rtOpts->ntpOptions;
-	    ts->controller = &ptpClock->ntpControl;
+
+        ts->dataSet.priority1     = 0;
+	    ts->dataSet.type          = TIMINGSERVICE_NTP;
+	    ts->config                = &rtOpts->ntpOptions;
+	    ts->controller            = &ptpClock->ntpControl;
 	    /* for now, NTP is considered always active, so will never go idle */
-	    ts->timeout = 60;
-	    ts->updateInterval = rtOpts->ntpOptions.checkInterval;
+	    ts->timeout               = 60;
+	    ts->updateInterval        = rtOpts->ntpOptions.checkInterval;
 	    timingDomain.serviceCount = 2;
 	} else {
 	    timingDomain.serviceCount = 1;
-	    timingDomain.services[1] = NULL;
+	    timingDomain.services[1]  = NULL;
+
 	    if(timingDomain.best == ts || timingDomain.current == ts || timingDomain.preferred == ts) {
-		timingDomain.best = timingDomain.current = timingDomain.preferred = NULL;
+		    timingDomain.best = timingDomain.current = timingDomain.preferred = NULL;
 	    }
 	}
 }
