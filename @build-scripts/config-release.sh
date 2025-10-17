@@ -29,4 +29,24 @@ echo "Configuring with release options..."
     --enable-sw-clock
 
 echo "=== Release configuration completed successfully ==="
-echo "Next step: run 'make clean && make' in build/release directory"
+
+# Build with bear to generate compile_commands.json
+echo "Building with bear to generate compile_commands.json..."
+if command -v bear >/dev/null 2>&1; then
+    bear -- make clean && bear -- make
+    
+    # Copy compile_commands.json to project root for VS Code IntelliSense
+    if [ -f compile_commands.json ]; then
+        echo "Copying compile_commands.json to project root..."
+        cp compile_commands.json ../../compile_commands.json
+        echo "compile_commands.json generated successfully for VS Code IntelliSense"
+    else
+        echo "Warning: compile_commands.json was not generated"
+    fi
+else
+    echo "Warning: bear not found. Install bear with 'brew install bear' to generate compile_commands.json"
+    echo "Running regular build..."
+    make clean && make
+fi
+
+echo "=== Release build completed successfully ==="

@@ -31,4 +31,23 @@ echo "Configuring with debug options..."
     --enable-sw-clock
 
 echo "=== Debug configuration completed successfully ==="
-echo "Next step: run 'make clean && make' in build/debug directory"
+
+# Build with bear to generate compile_commands.json
+echo "Building with bear to generate compile_commands.json..."
+if command -v bear >/dev/null 2>&1; then
+    bear -- make clean && bear -- make
+    
+    # Verify compile_commands.json was generated
+    if [ -f compile_commands.json ]; then
+        echo "✓ compile_commands.json generated in build/debug directory"
+        echo "✓ VS Code IntelliSense should now recognize SW_CLOCK_ENABLED and other definitions"
+    else
+        echo "Warning: compile_commands.json was not generated"
+    fi
+else
+    echo "Warning: bear not found. Install bear with 'brew install bear' to generate compile_commands.json"
+    echo "Running regular build..."
+    make clean && make
+fi
+
+echo "=== Debug build completed successfully ==="

@@ -712,7 +712,7 @@ typedef struct {
 	RunTimeOpts *rtOpts;
 
 #ifdef SW_CLOCK_ENABLED
-    SwClock* swClock;
+    SwClock* pSwClock; //Pointer to software clock instance
 #endif
 
 } PtpClock;

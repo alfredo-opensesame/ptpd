@@ -162,6 +162,9 @@ void swclock_get_state(SwClock* c, swclock_state_t* out) {
     pthread_mutex_unlock(&c->mu);
 }
 
+/**
+ * Align swclock so swclock_now_ns(c) == target_now_ns at this instant.
+ */
 void swclock_align_now(SwClock* c, int64_t target_now_ns) {
     if (!c) return;
     pthread_mutex_lock(&c->mu);
