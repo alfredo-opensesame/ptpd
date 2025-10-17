@@ -888,7 +888,8 @@ void checkOffset(const RunTimeOpts *rtOpts, PtpClock *ptpClock)
 				CRITICAL("Panic mode timeout - accepting current offset. Clock will be slewed at maximum rate.\n");
 			else
 				CRITICAL("Panic mode timeout - accepting current offset. Clock will step.\n");
-			ptpClock->panicOver = FALSE;
+
+            ptpClock->panicOver = FALSE;
 			timerStop(&ptpClock->timers[PANIC_MODE_TIMER]);
 			ptpClock->clockControl.available = TRUE;
 			ptpClock->clockControl.stepRequired = TRUE;
@@ -934,7 +935,6 @@ void checkOffset(const RunTimeOpts *rtOpts, PtpClock *ptpClock)
 			/* we can control the clock again */
 			ptpClock->clockControl.available = TRUE;
 		}
-
 	}
 
 	/* can this even happen if offset is < 1 sec? */
@@ -947,15 +947,12 @@ void checkOffset(const RunTimeOpts *rtOpts, PtpClock *ptpClock)
 			ptpClock->clockControl.available = TRUE;
 	}
 
-
-
 	ptpClock->clockControl.updateOK = TRUE;
-
 }
 
-void
-updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
+void updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
 {
+	DBGV("==> updateClock\n");
 
 	if(rtOpts->noAdjust) {
 		ptpClock->clockControl.available = FALSE;
@@ -968,9 +965,8 @@ updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
 		return;
 	}
 
-	DBGV("==> updateClock\n");
-
 	if(ptpClock->clockControl.stepRequired) {
+        DBG("updateClock: stepRequired - stepping clock\n");
 		if (!rtOpts->noResetClock) {
 			stepClock(rtOpts, ptpClock);
 			ptpClock->clockControl.stepRequired = FALSE;
@@ -989,15 +985,16 @@ updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
 
 	if (ptpClock->clockControl.granted) {
 
-	/* only run the servo if we are calibrted - if calibration delay configured */
+        /* only run the servo if we are calibrated - if calibration delay configured */
+        if((!rtOpts->calibrationDelay) || ptpClock->isCalibrated) {
 
-	if((!rtOpts->calibrationDelay) || ptpClock->isCalibrated) {
+            /* Adjust the clock first -> the PI controller runs here */
+            adjFreq_wrapper(rtOpts, ptpClock, runPIservo(&ptpClock->servo, ptpClock->currentDS.offsetFromMaster.nanoseconds));
+        }
 
-		/* Adjust the clock first -> the PI controller runs here */
-		adjFreq_wrapper(rtOpts, ptpClock, runPIservo(&ptpClock->servo, ptpClock->currentDS.offsetFromMaster.nanoseconds));
-	}
-		warn_operator_fast_slewing(rtOpts, ptpClock, ptpClock->servo.observedDrift);
-		/* let the clock source know it's being synced */
+        warn_operator_fast_slewing(rtOpts, ptpClock, ptpClock->servo.observedDrift);
+
+        /* let the clock source know it's being synced */
 		ptpClock->clockStatus.inSync = TRUE;
 		ptpClock->clockStatus.clockOffset = (ptpClock->currentDS.offsetFromMaster.seconds * 1E9 +
 						ptpClock->currentDS.offsetFromMaster.nanoseconds) / 1000;
@@ -1022,13 +1019,13 @@ updateClock(const RunTimeOpts * rtOpts, PtpClock * ptpClock)
 	feedDoublePermanentMedian(&ptpClock->servo.driftMedianContainer, ptpClock->servo.observedDrift);
 	if(!ptpClock->servo.statsUpdated) {
 	    if(ptpClock->servo.observedDrift != 0.0){
-		ptpClock->servo.driftMax = ptpClock->servo.observedDrift;
-		ptpClock->servo.driftMin = ptpClock->servo.observedDrift;
-		ptpClock->servo.statsUpdated = TRUE;
+            ptpClock->servo.driftMax = ptpClock->servo.observedDrift;
+            ptpClock->servo.driftMin = ptpClock->servo.observedDrift;
+            ptpClock->servo.statsUpdated = TRUE;
 	    }
 	} else {
-	ptpClock->servo.driftMax = max(ptpClock->servo.driftMax, ptpClock->servo.observedDrift);
-	ptpClock->servo.driftMin = min(ptpClock->servo.driftMin, ptpClock->servo.observedDrift);
+        ptpClock->servo.driftMax = max(ptpClock->servo.driftMax, ptpClock->servo.observedDrift);
+        ptpClock->servo.driftMin = min(ptpClock->servo.driftMin, ptpClock->servo.observedDrift);
 	}
 #endif
 
