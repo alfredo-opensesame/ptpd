@@ -12,7 +12,7 @@ AM_LDFLAGS	= $(SNMP_LIBS) $(PCAP_LIBS)
 if LINUX_KERNEL_HEADERS
 AM_CFLAGS += $(LINUX_KERNEL_INCLUDES)
 endif
-AM_CPPFLAGS    += -DDATADIR='"$(datadir)"' $(PTP_DBL) $(PTP_DAEMON) $(PTP_EXP) $(PTP_SNMP) $(PTP_PCAP) $(PTP_STATISTICS) $(PTP_SLAVE_ONLY) $(PTP_PTIMERS) $(PTP_UNICAST_MAX) $(PTP_DISABLE_SOTIMESTAMPING)
+AM_CPPFLAGS    += -DDATADIR='"$(datadir)"' $(PTP_DBL) $(PTP_DAEMON) $(PTP_EXP) $(PTP_SNMP) $(PTP_PCAP) $(PTP_STATISTICS) $(PTP_SW_CLOCK) $(PTP_SLAVE_ONLY) $(PTP_PTIMERS) $(PTP_UNICAST_MAX) $(PTP_DISABLE_SOTIMESTAMPING)
 
 NULL=
 
@@ -78,6 +78,16 @@ ptpd2_SOURCES += dep/statistics.h
 ptpd2_SOURCES += dep/statistics.c
 ptpd2_SOURCES += dep/outlierfilter.h
 ptpd2_SOURCES += dep/outlierfilter.c
+endif
+
+# SW_CLOCK
+if SW_CLOCK
+ptpd2_SOURCES += dep/sw_clock/sw_adjtimex.h
+ptpd2_SOURCES += dep/sw_clock/sw_adjtimex.c
+ptpd2_SOURCES += dep/sw_clock/swclock.h
+ptpd2_SOURCES += dep/sw_clock/swclock.c
+ptpd2_SOURCES += dep/sw_clock/swclock_compat.h
+ptpd2_SOURCES += dep/sw_clock/swclock_compat.c
 endif
 
 # posix timers

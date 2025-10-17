@@ -723,6 +723,26 @@ AC_SUBST(PTP_STATISTICS)
 
 AM_CONDITIONAL([STATISTICS], [test x$enable_statistics = xyes])
 
+AC_MSG_CHECKING([for software clock support])
+AC_ARG_ENABLE(
+    [sw-clock],
+    [AS_HELP_STRING(
+	[--enable-sw-clock (disabled by default)],
+	[Enable support for software clock implementation]
+    )],
+    [],
+    [enable_sw_clock=no]
+)
+AC_MSG_RESULT([$enable_sw_clock])
+case "$enable_sw_clock" in
+ yes)
+    PTP_SW_CLOCK="-DSW_CLOCK_ENABLED"
+    ;;
+esac
+AC_SUBST(PTP_SW_CLOCK)
+
+AM_CONDITIONAL([SW_CLOCK], [test x$enable_sw_clock = xyes])
+
 AC_MSG_CHECKING([if we want to enable SO_TIMESTAMPING support on Linux if available])
 AC_ARG_ENABLE(
     [so-timestamping],
