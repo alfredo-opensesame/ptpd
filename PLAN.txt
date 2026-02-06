@@ -1,0 +1,866 @@
+PTPd CMake Migration Plan
+=========================
+
+OBJECTIVE: Migrate from autotools to CMake while ensuring binary equivalence
+          and identical configuration flexibility at every step.
+
+CRITICAL RULE: After each phase, verify that autotools and CMake produce
+               identical binaries and identical configuration behavior.
+
+
+PHASE 0: PREPARATION & BASELINE
+================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Tasks:
+  [ ] Create clean autotools build for baseline reference
+      ./configure --prefix=/tmp/ptpd-autotools-baseline
+      make clean && make
+      cp src/ptpd2 /tmp/ptpd2-autotools-baseline
+      
+  [ ] Document all autotools configuration options (from configure --help)
+  
+  [ ] Create test matrix for all meaningful option combinations:
+      - POSIX timers: ON/OFF
+      - SW clock: ON/OFF  
+      - PCAP: ON/OFF
+      - SNMP: ON/OFF
+      - Statistics: ON/OFF
+      - Daemon mode: ON/OFF
+      - Slave-only: ON/OFF
+      - Debug levels: none/basic/medium/all
+      
+  [ ] Create binary comparison script (compare-binaries.sh)
+  
+  [ ] Create symbol extraction script (extract-symbols.sh)
+
+Verification:
+  - Baseline autotools binary builds successfully
+  - All configuration combinations documented
+  - Comparison scripts functional
+
+Commit: "Phase 0: Preparation complete"
+
+
+PHASE 1: MINIMAL CMAKE (Build Only, No Options)
+================================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Build ptpd2 binary with hardcoded defaults matching autotools defaults.
+
+Files to Create:
+  [ ] CMakeLists.txt (root level)
+      - Project declaration
+      - Minimum version (3.15+)
+      - C99 standard
+      - No options yet, all defaults ON
+      
+  [ ] src/CMakeLists.txt
+      - All source files (hardcode like Makefile.am default)
+      - Include SNMP sources (default ON)
+      - Include statistics sources (default ON)
+      - Use POSIX timers (default ON)
+      - Exclude SW clock sources (default OFF)
+
+Build Test:
+  mkdir build-cmake-phase1
+  cmake -B build-cmake-phase1 -DCMAKE_BUILD_TYPE=Debug
+  cmake --build build-cmake-phase1
+
+Verification Steps:
+  [ ] CMake build completes without errors
+  [ ] Binary size comparison:
+      ls -lh build/debug/src/ptpd2
+      ls -lh build-cmake-phase1/src/ptpd2
+      (Should be within 5% size)
+      
+  [ ] Symbol comparison:
+      nm -g build/debug/src/ptpd2 | sort > symbols-autotools-phase1.txt
+      nm -g build-cmake-phase1/src/ptpd2 | sort > symbols-cmake-phase1.txt
+      diff symbols-autotools-phase1.txt symbols-cmake-phase1.txt
+      (Should be identical or nearly identical)
+      
+  [ ] File output:
+      file build/debug/src/ptpd2
+      file build-cmake-phase1/src/ptpd2
+      (Architecture, format should match)
+      
+  [ ] Strings comparison:
+      strings build/debug/src/ptpd2 | sort > strings-autotools-phase1.txt
+      strings build-cmake-phase1/src/ptpd2 | sort > strings-cmake-phase1.txt
+      diff strings-autotools-phase1.txt strings-cmake-phase1.txt
+      (Version strings, help text should match)
+
+Known Acceptable Differences:
+  - Build paths embedded in debug info
+  - Timestamps
+  - Compiler version strings
+
+Commit: "Phase 1: Minimal CMake builds successfully"
+
+
+PHASE 2: PLATFORM DETECTION (Headers & Types)
+==============================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Implement all header checks, type checks, and function checks from
+      configure.ac to generate a config.h equivalent to autotools.
+
+Files to Create:
+  [ ] cmake/CheckPlatform.cmake
+      - All AC_CHECK_HEADERS (40+ headers)
+      - All AC_CHECK_FUNCS (20+ functions)
+      - All AC_CHECK_MEMBERS (struct member checks)
+      
+  [ ] config.h.cmake.in (template matching config.h.in)
+      - All HAVE_* defines
+      - Platform-specific defines
+      - Version information
+
+Header Checks to Implement:
+  [ ] arpa/inet.h
+  [ ] fcntl.h
+  [ ] limits.h
+  [ ] netdb.h
+  [ ] net/ethernet.h
+  [ ] netinet/in.h
+  [ ] netinet/in_systm.h
+  [ ] netinet/ether.h
+  [ ] sys/uio.h
+  [ ] stdlib.h
+  [ ] string.h
+  [ ] sys/ioctl.h
+  [ ] sys/param.h
+  [ ] sys/socket.h
+  [ ] sys/sockio.h
+  [ ] ifaddrs.h
+  [ ] sys/time.h
+  [ ] syslog.h
+  [ ] unistd.h
+  [ ] glob.h
+  [ ] sched.h
+  [ ] utmp.h
+  [ ] utmpx.h
+  [ ] unix.h
+  [ ] linux/rtc.h
+  [ ] sys/timex.h
+  [ ] getopt.h
+  [ ] endian.h
+  [ ] machine/endian.h
+  [ ] sys/isa_defs.h
+  [ ] math.h (REQUIRED)
+  [ ] sys/cpuset.h
+  [ ] net/if.h
+  [ ] net/if_arp.h
+  [ ] netinet/if_ether.h
+  [ ] netinet/in_systm.h
+  [ ] netinet/ip.h
+  [ ] net/if_ether.h
+  [ ] pcap/pcap.h
+  [ ] pcap.h
+  [ ] net-snmp/net-snmp-config.h
+  [ ] linux/net_tstamp.h
+
+Function Checks to Implement:
+  [ ] clock_gettime
+  [ ] dup2
+  [ ] ftruncate
+  [ ] gethostbyname2
+  [ ] gettimeofday
+  [ ] inet_ntoa
+  [ ] memset
+  [ ] pow
+  [ ] select
+  [ ] socket
+  [ ] strchr
+  [ ] strdup
+  [ ] strerror
+  [ ] strtol
+  [ ] glob
+  [ ] pututline
+  [ ] utmpxname
+  [ ] updwtmpx
+  [ ] setutent
+  [ ] endutent
+  [ ] signal
+  [ ] ntp_gettime
+  [ ] getopt_long
+
+Type/Member Checks to Implement:
+  [ ] struct sockaddr_in.sin_len
+  [ ] struct ifreq.ifr_hwaddr
+  [ ] struct ifreq.ifr_index
+  [ ] struct ifreq.ifr_ifindex
+  [ ] struct ether_addr.octet
+
+Symbol Checks:
+  [ ] MSG_ERRQUEUE
+  [ ] POSIX_TIMERS_SUPPORTED
+
+Library Searches:
+  [ ] pow in m
+  [ ] clock_gettime in rt
+  [ ] timer_create in rt
+  [ ] connect in socket
+  [ ] gethostbyname in nsl
+
+Build Test:
+  cmake -B build-cmake-phase2 -DCMAKE_BUILD_TYPE=Debug
+  cmake --build build-cmake-phase2
+
+Verification Steps:
+  [ ] Compare generated config.h files:
+      diff build/debug/config.h build-cmake-phase2/config.h
+      (Should be functionally equivalent, order may differ)
+      
+  [ ] Verify all HAVE_* macros present in both
+  
+  [ ] Check preprocessor output:
+      gcc -E -dM build/debug/config.h | sort > defines-autotools.txt
+      gcc -E -dM build-cmake-phase2/config.h | sort > defines-cmake.txt
+      diff defines-autotools.txt defines-cmake.txt
+      
+  [ ] Binary equivalence check (same as Phase 1)
+
+Commit: "Phase 2: Platform detection complete"
+
+
+PHASE 3: LIBRARY DETECTION (PCAP & SNMP)
+=========================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Properly detect and link PCAP and SNMP libraries using their config tools,
+      matching autotools behavior exactly.
+
+Files to Create:
+  [ ] cmake/FindPCAP.cmake
+      - Try pcap-config first (matching --with-pcap-config behavior)
+      - Fall back to find_library if pcap-config not found
+      - Extract CFLAGS and LIBS from pcap-config
+      - Handle absolute paths to pcap-config
+      
+  [ ] cmake/FindNETSNMP.cmake
+      - Try net-snmp-config first (matching --with-net-snmp-config)
+      - Extract --cflags and --agent-libs
+      - Handle absolute paths to net-snmp-config
+      - Check for net-snmp/net-snmp-config.h
+
+PCAP Detection Logic (from configure.ac lines 290-460):
+  [ ] Search for pcap-config in PATH
+  [ ] If found: extract --cflags and --libs
+  [ ] Verify pcap/pcap.h or pcap.h exists
+  [ ] If pcap-config not found: try -lpcap directly
+  [ ] Set PTPD_PCAP define if successful
+
+SNMP Detection Logic (from configure.ac lines 460-600):
+  [ ] Search for net-snmp-config in PATH
+  [ ] If found: extract --agent-libs output
+  [ ] Parse output into separate LIBS, CFLAGS, CPPFLAGS
+  [ ] Verify net-snmp/net-snmp-config.h exists
+  [ ] Set PTPD_SNMP define if successful
+
+Build Test (with libraries):
+  # Test with PCAP and SNMP (like current default)
+  cmake -B build-cmake-phase3-full -DCMAKE_BUILD_TYPE=Debug
+  cmake --build build-cmake-phase3-full
+  
+  # Test without PCAP
+  cmake -B build-cmake-phase3-nopcap -DCMAKE_BUILD_TYPE=Debug \
+        -DENABLE_PCAP=OFF
+  cmake --build build-cmake-phase3-nopcap
+  
+  # Test without SNMP
+  cmake -B build-cmake-phase3-nosnmp -DCMAKE_BUILD_TYPE=Debug \
+        -DENABLE_SNMP=OFF
+  cmake --build build-cmake-phase3-nosnmp
+
+Verification Steps:
+  [ ] Verify pcap-config is called (not just find_library):
+      strings build-cmake-phase3-full/src/ptpd2 | grep pcap
+      
+  [ ] Verify net-snmp-config is called:
+      strings build-cmake-phase3-full/src/ptpd2 | grep snmp
+      
+  [ ] Compare linked libraries:
+      otool -L build/debug/src/ptpd2
+      otool -L build-cmake-phase3-full/src/ptpd2
+      (Should link same PCAP and SNMP libraries)
+      
+  [ ] Verify SNMP symbols present when enabled:
+      nm build-cmake-phase3-full/src/ptpd2 | grep snmp
+      
+  [ ] Verify SNMP symbols absent when disabled:
+      nm build-cmake-phase3-nosnmp/src/ptpd2 | grep snmp
+      (Should be empty)
+      
+  [ ] Binary equivalence for each configuration
+
+Commit: "Phase 3: PCAP and SNMP detection complete"
+
+
+PHASE 4: CONFIGURATION OPTIONS (Feature Flags)
+===============================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Implement all configuration options from configure.ac as CMake options,
+      with exact same defaults and behavior.
+
+Files to Create:
+  [ ] cmake/Options.cmake
+      - All option() declarations
+      - Default value logic
+      - Option validation
+      - Preprocessor define generation
+
+Configuration Options to Implement:
+
+  [ ] ENABLE_POSIX_TIMERS (default: ON if supported, OFF if not)
+      - Check POSIX_TIMERS_SUPPORTED first
+      - Allow explicit --disable-posix-timers override
+      - If ON: use dep/eventtimer_posix.c
+      - If OFF: use dep/eventtimer_itimer.c
+      - Set PTPD_PTIMERS define
+      
+  [ ] ENABLE_PCAP (default: ON if pcap-config found)
+      - Already partially done in Phase 3
+      - Set PTPD_PCAP define
+      - Add dep/pcap.c to sources? (check Makefile.am)
+      
+  [ ] ENABLE_SNMP (default: ON if net-snmp-config found)
+      - Already partially done in Phase 3
+      - Set PTPD_SNMP define
+      - Add dep/snmp.c to sources
+      
+  [ ] ENABLE_RUNTIME_DEBUG (default: OFF)
+      - Set RUNTIME_DEBUG define
+      - Mutually exclusive with DEBUG_LEVEL
+      
+  [ ] DEBUG_LEVEL (default: none, values: none/basic/medium/all)
+      - none: no define
+      - basic: PTPD_DBG
+      - medium: PTPD_DBG2
+      - all: PTPD_DBGV
+      - Mutually exclusive with ENABLE_RUNTIME_DEBUG
+      
+  [ ] ENABLE_DAEMON (default: ON)
+      - If OFF: set PTPD_NO_DAEMON define
+      
+  [ ] ENABLE_EXPERIMENTAL (default: OFF)
+      - Set PTPD_EXPERIMENTAL define
+      
+  [ ] ENABLE_STATISTICS (default: ON)
+      - Set PTPD_STATISTICS define
+      - Add dep/statistics.c and dep/outlierfilter.c to sources
+      
+  [ ] ENABLE_SW_CLOCK (default: OFF)
+      - Set SW_CLOCK_ENABLED define
+      - Add dep/sw_clock/*.c files to sources
+      
+  [ ] ENABLE_SO_TIMESTAMPING (default: ON on Linux, N/A elsewhere)
+      - If OFF: set PTPD_DISABLE_SOTIMESTAMPING define
+      
+  [ ] ENABLE_SLAVE_ONLY (default: OFF)
+      - Set PTPD_SLAVE_ONLY define
+      
+  [ ] MAX_UNICAST_DESTINATIONS (default: 128, range: 16-2048)
+      - Set PTPD_UNICAST_MAX=<value> define
+      - Validate range in CMake
+
+Conditional Source Compilation:
+  Update src/CMakeLists.txt to match src/Makefile.am exactly:
+  
+  [ ] Base sources (always compiled) - 30+ files
+  [ ] SNMP: + dep/snmp.c
+  [ ] STATISTICS: + dep/statistics.c, dep/outlierfilter.c
+  [ ] SW_CLOCK: + dep/sw_clock/*.c (6 files)
+  [ ] POSIX_TIMERS=ON: + dep/eventtimer_posix.c
+  [ ] POSIX_TIMERS=OFF: + dep/eventtimer_itimer.c
+
+Build Test Matrix (8 key combinations):
+  [ ] Default (all ON except SW_CLOCK, SLAVE_ONLY, EXPERIMENTAL)
+  [ ] Minimal (all OFF except required)
+  [ ] SW_CLOCK enabled
+  [ ] SLAVE_ONLY enabled
+  [ ] POSIX_TIMERS disabled
+  [ ] RUNTIME_DEBUG enabled
+  [ ] DEBUG_LEVEL=all
+  [ ] EXPERIMENTAL enabled
+
+For each combination:
+  1. Build with autotools
+  2. Build with CMake
+  3. Compare binaries
+  4. Compare symbols
+  5. Run basic smoke test (ptpd2 --help)
+
+Verification Steps:
+  [ ] For each option, verify preprocessor defines match:
+      gcc -E -dM -DENABLE_SW_CLOCK ... | grep SW_CLOCK
+      
+  [ ] Verify source file inclusion:
+      List object files in build directories:
+      find build-cmake-* -name "*.o" | sort
+      find build/debug -name "*.o" | sort
+      
+  [ ] Binary size comparison for each configuration:
+      (Different configs should produce different sized binaries)
+      
+  [ ] Symbol count verification:
+      nm build-autotools/src/ptpd2 | wc -l
+      nm build-cmake/src/ptpd2 | wc -l
+      (Should be within 2-3%)
+
+Commit: "Phase 4: All configuration options implemented"
+
+
+PHASE 5: COMPILER FLAGS & WARNINGS
+===================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Match compiler flags, warning levels, and optimization settings exactly.
+
+Files to Create:
+  [ ] cmake/CompilerFlags.cmake
+      - Warning flags (-Wall, -fexceptions)
+      - Stack protection (-fstack-protector if supported)
+      - Standard (C99)
+      - Optimization per build type
+
+Compiler Settings from configure.ac & Makefile.am:
+  [ ] C99 standard (AC_PROG_CC_C99)
+  [ ] -Wall (from AM_CFLAGS)
+  [ ] -fexceptions (from AM_CFLAGS)
+  [ ] -fstack-protector (if GCC supports it)
+  [ ] $(PTP_DBL) - debug level defines
+  [ ] $(PTP_DAEMON) - daemon defines
+  [ ] $(PTP_EXP) - experimental defines
+  [ ] $(PTP_SNMP) - SNMP defines
+  [ ] $(PTP_PCAP) - PCAP defines
+  [ ] $(PTP_STATISTICS) - statistics defines
+  [ ] $(PTP_SW_CLOCK) - SW clock defines
+  [ ] $(PTP_SLAVE_ONLY) - slave-only defines
+  [ ] $(PTP_PTIMERS) - POSIX timers defines
+  [ ] $(PTP_UNICAST_MAX) - unicast max defines
+  [ ] $(PTP_DISABLE_SOTIMESTAMPING) - SO_TIMESTAMPING defines
+  [ ] -DDATADIR='"$(datadir)"'
+  [ ] $(LINUX_KERNEL_INCLUDES) - Linux kernel headers if needed
+
+Platform-Specific Flags:
+  [ ] Linux kernel includes if /usr/src/kernels/$(uname -r)/include exists
+  [ ] Solaris: -D_XPG6 (for POSIX timers)
+
+Build Type Settings:
+  [ ] Debug: -g -O0
+  [ ] Release: -O2 or -O3 (match autotools)
+  [ ] RelWithDebInfo: -g -O2
+
+Verification Steps:
+  [ ] Compare actual compiler commands:
+      cd build/debug && make VERBOSE=1 > autotools-compile.log
+      cd build-cmake && make VERBOSE=1 > cmake-compile.log
+      # Compare flags used
+      
+  [ ] Verify warning output is similar:
+      (Both should produce same warnings for same code)
+      
+  [ ] Check optimization level in binary:
+      objdump -d build/debug/src/ptpd2 | grep -A5 "main>:" 
+      objdump -d build-cmake/src/ptpd2 | grep -A5 "main>:"
+      (Instruction sequences should be similar)
+
+Commit: "Phase 5: Compiler flags match autotools"
+
+
+PHASE 6: INSTALL TARGETS & DATA FILES
+======================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Install binaries, man pages, and data files to correct locations.
+
+From Makefile.am:
+  [ ] Binary: ptpd2 → $(sbindir)/ptpd2
+  [ ] Man pages: 
+      - ptpd2.8 → $(mandir)/man8/ptpd2.8
+      - ptpd2.conf.5 → $(mandir)/man5/ptpd2.conf.5
+  [ ] Data files → $(datadir)/ptpd/:
+      - src/leap-seconds.list
+      - src/ptpd2.conf.minimal
+      - src/ptpd2.conf.default-full
+      - src/templates.conf
+      - doc/PTPBASE-MIB.txt
+
+Man Page Generation:
+  [ ] src/ptpd2.8.in → src/ptpd2.8 (substitute VERSION_NUMBER, RELEASE_DATE)
+  [ ] src/ptpd2.conf.5.in → src/ptpd2.conf.5 (substitute VERSION_NUMBER)
+
+Install Test:
+  cmake -B build-cmake-install -DCMAKE_INSTALL_PREFIX=/tmp/ptpd-cmake-install
+  cmake --build build-cmake-install
+  cmake --install build-cmake-install
+  
+  # Compare with autotools install
+  ./configure --prefix=/tmp/ptpd-autotools-install
+  make install
+  
+Verification Steps:
+  [ ] Compare install directory structure:
+      find /tmp/ptpd-autotools-install -type f | sort
+      find /tmp/ptpd-cmake-install -type f | sort
+      
+  [ ] Verify file permissions match
+  
+  [ ] Verify man page content identical:
+      diff /tmp/ptpd-autotools-install/share/man/man8/ptpd2.8 \
+           /tmp/ptpd-cmake-install/share/man/man8/ptpd2.8
+
+Commit: "Phase 6: Install targets complete"
+
+
+PHASE 7: BUILD DATE & VERSION INFORMATION
+==========================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Embed version, build date, and revision information matching autotools.
+
+From configure.ac:
+  [ ] VERSION_NUMBER from m4/version.m4
+  [ ] RELEASE_DATE from m4/version.m4
+  [ ] BUILD_DATE from `date +%Y%m%d`
+  [ ] CODE_REVISION from git or svn (if VERSION contains "-svn")
+
+Implementation:
+  [ ] Read m4/version.m4 to extract version macros
+  [ ] Generate BUILD_DATE at configure time
+  [ ] Check for git rev-parse to get CODE_REVISION
+  [ ] Add defines to config.h
+
+Verification Steps:
+  [ ] Check --version output:
+      build/debug/src/ptpd2 --version
+      build-cmake/src/ptpd2 --version
+      (Should be identical)
+      
+  [ ] Check embedded strings:
+      strings build/debug/src/ptpd2 | grep -i version
+      strings build-cmake/src/ptpd2 | grep -i version
+
+Commit: "Phase 7: Version information matches autotools"
+
+
+PHASE 8: VSCODE INTEGRATION
+============================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Update VS Code tasks to support both autotools and CMake builds.
+
+Files to Modify:
+  [ ] .vscode/tasks.json - Add CMake tasks alongside autotools
+  [ ] .vscode/launch.json - Add CMake debug configurations
+  [ ] @build-scripts/config-cmake-debug.sh - New CMake wrapper script
+
+New VS Code Tasks:
+  [ ] "CMake Configure Debug"
+  [ ] "CMake Build Debug"
+  [ ] "CMake Clean"
+  [ ] "CMake Configure Release"
+  [ ] "CMake Build Release"
+
+Update @build-scripts/:
+  [ ] config-cmake-debug.sh
+  [ ] config-cmake-release.sh
+
+Keep existing autotools tasks functional!
+
+Verification Steps:
+  [ ] Test each VS Code task works
+  [ ] Test F5 debugging with CMake builds
+  [ ] Verify compile_commands.json generated correctly
+  [ ] Test IntelliSense with CMake builds
+
+Commit: "Phase 8: VS Code integration for CMake"
+
+
+PHASE 9: COMPREHENSIVE TESTING
+===============================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Extensive testing across all configurations and platforms.
+
+Test Matrix (All combinations):
+  Dimensions:
+    - Build system: autotools vs CMake
+    - POSIX_TIMERS: ON/OFF
+    - SW_CLOCK: ON/OFF
+    - STATISTICS: ON/OFF
+    - PCAP: ON/OFF
+    - SNMP: ON/OFF
+    - SLAVE_ONLY: ON/OFF
+    - DEBUG_LEVEL: none/basic/medium/all
+
+  That's 2^8 = 256 combinations per build system!
+  
+  Practical subset (16 most important):
+    [ ] Default config (all standard features ON)
+    [ ] Minimal config (all optional features OFF)
+    [ ] SW_CLOCK only
+    [ ] POSIX_TIMERS=OFF only
+    [ ] SLAVE_ONLY only
+    [ ] No PCAP
+    [ ] No SNMP
+    [ ] DEBUG_LEVEL=all
+    [ ] STATISTICS=OFF
+    [ ] NO_DAEMON
+    [ ] EXPERIMENTAL=ON
+    ... (document 5 more critical combinations)
+
+For Each Configuration:
+  [ ] Build with autotools
+  [ ] Build with CMake
+  [ ] Binary comparison (size, symbols, strings)
+  [ ] Functional test: ptpd2 --help (output should match)
+  [ ] Functional test: ptpd2 --version (version should match)
+  [ ] Functional test: Run with test config for 30 seconds
+  [ ] Compare runtime behavior (if possible)
+
+Test Script Creation:
+  [ ] scripts/test-all-configs.sh - Automated test runner
+  [ ] scripts/compare-binaries.sh - Binary comparison tool
+  [ ] scripts/compare-install.sh - Install comparison tool
+
+Verification Steps:
+  [ ] All 16 test configurations pass for autotools
+  [ ] All 16 test configurations pass for CMake
+  [ ] Binary equivalence verified for all 16
+  [ ] No regressions in functionality
+
+Commit: "Phase 9: Comprehensive testing complete"
+
+
+PHASE 10: DOCUMENTATION & CLEANUP
+==================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Document CMake build system and update project documentation.
+
+Documentation to Create:
+  [ ] README.cmake.md - CMake-specific build instructions
+  [ ] cmake/README.md - Explain CMake module organization
+  
+Documentation to Update:
+  [ ] MyREADME.txt - Add CMake build workflow section
+  [ ] MyREADME.txt - Update directory structure for cmake/
+  [ ] MyREADME.txt - Add comparison: autotools vs CMake workflows
+
+CMake Build Instructions:
+  [ ] Prerequisites (CMake version, compilers)
+  [ ] Basic build: cmake -B build && cmake --build build
+  [ ] Configuration options and their mappings
+  [ ] Platform-specific notes
+  [ ] Troubleshooting common issues
+
+Update MyREADME.txt:
+  Add new section "Option C: CMake Build (Experimental)"
+  Document CMake equivalent commands for all workflows
+  Note that both build systems are maintained in parallel
+
+Cleanup:
+  [ ] Remove any temporary test builds
+  [ ] Remove comparison output files
+  [ ] Ensure .gitignore covers CMake artifacts:
+      - build-cmake-*/
+      - build/
+      - CMakeFiles/
+      - CMakeCache.txt
+      - *.cmake (in build dirs)
+
+Commit: "Phase 10: Documentation complete"
+
+
+PHASE 11: PARALLEL MAINTENANCE PERIOD
+======================================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+Goal: Maintain both build systems in parallel for 3-6 months.
+
+Policy During Parallel Maintenance:
+  - Any autotools change MUST have equivalent CMake change
+  - All commits must build successfully with both systems
+  - CI/CD (if added) must test both systems
+  - Both systems must be documented in all new docs
+
+Milestones:
+  [ ] 1 month: Test in development use case
+  [ ] 2 months: Test in deployment scenario
+  [ ] 3 months: Community feedback period (if applicable)
+  [ ] 6 months: Decision point on removing autotools
+
+Verification Steps:
+  [ ] Weekly builds with both systems
+  [ ] Monthly full test matrix with both systems
+  [ ] Track any divergence and resolve immediately
+
+Notes:
+  "The goal is NOT to remove autotools quickly. The goal is to prove CMake
+   is equivalent and can fully replace autotools with zero risk."
+
+
+PHASE 12: DECISION POINT
+=========================
+
+Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+
+After 6 months of parallel maintenance, decide:
+
+Option A: Remove Autotools (if CMake proven equivalent)
+  [ ] Delete configure.ac, Makefile.am, src/Makefile.am
+  [ ] Delete m4/, build-aux/
+  [ ] Update all documentation to CMake-only
+  [ ] Commit: "Remove autotools, CMake is primary build system"
+
+Option B: Keep Both (if both have value)
+  [ ] Document which to use when
+  [ ] Accept maintenance burden
+  [ ] Keep both in sync
+
+Option C: Revert to Autotools-Only (if CMake not worth it)
+  [ ] Delete all CMake files
+  [ ] Restore autotools as sole build system
+  [ ] Document lessons learned
+  [ ] Commit: "Revert to autotools-only, CMake not beneficial"
+
+Decision Criteria:
+  - Binary equivalence maintained? (MUST be YES)
+  - CMake easier to maintain? (SHOULD be YES)
+  - CMake enables new capabilities? (NICE to have)
+  - Community preference? (Consider)
+  - Platform coverage equal? (MUST be YES)
+
+
+VERIFICATION TOOLS & SCRIPTS
+=============================
+
+Scripts to Create:
+
+1. compare-binaries.sh
+   #!/bin/bash
+   # Compare two binaries for equivalence
+   AUTOTOOLS_BIN=$1
+   CMAKE_BIN=$2
+   
+   echo "=== Size Comparison ==="
+   ls -lh "$AUTOTOOLS_BIN" "$CMAKE_BIN"
+   
+   echo "=== File Type ==="
+   file "$AUTOTOOLS_BIN"
+   file "$CMAKE_BIN"
+   
+   echo "=== Symbol Count ==="
+   nm -g "$AUTOTOOLS_BIN" | wc -l
+   nm -g "$CMAKE_BIN" | wc -l
+   
+   echo "=== Symbol Diff ==="
+   nm -g "$AUTOTOOLS_BIN" | sort > /tmp/sym-auto.txt
+   nm -g "$CMAKE_BIN" | sort > /tmp/sym-cmake.txt
+   diff /tmp/sym-auto.txt /tmp/sym-cmake.txt
+   
+   echo "=== Linked Libraries ==="
+   otool -L "$AUTOTOOLS_BIN"
+   otool -L "$CMAKE_BIN"
+   
+   echo "=== Embedded Strings Sample ==="
+   strings "$AUTOTOOLS_BIN" | grep -v "^/Users" | sort > /tmp/str-auto.txt
+   strings "$CMAKE_BIN" | grep -v "^/Users" | sort > /tmp/str-cmake.txt
+   diff /tmp/str-auto.txt /tmp/str-cmake.txt | head -50
+
+2. test-all-configs.sh
+   (Automate building all important configuration combinations)
+
+3. verify-config.sh
+   (Compare config.h files for functional equivalence)
+
+
+RISK MITIGATION
+================
+
+High-Risk Areas (from configure.ac analysis):
+
+1. POSIX Timer Detection (lines 246-290)
+   Risk: Subtle platform differences in timer support
+   Mitigation: Test on multiple platforms, comprehensive checks
+   
+2. PCAP Library Detection (lines 290-460)
+   Risk: pcap-config behavior varies across systems
+   Mitigation: Test with and without pcap-config present
+   
+3. SNMP Library Detection (lines 460-600)
+   Risk: net-snmp-config output parsing is complex
+   Mitigation: Compare extracted flags character-by-character
+   
+4. Linux Kernel Headers (lines 59-77)
+   Risk: Path detection for kernel headers is distro-specific
+   Mitigation: Test on RHEL, Ubuntu, Debian, Arch
+   
+5. Struct Member Checks (lines 190-225)
+   Risk: Subtle differences between platforms
+   Mitigation: Test on Linux, macOS, FreeBSD, Solaris
+   
+6. Stack Protector Detection (lines 237-246)
+   Risk: GCC version-specific behavior
+   Mitigation: Test with multiple GCC/Clang versions
+
+Fallback Plan:
+  If any phase fails verification, stop immediately and:
+  1. Document what didn't match
+  2. Investigate root cause
+  3. Fix or decide if acceptable difference
+  4. Don't proceed until resolved
+
+
+NOTES & LESSONS LEARNED
+========================
+
+Why This Migration Failed Before (October 2025):
+  - Probably tried to do too much at once
+  - Likely didn't verify binary equivalence at each step
+  - May have missed subtle configure.ac checks
+  - Build system differences crept in unnoticed
+
+Why This Attempt Will Succeed:
+  - Incremental approach with verification at each phase
+  - Binary equivalence is the primary success criterion
+  - Both systems maintained in parallel initially
+  - No rush to remove autotools
+  - Comprehensive testing before declaring success
+
+Critical Success Factors:
+  1. NEVER skip verification steps
+  2. ALWAYS compare binaries after changes
+  3. TEST all configuration combinations
+  4. DOCUMENT any acceptable differences
+  5. MAINTAIN both systems until CMake proven equivalent
+
+
+CURRENT STATUS
+==============
+
+Branch: cmake-port
+Last Updated: February 6, 2026
+Current Phase: Phase 0 (Preparation)
+Blockers: None yet, awaiting approval to begin
+
+Next Steps:
+  1. Review this plan
+  2. Approve or request modifications
+  3. Begin Phase 0 preparation
