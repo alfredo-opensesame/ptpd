@@ -109,7 +109,8 @@ if [[ $ALL -eq 1 ]]; then
 
   # Main autotools generated files
   GEN=(config.h config.log config.status libtool stamp-h1 aclocal.m4 autom4te.cache
-       Makefile src/Makefile src/ptpd2.8 src/ptpd2.conf.5 configure)
+       Makefile Makefile.in config.h.in src/Makefile src/Makefile.in
+       src/ptpd2.8 src/ptpd2.conf.5 configure)
   for p in "${GEN[@]}"; do
     [[ -e "$p" ]] && rmx "$p"
   done

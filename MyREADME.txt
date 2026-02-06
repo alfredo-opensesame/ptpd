@@ -1,0 +1,330 @@
+PTPd Development Notes
+======================
+
+PROJECT OVERVIEW
+----------------
+This is a fork of PTPd (Precision Time Protocol daemon) v2.3.x for macOS
+development. The project uses GNU Autotools (autoconf/automake) as the build
+system.
+
+IMPORTANT: This is an AUTOCONF-only project. Previous CMake experiments were
+abandoned. Any CMake references in documentation are outdated.
+
+
+DIRECTORY STRUCTURE
+-------------------
+
+Source & Build System:
+  src/              - PTPd source code
+  m4/               - Autoconf macros
+  configure.ac      - Autoconf input
+  Makefile.am       - Automake input
+  
+Development Tools (Custom Additions):
+  @build-scripts/   - VS Code integrated build automation
+  @conf-files/      - Configuration templates for testing
+  @test-scripts/    - Advanced testing and analysis tools
+  macos/            - Standalone macOS toolkit (legacy/alternative)
+
+Generated (by autotools):
+  configure         - Configuration script (from configure.ac)
+  Makefile.in       - Makefile template (from Makefile.am)
+  aclocal.m4        - Autoconf macros (from m4/)
+  config.h.in       - Config header template
+  build-aux/        - Autotools helper scripts
+  autom4te.cache/   - Autoconf cache
+
+Generated (by configure):
+  Makefile          - Actual makefiles
+  config.h          - Configuration header
+  config.status     - Configuration state
+  libtool           - Libtool script
+
+Build Outputs:
+  build/debug/      - Debug build artifacts
+  build/release/    - Release build artifacts
+
+
+DEVELOPMENT WORKFLOWS
+---------------------
+
+Option A: VS Code Integrated (Recommended for Active Development)
+------------------------------------------------------------------
+Uses @build-scripts/ + VS Code tasks + launch configurations
+
+1. Configure & Build:
+   - Press Cmd+Shift+B (default build task)
+   - Or: Terminal → Run Task → "Build Debug"
+   - This runs: @build-scripts/config-debug.sh then make
+
+2. Debug:
+   - Press F5 or Run → Start Debugging
+   - Uses configuration from .vscode/launch.json
+   - Binary: build/debug/src/ptpd2
+   - Config: ptpd.conf (in root)
+
+3. Test:
+   - Run: ./@test-scripts/ptpd-run.sh -i <interface>
+   - Advanced features: validation, pcap capture, analysis
+   - Logs saved to: @test-scripts/ptpd_logs/<timestamp>/
+
+4. Clean:
+   - Run Task: "Distclean"
+   - Or: ./macos/clean-ptpd.sh -a
+
+
+Option B: Standalone Scripts (For Newcomers or CI)
+---------------------------------------------------
+Uses macos/ scripts - self-contained, no VS Code needed
+
+1. Build:
+   ./macos/ptpd-build-macos.sh
+   - Checks dependencies
+   - Runs autoreconf
+   - Configures and builds
+   - Output: macos/build/src/ptpd2
+
+2. Test:
+   ./macos/ptpd-run-macos.sh -i <interface> -t <seconds>
+   - Simpler test runner
+   - Auto-detects binary
+   - Creates plots in ./ptp_logs/
+
+3. Clean:
+   ./macos/clean-ptpd.sh -a
+
+
+COMPARISON: @build-scripts vs macos/
+-------------------------------------
+
+@build-scripts/config-debug.sh:
+  - VS Code task integration
+  - Builds to: build/debug/
+  - Generates compile_commands.json (IntelliSense)
+  - Minimal: configure only
+
+macos/ptpd-build-macos.sh:
+  - Standalone script
+  - Builds to: macos/build/
+  - Full: deps + autoreconf + configure + compile
+  - No VS Code integration
+
+@test-scripts/ptpd-run.sh (949 lines):
+  - Advanced testing framework
+  - Configuration validation
+  - Health checks
+  - Comprehensive logging
+
+macos/ptpd-run-macos.sh (329 lines):
+  - Simple test runner
+  - Quick plotting
+  - Auto-detection
+
+Both are valid! Use @build-scripts for daily development in VS Code,
+use macos/ for quick standalone testing or onboarding new developers.
+
+
+BUILD ARTIFACTS & CLEANING
+---------------------------
+
+Clean build artifacts only (keeps configure scripts):
+  ./macos/clean-ptpd.sh
+
+Full distclean (removes all generated files):
+  ./macos/clean-ptpd.sh -a
+
+This removes:
+  - build/ directories
+  - Object files (*.o, *.lo, *.la)
+  - Binaries (src/ptpd2)
+  - Generated autotools files (configure, Makefile.in, config.h.in, etc.)
+  - build-aux/, autom4te.cache/
+  - Makefiles, config.h, config.status, libtool
+
+To rebuild after distclean:
+  autoreconf -i   # Regenerates configure scripts
+  ./configure     # Or use @build-scripts/config-debug.sh
+
+
+CONFIGURATION FILES
+-------------------
+
+Root:
+  ptpd.conf                     - Local dev config (not in git)
+
+@conf-files/:
+  ptpd-daemon.conf              - Production-style slave config
+
+macos/conf-files/:
+  ptpd2-slave-sw-multicast.conf - SW clock multicast
+  ptpd2-slave-sw-unicast.conf   - SW clock unicast
+  ptpd2-slave-sw-mixed.conf     - SW clock mixed mode
+
+Use @conf-files/ for testing with @test-scripts/
+Use macos/conf-files/ for testing with macos/ptpd-run-macos.sh
+
+
+GIT TRACKED vs IGNORED
+-----------------------
+
+Tracked (source):
+  - *.c, *.h (source code)
+  - Makefile.am (automake input)
+  - configure.ac (autoconf input)
+  - Custom scripts (@build-scripts/, @test-scripts/, macos/)
+  - Documentation (README.md, COPYRIGHT, etc.)
+
+Ignored (generated/logs):
+  - Build artifacts (build/, *.o, ptpd2)
+  - Autotools generated (configure, Makefile.in, config.h.in, etc.)
+  - VS Code database (.vscode/browse.vc.db)
+  - Test logs (@test-scripts/ptpd_logs/)
+  - Local config (ptpd.conf)
+
+See .gitignore for complete list.
+
+
+NOTES FOR CONTRIBUTORS
+----------------------
+
+1. This is autoconf-only. Do not add CMake files.
+
+2. Any macos/README.md references to CMake are outdated and should be ignored.
+
+3. The @* folders are custom development tools, not part of upstream ptpd.
+
+4. VS Code configuration in .vscode/ expects autoconf build structure.
+
+5. Test logs can be safely deleted - they're not tracked in git.
+
+
+RECENT CHANGES
+--------------
+
+- Oct 2025: Reverted from CMake to autoconf (too risky to port)
+- Oct 2025: Added SW clock implementation
+- Oct 2025: Created @build-scripts/ for VS Code integration
+- Oct 2025: Created @test-scripts/ for advanced testing
+- Feb 2026: Updated clean-ptpd.sh to remove .in template files
+
+
+SOURCE CODE CHANGES (Since Fork)
+---------------------------------
+
+This fork has 13 commits modifying src/ beyond the upstream ptpd codebase.
+All changes were made in October 2025 by Alfredo Franco.
+
+MAJOR ADDITION: Software Clock Implementation
+----------------------------------------------
+
+New directory: src/dep/sw_clock/ (434 lines)
+  - sw_adjtimex.c/h      (62 + 55 lines) - adjtime() emulation for macOS
+  - swclock.c/h          (178 + 40 lines) - Software clock core
+  - swclock_compat.c/h   (66 + 33 lines) - Platform compatibility layer
+
+Purpose: Provides a software-based clock adjustment mechanism for macOS,
+which lacks native adjtime() support. Enabled with --enable-sw-clock flag.
+
+Status: Implementation complete, integration in progress.
+
+
+MODIFIED FILES
+--------------
+
+src/dep/sys.c (232 lines changed)
+  - Changed POSIX timer detection from _POSIX_TIMERS to POSIX_TIMERS_SUPPORTED
+  - Improved platform compatibility for timer functions
+  - Status: Has uncommitted local changes
+
+src/dep/startup.c (294 lines refactored)
+  - Integration hooks for SW clock initialization
+  - Build system updates for sw_clock/ subdirectory
+
+src/dep/servo.c
+  - Clock adjustment logic modifications
+  - SW clock integration points
+
+src/dep/timingdomain.c
+  - Timing domain handling updates
+
+src/datatypes.h
+  - Added SW clock data structures
+  - Configuration flags for SW clock feature
+
+src/dep/eventtimer_itimer.c
+src/dep/eventtimer_posix.c
+  - Event timer compatibility improvements
+
+
+COMMIT TIMELINE (Chronological)
+--------------------------------
+
+1. 2ec83d8 - Commented out noisy timer logs
+2. fd4a59d - Cosmetic changes
+3. 2f03cc0 - Debug messages added and formatting improved
+4. 438b384 - Improved formatting
+5. ef38baa - Added the SW clock implementation (origin/macos)
+6. 365049a - Formatting fixes and documentation
+7. 4247fc3 - Start to integrate a SW clock
+8. 13b1192 - Start of sw_clock integration (HEAD)
+
+Branch Status: 3 commits ahead of origin/macos
+
+
+KEY MODIFICATIONS
+-----------------
+
+1. SW Clock Core:
+   - Provides adjtime() emulation for macOS
+   - Software-based frequency adjustment
+   - Compatible with ptpd servo mechanisms
+
+2. Platform Compatibility:
+   - POSIX timer detection improvements
+   - macOS-specific workarounds
+   - Conditional compilation via --enable-sw-clock
+
+3. Code Quality:
+   - Formatting consistency improvements
+   - Debug message enhancements
+   - Reduced log verbosity (commented noisy timers)
+
+4. Build System:
+   - Makefile.am updated for src/dep/sw_clock/
+   - Configure flag: --enable-sw-clock
+   - Conditional compilation support
+
+
+INTEGRATION STATUS
+------------------
+
+✅ Complete:
+  - SW clock implementation (434 lines)
+  - Build system integration (--enable-sw-clock flag)
+  - Basic formatting and cleanup
+
+🔄 In Progress:
+  - Full integration with ptpd servo (commits 4247fc3, 13b1192)
+  - POSIX timer compatibility refinement
+
+⚠️  Uncommitted:
+  - src/dep/sys.c: POSIX_TIMERS macro change
+
+
+TESTING
+-------
+
+To build with SW clock support:
+  ./configure --enable-sw-clock
+  make
+
+Test configurations available in macos/conf-files/ptpd2-slave-sw-*.conf
+
+
+FOR MORE INFORMATION
+--------------------
+
+Upstream PTPd: https://github.com/ptpd/ptpd
+Documentation: doc/ folder
+Man pages: src/ptpd2.8.in, src/ptpd2.conf.5.in
+macOS README: macos/README.md (Note: CMake sections are outdated)

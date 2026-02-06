@@ -1494,7 +1494,7 @@ static const struct sigevent* timerIntHandler(void* data, int id) {
   return;
 #else
 
-#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
+#if defined(POSIX_TIMERS_SUPPORTED)
 
 	struct timespec tp;
 	if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
