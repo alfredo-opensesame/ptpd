@@ -157,6 +157,27 @@ target_compile_options(ptpd2 PRIVATE
     $<$<CONFIG:RelWithDebInfo>:-g -O2>
 )
 
+# Linux kernel headers (matching autotools configure.ac lines 59-77)
+# Only needed on Linux if linux/net_tstamp.h not in standard location
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(NOT HAVE_LINUX_NET_TSTAMP_H)
+        # Try RHEL/CentOS location
+        execute_process(
+            COMMAND uname -r
+            OUTPUT_VARIABLE KERNEL_VERSION
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        if(EXISTS "/usr/src/kernels/${KERNEL_VERSION}/include")
+            target_include_directories(ptpd2 PRIVATE "/usr/src/kernels/${KERNEL_VERSION}/include")
+            message(STATUS "Using Linux kernel headers: /usr/src/kernels/${KERNEL_VERSION}/include")
+        # Try Debian/Ubuntu location
+        elseif(EXISTS "/usr/src/linux-headers-${KERNEL_VERSION}/include")
+            target_include_directories(ptpd2 PRIVATE "/usr/src/linux-headers-${KERNEL_VERSION}/include")
+            message(STATUS "Using Linux kernel headers: /usr/src/linux-headers-${KERNEL_VERSION}/include")
+        endif()
+    endif()
+endif()
+
 # Add stack protector if supported (matching autotools check)
 include(CheckCCompilerFlag)
 check_c_compiler_flag(-fstack-protector HAS_STACK_PROTECTOR)
