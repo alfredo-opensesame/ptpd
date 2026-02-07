@@ -100,15 +100,8 @@ if(RT_LIBRARY)
     target_link_libraries(ptpd2 PRIVATE ${RT_LIBRARY})
 endif()
 
-# Generate a minimal config.h for Phase 1
-# In Phase 2, we'll properly detect all system headers and functions
-# Get current date for BUILD_DATE
-string(TIMESTAMP BUILD_DATE "%Y%m%d")
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/config.h.in.phase1
-    ${PROJECT_BINARY_DIR}/config.h
-    @ONLY
-)
+# config.h is now generated in root CMakeLists.txt (Phase 2)
+# with full platform detection from cmake/CheckPlatform.cmake
 
 # Install targets (matching autotools)
 install(TARGETS ptpd2

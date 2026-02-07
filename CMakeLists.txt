@@ -7,13 +7,24 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# For Phase 1, we hardcode defaults matching autotools baseline:
+# Phase 2: Platform detection (matching autotools configure.ac)
+# Perform comprehensive header, function, type, and symbol checks
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckPlatform.cmake)
+
+# Generate config.h from template (now with full platform detection)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in
+    ${PROJECT_BINARY_DIR}/config.h
+    @ONLY
+)
+
+# For Phase 2, we still hardcode feature defaults matching autotools:
 # - PCAP: ON (found via pcap-config)
-# - SNMP: OFF (for simplicity in Phase 1, will add in Phase 3)
+# - SNMP: OFF (will add in Phase 3)
 # - STATISTICS: ON
 # - POSIX_TIMERS: OFF (macOS default, use itimer)
 # - SW_CLOCK: OFF
-# - All other defaults from configure.ac
+# - Phase 3 will add build options for these
 
 # Find required libraries (matching AC_SEARCH_LIBS in configure.ac)
 find_library(LIBM_LIBRARY m)
@@ -48,7 +59,7 @@ add_subdirectory(src)
 
 # Show configuration summary
 message(STATUS "====================================")
-message(STATUS "PTPd Configuration (Phase 1 - Hardcoded)")
+message(STATUS "PTPd Configuration (Phase 2 - Platform Detection)")
 message(STATUS "====================================")
 message(STATUS "  Build Type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C Compiler:        ${CMAKE_C_COMPILER}")

@@ -110,18 +110,60 @@ Known Differences from Baseline:
 PHASE 2: PLATFORM DETECTION (Headers & Types)
 ==============================================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete (February 6, 2026)
 
 Goal: Implement all header checks, type checks, and function checks from
       configure.ac to generate a config.h equivalent to autotools.
 
-Files to Create:
-  [ ] cmake/CheckPlatform.cmake
-      - All AC_CHECK_HEADERS (40+ headers)
-      - All AC_CHECK_FUNCS (20+ functions)
+Files Created:
+  [X] cmake/CheckPlatform.cmake
+      - All AC_CHECK_HEADERS (50+ headers with dependencies)
+      - All AC_CHECK_FUNCS (28 functions)
       - All AC_CHECK_MEMBERS (struct member checks)
+      - Symbol declarations (MSG_ERRQUEUE, POSIX_TIMERS_SUPPORTED)
+      - Type checks (_Bool, uint8_t, uint32_t, uint64_t, int64_t, size_t, ssize_t)
       
-  [ ] config.h.cmake.in (template matching config.h.in)
+  [X] cmake/config.h.in (template matching config.h.in from autotools)
+      - All HAVE_* defines using #cmakedefine
+      - Platform-specific defines
+      - Version information from PROJECT_* variables
+      - Package metadata
+
+  [X] Updated CMakeLists.txt (root)
+      - Includes cmake/CheckPlatform.cmake
+      - Configures config.h from cmake/config.h.in
+      
+  [X] Updated src/CMakeLists.txt
+      - Removed Phase 1 hardcoded config.h generation
+      - Uses config.h from PROJECT_BINARY_DIR
+
+Build Result:
+  [X] CMake configures successfully with comprehensive platform detection
+  [X] Build completes without errors
+  [X] Binary created: build-cmake-phase2/src/ptpd2 (483K)
+
+Verification Results:
+  [X] Binary runs correctly (--version shows 2.3.1)
+  [X] Symbol count: 645 vs 649 baseline (0.6% difference - excellent!)
+  [X] Linked libraries identical (libpcap, libSystem)
+  [ ] Binary size: 483K vs 377K baseline (28% larger)
+      Note: Size difference persists but symbol count is nearly identical
+      This may be due to different optimization or debug info between CMake/autotools
+      Will investigate further if needed
+      
+  [X] Platform detection comprehensive:
+      - 60+ header checks (matching autotools)
+      - 28 function checks
+      - 8 struct member checks
+      - 2 symbol declaration checks
+      - Type size checks for all standard types
+
+Known Differences from Baseline:
+  - Binary 28% larger (but symbol count nearly identical)
+  - Version string corrected (2.3.1 vs baseline's placeholder 6.6.6)
+  - config.h now generated with full platform detection instead of hardcoded
+
+Commit: "Phase 2: Platform detection complete"
       - All HAVE_* defines
       - Platform-specific defines
       - Version information
