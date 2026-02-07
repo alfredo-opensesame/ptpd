@@ -279,23 +279,71 @@ Commit: "Phase 2: Platform detection complete"
 PHASE 3: LIBRARY DETECTION (PCAP & SNMP)
 =========================================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete (February 7, 2026)
 
 Goal: Properly detect and link PCAP and SNMP libraries using their config tools,
       matching autotools behavior exactly.
 
-Files to Create:
-  [ ] cmake/FindPCAP.cmake
-      - Try pcap-config first (matching --with-pcap-config behavior)
-      - Fall back to find_library if pcap-config not found
-      - Extract CFLAGS and LIBS from pcap-config
-      - Handle absolute paths to pcap-config
+Files Created:
+  [X] cmake/FindPCAP.cmake (163 lines)
+      - Uses pcap-config first (matches --with-pcap-config)
+      - Falls back to find_library if pcap-config not found
+      - Extracts and parses --cflags and --libs output
+      - Separates CPPFLAGS (-D, -I, -F, -U) from compiler flags
+      - Handles -U flags correctly (as compiler options, not definitions)
       
-  [ ] cmake/FindNETSNMP.cmake
-      - Try net-snmp-config first (matching --with-net-snmp-config)
-      - Extract --cflags and --agent-libs
-      - Handle absolute paths to net-snmp-config
-      - Check for net-snmp/net-snmp-config.h
+  [X] cmake/FindNETSNMP.cmake (119 lines)
+      - Uses net-snmp-config (matches --with-net-snmp-config)
+      - Extracts --agent-libs and --base-cflags output
+      - Parses flags into LIBS, CFLAGS, CPPFLAGS, definitions, includes
+      - Checks for net-snmp/net-snmp-config.h header
+      - Returns full link line from --agent-libs
+
+Files Modified:
+  [X] CMakeLists.txt (root)
+      - Added cmake module path
+      - Uses find_package(PCAP REQUIRED)
+      - Uses find_package(NETSNMP) - optional
+      - Sets PTPD_PCAP and PTPD_SNMP flags
+      - Updated configuration summary
+      
+  [X] src/CMakeLists.txt
+      - Added PCAP/SNMP include directories
+      - Added conditional PTPD_PCAP/PTPD_SNMP definitions
+      - Handles -U flags as compiler options
+      - Links PCAP libraries
+      - Links SNMP libraries (parsed from --agent-libs)
+      - Conditionally compiles dep/snmp.c when SNMP enabled
+
+Build Results:
+  [X] Binary builds successfully: 540K (vs 483K Phase 2, 377K baseline)
+  [X] Binary runs correctly (--version shows 2.3.1)
+  [X] PCAP linked: /usr/lib/libpcap.A.dylib
+  [X] SNMP linked: libnetsnmpmibs.25, libnetsnmpagent.25, libnetsnmp.25
+  [X] Size increase expected due to SNMP support (not in baseline)
+
+Detection Verification:
+  [X] pcap-config found and used: /usr/bin/pcap-config
+  [X] net-snmp-config found and used: /usr/bin/net-snmp-config
+  [X] PCAP headers detected: pcap/pcap.h and pcap.h
+  [X] SNMP header detected: net-snmp/net-snmp-config.h
+  [X] SNMP source compiled: dep/snmp.c
+
+Known Issues Fixed:
+  1. -U flags from pcap/snmp-config caused compilation errors
+     Fixed: Handle -U flags as compiler options, not definitions
+     
+  2. SNMP symbols undefined at link time
+     Fixed: Added dep/snmp.c conditionally when PTPD_SNMP enabled
+     
+  3. cmake/config.h.in.phase1 removed (obsolete after Phase 2)
+
+Note: Binary size is 43% larger than baseline (540K vs 377K) due to:
+  - SNMP support (not in baseline build)
+  - Different optimization/debug info between CMake and autotools
+  Symbol count comparison not yet performed for this phase.
+
+Commit: "Phase 3: Library detection complete"
 
 PCAP Detection Logic (from configure.ac lines 290-460):
   [ ] Search for pcap-config in PATH

@@ -43,14 +43,21 @@ set(PTPD2_TIMER_SOURCES
 # SW_CLOCK: OFF (default)
 # (no additional sources)
 
-# SNMP: OFF for Phase 1 (will add in Phase 3)
-# (no additional sources)
+# Phase 3: SNMP sources - conditional based on NETSNMP detection
+if(PTPD_SNMP)
+    set(PTPD2_SNMP_SOURCES
+        dep/snmp.c
+    )
+else()
+    set(PTPD2_SNMP_SOURCES "")
+endif()
 
 # Combine all sources
 set(PTPD2_SOURCES
     ${PTPD2_BASE_SOURCES}
     ${PTPD2_STATISTICS_SOURCES}
     ${PTPD2_TIMER_SOURCES}
+    ${PTPD2_SNMP_SOURCES}
 )
 
 # Create executable
@@ -65,14 +72,63 @@ target_include_directories(ptpd2 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/dep
 )
 
+# Add PCAP include directories if found
+if(PTPD_PCAP AND PCAP_INCLUDE_DIRS)
+    target_include_directories(ptpd2 PRIVATE ${PCAP_INCLUDE_DIRS})
+endif()
+
+# Add SNMP include directories if found
+if(PTPD_SNMP AND NETSNMP_INCLUDE_DIRS)
+    target_include_directories(ptpd2 PRIVATE ${NETSNMP_INCLUDE_DIRS})
+endif()
+
 # Set compiler definitions (matching autotools AM_CPPFLAGS)
 target_compile_definitions(ptpd2 PRIVATE
     HAVE_CONFIG_H              # Signal that we have config.h
     DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"  # Data directory
-    PTPD_PCAP                  # PCAP support enabled
     PTPD_STATISTICS            # Statistics enabled
     PTPD_UNICAST_MAX=128       # Default max unicast destinations
 )
+
+# Add PTPD_PCAP if PCAP support enabled
+if(PTPD_PCAP)
+    target_compile_definitions(ptpd2 PRIVATE PTPD_PCAP)
+    # Add PCAP preprocessor definitions
+    if(PCAP_DEFINITIONS)
+        foreach(def ${PCAP_DEFINITIONS})
+            # -U flags need to be added as compile options, not definitions
+            if(def MATCHES "^-U")
+                target_compile_options(ptpd2 PRIVATE ${def})
+            elseif(def MATCHES "^-D")
+                string(REGEX REPLACE "^-D" "" def_clean "${def}")
+                target_compile_definitions(ptpd2 PRIVATE ${def_clean})
+            else()
+                # Already stripped -D in FindPCAP, so add as-is
+                target_compile_definitions(ptpd2 PRIVATE ${def})
+            endif()
+        endforeach()
+    endif()
+endif()
+
+# Add PTPD_SNMP if SNMP support enabled
+if(PTPD_SNMP)
+    target_compile_definitions(ptpd2 PRIVATE PTPD_SNMP)
+    # Add SNMP preprocessor definitions
+    if(NETSNMP_DEFINITIONS)
+        foreach(def ${NETSNMP_DEFINITIONS})
+            # -U flags need to be added as compile options, not definitions
+            if(def MATCHES "^-U")
+                target_compile_options(ptpd2 PRIVATE ${def})
+            elseif(def MATCHES "^-D")
+                string(REGEX REPLACE "^-D" "" def_clean "${def}")
+                target_compile_definitions(ptpd2 PRIVATE ${def_clean})
+            else()
+                # Already stripped -D in FindNETSNMP, so add as-is
+                target_compile_definitions(ptpd2 PRIVATE ${def})
+            endif()
+        endforeach()
+    endif()
+endif()
 
 # Set compiler flags (matching autotools AM_CFLAGS)
 target_compile_options(ptpd2 PRIVATE
@@ -92,9 +148,21 @@ endif()
 
 # Link libraries (matching autotools AM_LDFLAGS and AC_SEARCH_LIBS)
 target_link_libraries(ptpd2 PRIVATE
-    ${PCAP_LIBRARY}
     ${MATH_LIBRARY}
 )
+
+# Link PCAP libraries if enabled
+if(PTPD_PCAP)
+    target_link_libraries(ptpd2 PRIVATE ${PCAP_LIBRARIES})
+endif()
+
+# Link SNMP libraries if enabled (--agent-libs includes full link line)
+if(PTPD_SNMP)
+    # NETSNMP_LIBRARIES contains full link line from net-snmp-config --agent-libs
+    # We need to parse it and add each component
+    separate_arguments(SNMP_LINK_ARGS UNIX_COMMAND "${NETSNMP_LIBRARIES}")
+    target_link_libraries(ptpd2 PRIVATE ${SNMP_LINK_ARGS})
+endif()
 
 if(RT_LIBRARY)
     target_link_libraries(ptpd2 PRIVATE ${RT_LIBRARY})

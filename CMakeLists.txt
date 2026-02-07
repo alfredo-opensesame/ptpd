@@ -7,6 +7,9 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+# Add cmake modules directory to module path
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Phase 2: Platform detection (matching autotools configure.ac)
 # Perform comprehensive header, function, type, and symbol checks
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckPlatform.cmake)
@@ -18,13 +21,13 @@ configure_file(
     @ONLY
 )
 
-# For Phase 2, we still hardcode feature defaults matching autotools:
-# - PCAP: ON (found via pcap-config)
-# - SNMP: OFF (will add in Phase 3)
+# For Phase 3, we use proper library detection modules:
+# - PCAP: Use FindPCAP.cmake (pcap-config or fallback)
+# - SNMP: Use FindNETSNMP.cmake (net-snmp-config)
 # - STATISTICS: ON
 # - POSIX_TIMERS: OFF (macOS default, use itimer)
 # - SW_CLOCK: OFF
-# - Phase 3 will add build options for these
+# - Phase 4 will add build options to enable/disable these
 
 # Find required libraries (matching AC_SEARCH_LIBS in configure.ac)
 find_library(LIBM_LIBRARY m)
@@ -41,15 +44,24 @@ else()
     set(RT_LIBRARY "")
 endif()
 
-# Find PCAP library (matching autotools default)
-# In Phase 1, use simple find_library (Phase 3 will add pcap-config support)
-find_library(PCAP_LIBRARY pcap PATHS /usr/lib /usr/local/lib)
-if(NOT PCAP_LIBRARY)
-    message(FATAL_ERROR "PCAP library not found. Install libpcap-dev or disable PCAP support.")
+# Phase 3: Find PCAP library using FindPCAP module (pcap-config or fallback)
+find_package(PCAP REQUIRED)
+if(PCAP_FOUND)
+    set(PTPD_PCAP TRUE)
+else()
+    message(FATAL_ERROR "PCAP library not found. Install libpcap-dev.")
 endif()
 
-# For now, assume PCAP headers are in standard location
-include_directories(/usr/local/include)
+# Phase 3: Find Net-SNMP library using FindNETSNMP module (net-snmp-config)
+# For now, SNMP is optional (OFF by default like autotools when net-snmp-config not found)
+find_package(NETSNMP)
+if(NETSNMP_FOUND)
+    set(PTPD_SNMP TRUE)
+    message(STATUS "Net-SNMP support enabled")
+else()
+    set(PTPD_SNMP FALSE)
+    message(STATUS "Net-SNMP not found, SNMP support disabled")
+endif()
 
 # Set install directories (matching autotools defaults)
 include(GNUInstallDirs)
@@ -59,15 +71,32 @@ add_subdirectory(src)
 
 # Show configuration summary
 message(STATUS "====================================")
-message(STATUS "PTPd Configuration (Phase 2 - Platform Detection)")
+message(STATUS "PTPd Configuration (Phase 3 - Library Detection)")
 message(STATUS "====================================")
 message(STATUS "  Build Type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C Compiler:        ${CMAKE_C_COMPILER}")
 message(STATUS "  C Standard:        C${CMAKE_C_STANDARD}")
 message(STATUS "  Install Prefix:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")
-message(STATUS "  PCAP Support:      ON (${PCAP_LIBRARY})")
-message(STATUS "  SNMP Support:      OFF (Phase 3)")
+if(PTPD_PCAP)
+message(STATUS "  PCAP Support:      ON")
+if(PCAP_LIBRARIES)
+message(STATUS "    Libraries:       ${PCAP_LIBRARIES}")
+endif()
+if(PCAP_INCLUDE_DIRS)
+message(STATUS "    Include dirs:    ${PCAP_INCLUDE_DIRS}")
+endif()
+else()
+message(STATUS "  PCAP Support:      OFF")
+endif()
+if(PTPD_SNMP)
+message(STATUS "  SNMP Support:      ON")
+if(NETSNMP_LIBRARIES)
+message(STATUS "    Libraries:       ${NETSNMP_LIBRARIES}")
+endif()
+else()
+message(STATUS "  SNMP Support:      OFF")
+endif()
 message(STATUS "  Statistics:        ON")
 message(STATUS "  POSIX Timers:      OFF (using itimer)")
 message(STATUS "  SW Clock:          OFF")
