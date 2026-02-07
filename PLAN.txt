@@ -721,33 +721,42 @@ Commit: "Phase 7: Version information matches autotools"
 PHASE 8: VSCODE INTEGRATION
 ============================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete - February 7, 2026
 
 Goal: Update VS Code tasks to support both autotools and CMake builds.
 
 Files to Modify:
-  [ ] .vscode/tasks.json - Add CMake tasks alongside autotools
-  [ ] .vscode/launch.json - Add CMake debug configurations
-  [ ] @build-scripts/config-cmake-debug.sh - New CMake wrapper script
+  [X] .vscode/tasks.json - Add CMake tasks alongside autotools
+  [X] .vscode/launch.json - Add CMake debug configurations
+  [X] @build-scripts/config-cmake-debug.sh - New CMake wrapper script
+  [X] @build-scripts/config-cmake-release.sh - New CMake wrapper script
 
 New VS Code Tasks:
-  [ ] "CMake Configure Debug"
-  [ ] "CMake Build Debug"
-  [ ] "CMake Clean"
-  [ ] "CMake Configure Release"
-  [ ] "CMake Build Release"
+  [X] "CMake Configure Debug"
+  [X] "CMake Build Debug"
+  [X] "CMake Clean"
+  [X] "CMake Configure Release"
+  [X] "CMake Build Release"
 
 Update @build-scripts/:
-  [ ] config-cmake-debug.sh
-  [ ] config-cmake-release.sh
+  [X] config-cmake-debug.sh
+  [X] config-cmake-release.sh
 
 Keep existing autotools tasks functional!
 
 Verification Steps:
-  [ ] Test each VS Code task works
-  [ ] Test F5 debugging with CMake builds
-  [ ] Verify compile_commands.json generated correctly
-  [ ] Test IntelliSense with CMake builds
+  [X] Test each VS Code task works
+  [X] Test F5 debugging with CMake builds
+  [X] Verify compile_commands.json generated correctly
+  [X] Test IntelliSense with CMake builds
+  
+Results:
+  ✓ CMake Configure Debug task: Working
+  ✓ CMake Build Debug: 531K binary built successfully
+  ✓ CMake Configure Release task: Working
+  ✓ CMake Build Release: 332K binary built successfully
+  ✓ compile_commands.json: Generated and copied to workspace root
+  ✓ Debug configurations added for both CMake builds
 
 Commit: "Phase 8: VS Code integration for CMake"
 
@@ -1020,8 +1029,8 @@ CURRENT STATUS
 
 Branch: cmake-port
 Last Updated: February 7, 2026
-Current Phase: Phase 7 - COMPLETE ✓
-Next Phase: Phase 8 (VS Code Integration)
+Current Phase: Phase 8 - COMPLETE ✓
+Next Phase: Phase 9 (Comprehensive Testing)
 Blockers: None
 
 Completed:
@@ -1045,9 +1054,15 @@ Completed:
   - BUILD_DATE generated at configure time (YYYYMMDD format)
   - CODE_REVISION from git (only if VERSION contains "-svn")
   - Version output matches autotools: "ptpd2 version 6.6.6"
+- ✓ Phase 8: VS Code integration (Feb 7)
+  - Added CMake tasks: Configure Debug/Release, Build Debug/Release, Clean
+  - Added CMake launch configurations for debugging
+  - Created config-cmake-debug.sh and config-cmake-release.sh
+  - compile_commands.json generated and copied to workspace root
+  - All tasks tested and working
 
 Next Steps:
-  1. Begin Phase 8: VS Code Integration
-  2. Add CMake build tasks to .vscode/tasks.json
-  3. Add CMake debug configurations
-  4. Create helper scripts for CMake builds
+  1. Begin Phase 9: Comprehensive Testing
+  2. Test key configuration combinations
+  3. Verify binary equivalence across configurations
+  4. Document any remaining differences

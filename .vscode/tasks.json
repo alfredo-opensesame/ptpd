@@ -98,6 +98,105 @@
                 "showReuseMessage": true,
                 "clear": false
             }
+        },
+        {
+            "label": "CMake Configure Debug",
+            "type": "shell",
+            "command": "./@build-scripts/config-cmake-debug.sh",
+            "args": [],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "CMake Configure Release",
+            "type": "shell",
+            "command": "./@build-scripts/config-cmake-release.sh",
+            "args": [],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "CMake Build Debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build-cmake/debug",
+                "--",
+                "-j4"
+            ],
+            "group": "build",
+            "dependsOn": "CMake Configure Debug",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "CMake Build Release",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build-cmake/release",
+                "--",
+                "-j4"
+            ],
+            "group": "build",
+            "dependsOn": "CMake Configure Release",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "CMake Clean",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "rm -rf build-cmake/debug build-cmake/release compile_commands.json"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
         }
     ]
 }

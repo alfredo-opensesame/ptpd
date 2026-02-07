@@ -28,6 +28,34 @@
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build Release",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug PTPd (CMake Debug)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-cmake/debug/src/ptpd2",
+            "args": [
+                "-f",
+                "ptpd.conf",
+                "-m"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Build Debug",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run PTPd (CMake Release)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-cmake/release/src/ptpd2",
+            "args": [
+                "-f",
+                "ptpd.conf",
+                "-m"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake Build Release",
+            "console": "integratedTerminal"
         }
     ]
 }
