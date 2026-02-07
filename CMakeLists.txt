@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.15)
 
 project(ptpd VERSION 2.3.1 LANGUAGES C)
 
+# Override PROJECT_VERSION with VERSION_NUMBER from m4/version.m4
+# PACKAGE_VERSION must match VERSION_NUMBER (6.6.6) not project VERSION (2.3.1)
+# This is what autotools uses and what's displayed in --version output
+set(PROJECT_VERSION "6.6.6")
+
 # Set C standard to C99 (matching autotools AC_PROG_CC_C99)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -36,6 +41,34 @@ find_package(PCAP)
 # Phase 3: Find Net-SNMP library using FindNETSNMP module (net-snmp-config)
 # User can disable with -DENABLE_SNMP=OFF
 find_package(NETSNMP)
+
+# Phase 7: Build date and version information (matching autotools configure.ac)
+# Get build date in YYYYMMDD format (always set, but only used if CODE_REVISION is defined)
+string(TIMESTAMP BUILD_DATE "%Y%m%d")
+
+# Get git revision only if VERSION_NUMBER contains "-svn" suffix (matching autotools logic)
+# In autotools: ver_prefix=`echo VERSION_NUMBER | cut -s -d- -f2`
+# Only set CODE_REVISION if ver_prefix = "svn"
+string(REGEX MATCH "-([a-z]+)$" VERSION_SUFFIX "${PROJECT_VERSION}")
+if(VERSION_SUFFIX)
+    string(SUBSTRING "${VERSION_SUFFIX}" 1 -1 VERSION_SUFFIX_TYPE)
+    if(VERSION_SUFFIX_TYPE STREQUAL "svn")
+        # Check for git (modern replacement for svnversion)
+        find_package(Git QUIET)
+        if(GIT_FOUND)
+            execute_process(
+                COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                OUTPUT_VARIABLE GIT_REVISION
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(GIT_REVISION)
+                set(CODE_REVISION ${GIT_REVISION})
+            endif()
+        endif()
+    endif()
+endif()
 
 # Phase 4: Configuration options (--enable-xxx / --disable-xxx flags)
 # Must come after library detection so we know what's available

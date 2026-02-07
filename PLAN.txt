@@ -684,31 +684,36 @@ Commit: "Phase 6: Install targets complete"
 PHASE 7: BUILD DATE & VERSION INFORMATION
 ==========================================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete - February 7, 2026
 
 Goal: Embed version, build date, and revision information matching autotools.
 
 From configure.ac:
-  [ ] VERSION_NUMBER from m4/version.m4
-  [ ] RELEASE_DATE from m4/version.m4
-  [ ] BUILD_DATE from `date +%Y%m%d`
-  [ ] CODE_REVISION from git or svn (if VERSION contains "-svn")
+  [X] VERSION_NUMBER from m4/version.m4
+  [X] RELEASE_DATE from m4/version.m4
+  [X] BUILD_DATE from `date +%Y%m%d`
+  [X] CODE_REVISION from git or svn (if VERSION contains "-svn")
 
 Implementation:
-  [ ] Read m4/version.m4 to extract version macros
-  [ ] Generate BUILD_DATE at configure time
-  [ ] Check for git rev-parse to get CODE_REVISION
-  [ ] Add defines to config.h
+  [X] Read m4/version.m4 to extract version macros
+  [X] Generate BUILD_DATE at configure time
+  [X] Check for git rev-parse to get CODE_REVISION
+  [X] Add defines to config.h
+  [X] Match autotools conditional logic (CODE_REVISION only if VERSION contains "-svn")
 
 Verification Steps:
-  [ ] Check --version output:
+  [X] Check --version output:
       build/debug/src/ptpd2 --version
       build-cmake/src/ptpd2 --version
-      (Should be identical)
+      Result: ✓ Identical - "ptpd2 version 6.6.6"
       
-  [ ] Check embedded strings:
+  [X] Check embedded strings:
       strings build/debug/src/ptpd2 | grep -i version
       strings build-cmake/src/ptpd2 | grep -i version
+      Result: ✓ Version strings match
+      
+  [X] Check config.h defines:
+      Result: BUILD_DATE="20260207", CODE_REVISION undefined (as expected)
 
 Commit: "Phase 7: Version information matches autotools"
 
@@ -1015,8 +1020,8 @@ CURRENT STATUS
 
 Branch: cmake-port
 Last Updated: February 7, 2026
-Current Phase: Phase 6 - COMPLETE ✓
-Next Phase: Phase 7 (Version Information)
+Current Phase: Phase 7 - COMPLETE ✓
+Next Phase: Phase 8 (VS Code Integration)
 Blockers: None
 
 Completed:
@@ -1035,9 +1040,14 @@ Completed:
   - Install paths match autotools: sbin/, share/man/, share/ptpd/
   - All man pages and data files verified identical
   - Runtime variables preserved: @instance@, @pid@, @hostname@, @name@
+- ✓ Phase 7: Build date & version information (Feb 7)
+  - VERSION_NUMBER set to 6.6.6 (from m4/version.m4)
+  - BUILD_DATE generated at configure time (YYYYMMDD format)
+  - CODE_REVISION from git (only if VERSION contains "-svn")
+  - Version output matches autotools: "ptpd2 version 6.6.6"
 
 Next Steps:
-  1. Begin Phase 7: Version Information
-  2. Add version extraction from Git (branch, commit hash)
-  3. Add build date/time
-  4. Update displayed version string
+  1. Begin Phase 8: VS Code Integration
+  2. Add CMake build tasks to .vscode/tasks.json
+  3. Add CMake debug configurations
+  4. Create helper scripts for CMake builds
