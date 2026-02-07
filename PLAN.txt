@@ -11,34 +11,41 @@ CRITICAL RULE: After each phase, verify that autotools and CMake produce
 PHASE 0: PREPARATION & BASELINE
 ================================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete  Date: February 6, 2026
 
 Tasks:
-  [ ] Create clean autotools build for baseline reference
+  [X] Create clean autotools build for baseline reference
       ./configure --prefix=/tmp/ptpd-autotools-baseline
       make clean && make
       cp src/ptpd2 /tmp/ptpd2-autotools-baseline
+      Result: 377K binary, 649 global symbols
       
-  [ ] Document all autotools configuration options (from configure --help)
+  [X] Document all autotools configuration options (from configure --help)
+      Saved to configure-help.txt
+      Documented in CONFIGURATION-MATRIX.txt
   
-  [ ] Create test matrix for all meaningful option combinations:
-      - POSIX timers: ON/OFF
-      - SW clock: ON/OFF  
-      - PCAP: ON/OFF
-      - SNMP: ON/OFF
-      - Statistics: ON/OFF
-      - Daemon mode: ON/OFF
-      - Slave-only: ON/OFF
-      - Debug levels: none/basic/medium/all
+  [X] Create test matrix for all meaningful option combinations:
+      - 16 critical configurations defined
+      - Documented in CONFIGURATION-MATRIX.txt
+      - Includes: DEFAULT, MINIMAL, SW_CLOCK, SLAVE_ONLY, etc.
       
-  [ ] Create binary comparison script (compare-binaries.sh)
+  [X] Create binary comparison script (compare-binaries.sh)
+      Location: scripts/compare-binaries.sh
+      Features: size, symbols, strings, libraries, function tests
+      Tested: ✓ Working correctly
   
-  [ ] Create symbol extraction script (extract-symbols.sh)
+  [X] Create symbol extraction script (extract-symbols.sh)
+      Location: scripts/extract-symbols.sh
+      Features: global symbols, undefined, by type, statistics
 
 Verification:
-  - Baseline autotools binary builds successfully
-  - All configuration combinations documented
-  - Comparison scripts functional
+  ✓ Baseline autotools binary builds successfully
+  ✓ All configuration combinations documented
+  ✓ Comparison scripts functional and tested
+
+Fixes Applied:
+  - Fixed src/Makefile.am: Removed hardcoded -DSW_CLOCK_ENABLED
+  - Fixed src/dep/startup.c: Wrapped SW clock code in #ifdef SW_CLOCK_ENABLED
 
 Commit: "Phase 0: Preparation complete"
 
@@ -857,10 +864,19 @@ CURRENT STATUS
 
 Branch: cmake-port
 Last Updated: February 6, 2026
-Current Phase: Phase 0 (Preparation)
-Blockers: None yet, awaiting approval to begin
+Current Phase: Phase 0 - COMPLETE ✓
+Next Phase: Phase 1 (Minimal CMake Build)
+Blockers: None
+
+Completed:
+- ✓ Phase 0: Baseline build, documentation, comparison scripts
+- ✓ Fixed Makefile.am SW_CLOCK bug
+- ✓ Fixed startup.c conditional compilation
+- ✓ Baseline binary: 377K, 649 symbols
+- ✓ Test matrix: 16 configurations defined
+- ✓ Comparison tools tested and working
 
 Next Steps:
-  1. Review this plan
-  2. Approve or request modifications
-  3. Begin Phase 0 preparation
+  1. Begin Phase 1: Create minimal CMakeLists.txt
+  2. Build with hardcoded defaults (no options yet)
+  3. Verify binary equivalence with baseline

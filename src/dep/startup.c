@@ -632,12 +632,14 @@ void ptpdShutdown(PtpClock * ptpClock)
 
 	timerShutdown(ptpClock->timers);
 
+#ifdef SW_CLOCK_ENABLED
     /* This is a good place to free the software clock */
     if (NULL != ptpClock->pSwClock) {
         swclock_destroy(ptpClock->pSwClock);
         ptpClock->pSwClock = NULL;
         DBG("Software clock instance destroyed\n");
     }
+#endif
 
 	free(ptpClock);
 	ptpClock = NULL;
@@ -877,6 +879,7 @@ configcheck:
 		}
 	}
 
+#ifdef SW_CLOCK_ENABLED
     /** The PTPClock structure has just been allocated this is a good
      * place to initialize the Software Clock.
      */
@@ -893,6 +896,7 @@ configcheck:
 
         swclock_align_now(ptpClock->pSwClock, 0);
     }
+#endif
 
 	if(rtOpts->statisticsLog.logEnabled)
 		ptpClock->resetStatisticsLog = TRUE;

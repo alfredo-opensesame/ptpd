@@ -1,0 +1,376 @@
+Configuration Test Matrix for CMake Migration
+==============================================
+
+This document maps all autotools configuration options to CMake equivalents
+and defines the test matrix for verifying binary equivalence.
+
+
+AUTOTOOLS CONFIGURE OPTIONS
+============================
+
+From ./configure --help:
+
+Feature Flags (--enable/--disable):
+-----------------------------------
+1. --disable-posix-timers
+   Default: enabled (if supported by OS)
+   Effect: Use interval timers instead of POSIX timers
+   Define: PTPD_PTIMERS
+   Source: eventtimer_posix.c vs eventtimer_itimer.c
+
+2. --disable-pcap
+   Default: enabled (if pcap-config found)
+   Effect: Disable PCAP packet capture support
+   Define: PTPD_PCAP
+   
+3. --disable-snmp
+   Default: enabled (if net-snmp-config found)
+   Effect: Disable SNMP monitoring support
+   Define: PTPD_SNMP
+   Source: dep/snmp.c
+
+4. --enable-runtime-debug
+   Default: disabled
+   Effect: Enable all debug messages
+   Define: RUNTIME_DEBUG
+   Conflicts with: debug-level
+
+5. --enable-debug-level={basic,medium,all}
+   Default: none
+   Effect: Set debug message level
+   Defines:
+     basic:  PTPD_DBG
+     medium: PTPD_DBG2
+     all:    PTPD_DBGV
+   Conflicts with: runtime-debug
+
+6. --disable-daemon
+   Default: enabled
+   Effect: Disable daemon mode
+   Define: PTPD_NO_DAEMON
+
+7. --enable-experimental-options
+   Default: disabled
+   Effect: Enable experimental features
+   Define: PTPD_EXPERIMENTAL
+
+8. --disable-statistics
+   Default: enabled
+   Effect: Disable realtime statistics
+   Define: PTPD_STATISTICS
+   Source: dep/statistics.c, dep/outlierfilter.c
+
+9. --enable-sw-clock
+   Default: disabled
+   Effect: Enable software clock implementation
+   Define: SW_CLOCK_ENABLED
+   Source: dep/sw_clock/*.c (6 files)
+
+10. --disable-so-timestamping
+    Default: enabled (Linux only)
+    Effect: Disable SO_TIMESTAMPING socket option
+    Define: PTPD_DISABLE_SOTIMESTAMPING
+
+11. --enable-slave-only
+    Default: disabled
+    Effect: Build slave-only version (cannot be master)
+    Define: PTPD_SLAVE_ONLY
+
+
+Package Options (--with/--without):
+-----------------------------------
+12. --with-pcap-config=<path>
+    Default: search PATH
+    Effect: Specify pcap-config location
+    
+13. --with-net-snmp-config=<path>
+    Default: search PATH
+    Effect: Specify net-snmp-config location
+
+14. --with-max-unicast-destinations=<16-2048>
+    Default: 128
+    Effect: Set maximum unicast destinations
+    Define: PTPD_UNICAST_MAX=<value>
+
+
+CMAKE OPTION MAPPING
+====================
+
+option(ENABLE_POSIX_TIMERS "Enable POSIX timer support" ON)
+option(ENABLE_PCAP "Enable PCAP support" ON)
+option(ENABLE_SNMP "Enable SNMP support" ON)
+option(ENABLE_RUNTIME_DEBUG "Enable runtime debug messages" OFF)
+option(ENABLE_DAEMON "Enable daemon mode" ON)
+option(ENABLE_EXPERIMENTAL "Enable experimental options" OFF)
+option(ENABLE_STATISTICS "Enable realtime statistics" ON)
+option(ENABLE_SW_CLOCK "Enable software clock" OFF)
+option(ENABLE_SO_TIMESTAMPING "Enable SO_TIMESTAMPING on Linux" ON)
+option(ENABLE_SLAVE_ONLY "Build slave-only version" OFF)
+
+set(DEBUG_LEVEL "none" CACHE STRING "Debug level: none, basic, medium, all")
+set(MAX_UNICAST_DESTINATIONS "128" CACHE STRING "Max unicast destinations (16-2048)")
+set(PCAP_CONFIG "" CACHE FILEPATH "Path to pcap-config")
+set(NET_SNMP_CONFIG "" CACHE FILEPATH "Path to net-snmp-config")
+
+
+CRITICAL TEST CONFIGURATIONS
+=============================
+
+These 16 configurations must be tested with both autotools and CMake,
+with binary equivalence verified for each.
+
+Config 1: DEFAULT (baseline)
+-----------------------------
+  POSIX_TIMERS:  ON
+  PCAP:          ON
+  SNMP:          ON
+  DAEMON:        ON
+  STATISTICS:    ON
+  SW_CLOCK:      OFF
+  SLAVE_ONLY:    OFF
+  EXPERIMENTAL:  OFF
+  SO_TIMESTAMPING: ON (Linux only)
+  DEBUG_LEVEL:   none
+  MAX_UNICAST:   128
+
+Config 2: MINIMAL
+-----------------
+  POSIX_TIMERS:  OFF
+  PCAP:          OFF
+  SNMP:          OFF
+  DAEMON:        OFF
+  STATISTICS:    OFF
+  SW_CLOCK:      OFF
+  SLAVE_ONLY:    OFF
+  EXPERIMENTAL:  OFF
+  SO_TIMESTAMPING: OFF
+  DEBUG_LEVEL:   none
+  MAX_UNICAST:   16
+
+Config 3: SW_CLOCK
+------------------
+  DEFAULT + SW_CLOCK: ON
+
+Config 4: SLAVE_ONLY
+--------------------
+  DEFAULT + SLAVE_ONLY: ON
+
+Config 5: NO_POSIX_TIMERS
+-------------------------
+  DEFAULT + POSIX_TIMERS: OFF
+  (Uses interval timers instead)
+
+Config 6: NO_PCAP
+-----------------
+  DEFAULT + PCAP: OFF
+
+Config 7: NO_SNMP
+-----------------
+  DEFAULT + SNMP: OFF
+
+Config 8: NO_STATISTICS
+-----------------------
+  DEFAULT + STATISTICS: OFF
+
+Config 9: DEBUG_BASIC
+---------------------
+  DEFAULT + DEBUG_LEVEL: basic
+
+Config 10: DEBUG_MEDIUM
+-----------------------
+  DEFAULT + DEBUG_LEVEL: medium
+
+Config 11: DEBUG_ALL
+--------------------
+  DEFAULT + DEBUG_LEVEL: all
+
+Config 12: RUNTIME_DEBUG
+------------------------
+  DEFAULT + RUNTIME_DEBUG: ON
+
+Config 13: EXPERIMENTAL
+-----------------------
+  DEFAULT + EXPERIMENTAL: ON
+
+Config 14: NO_DAEMON
+--------------------
+  DEFAULT + DAEMON: OFF
+
+Config 15: HIGH_UNICAST
+-----------------------
+  DEFAULT + MAX_UNICAST: 2048
+
+Config 16: COMBINED_FEATURES
+----------------------------
+  SW_CLOCK:      ON
+  SLAVE_ONLY:    ON
+  DEBUG_LEVEL:   all
+  MAX_UNICAST:   512
+  (all other defaults)
+
+
+VERIFICATION PROCEDURE FOR EACH CONFIG
+=======================================
+
+For each of the 16 configurations above:
+
+1. Build with autotools:
+   ./configure [options...]
+   make clean && make
+   cp src/ptpd2 /tmp/ptpd2-auto-config-<N>
+   
+2. Build with CMake:
+   cmake -B build-test-<N> [options...]
+   cmake --build build-test-<N>
+   cp build-test-<N>/src/ptpd2 /tmp/ptpd2-cmake-config-<N>
+   
+3. Compare binaries:
+   ./scripts/compare-binaries.sh \
+     /tmp/ptpd2-auto-config-<N> \
+     /tmp/ptpd2-cmake-config-<N> \
+     > results/comparison-config-<N>.txt
+     
+4. Verify:
+   - File size within 5% tolerance
+   - Symbol count within 3%
+   - Symbols functionally equivalent
+   - Both binaries run successfully
+   - --help and --version output match
+   
+5. Document results in results/test-matrix-results.txt
+
+
+AUTOTOOLS BUILD COMMANDS
+=========================
+
+Config 1 (DEFAULT):
+  ./configure
+
+Config 2 (MINIMAL):
+  ./configure --disable-posix-timers --disable-pcap --disable-snmp \
+              --disable-daemon --disable-statistics --disable-so-timestamping \
+              --with-max-unicast-destinations=16
+
+Config 3 (SW_CLOCK):
+  ./configure --enable-sw-clock
+
+Config 4 (SLAVE_ONLY):
+  ./configure --enable-slave-only
+
+Config 5 (NO_POSIX_TIMERS):
+  ./configure --disable-posix-timers
+
+Config 6 (NO_PCAP):
+  ./configure --disable-pcap
+
+Config 7 (NO_SNMP):
+  ./configure --disable-snmp
+
+Config 8 (NO_STATISTICS):
+  ./configure --disable-statistics
+
+Config 9 (DEBUG_BASIC):
+  ./configure --enable-debug-level=basic
+
+Config 10 (DEBUG_MEDIUM):
+  ./configure --enable-debug-level=medium
+
+Config 11 (DEBUG_ALL):
+  ./configure --enable-debug-level=all
+
+Config 12 (RUNTIME_DEBUG):
+  ./configure --enable-runtime-debug
+
+Config 13 (EXPERIMENTAL):
+  ./configure --enable-experimental-options
+
+Config 14 (NO_DAEMON):
+  ./configure --disable-daemon
+
+Config 15 (HIGH_UNICAST):
+  ./configure --with-max-unicast-destinations=2048
+
+Config 16 (COMBINED):
+  ./configure --enable-sw-clock --enable-slave-only \
+              --enable-debug-level=all \
+              --with-max-unicast-destinations=512
+
+
+CMAKE BUILD COMMANDS
+====================
+
+Config 1 (DEFAULT):
+  cmake -B build-test-1
+
+Config 2 (MINIMAL):
+  cmake -B build-test-2 \
+        -DENABLE_POSIX_TIMERS=OFF \
+        -DENABLE_PCAP=OFF \
+        -DENABLE_SNMP=OFF \
+        -DENABLE_DAEMON=OFF \
+        -DENABLE_STATISTICS=OFF \
+        -DENABLE_SO_TIMESTAMPING=OFF \
+        -DMAX_UNICAST_DESTINATIONS=16
+
+Config 3 (SW_CLOCK):
+  cmake -B build-test-3 -DENABLE_SW_CLOCK=ON
+
+Config 4 (SLAVE_ONLY):
+  cmake -B build-test-4 -DENABLE_SLAVE_ONLY=ON
+
+Config 5 (NO_POSIX_TIMERS):
+  cmake -B build-test-5 -DENABLE_POSIX_TIMERS=OFF
+
+Config 6 (NO_PCAP):
+  cmake -B build-test-6 -DENABLE_PCAP=OFF
+
+Config 7 (NO_SNMP):
+  cmake -B build-test-7 -DENABLE_SNMP=OFF
+
+Config 8 (NO_STATISTICS):
+  cmake -B build-test-8 -DENABLE_STATISTICS=OFF
+
+Config 9 (DEBUG_BASIC):
+  cmake -B build-test-9 -DDEBUG_LEVEL=basic
+
+Config 10 (DEBUG_MEDIUM):
+  cmake -B build-test-10 -DDEBUG_LEVEL=medium
+
+Config 11 (DEBUG_ALL):
+  cmake -B build-test-11 -DDEBUG_LEVEL=all
+
+Config 12 (RUNTIME_DEBUG):
+  cmake -B build-test-12 -DENABLE_RUNTIME_DEBUG=ON
+
+Config 13 (EXPERIMENTAL):
+  cmake -B build-test-13 -DENABLE_EXPERIMENTAL=ON
+
+Config 14 (NO_DAEMON):
+  cmake -B build-test-14 -DENABLE_DAEMON=OFF
+
+Config 15 (HIGH_UNICAST):
+  cmake -B build-test-15 -DMAX_UNICAST_DESTINATIONS=2048
+
+Config 16 (COMBINED):
+  cmake -B build-test-16 \
+        -DENABLE_SW_CLOCK=ON \
+        -DENABLE_SLAVE_ONLY=ON \
+        -DDEBUG_LEVEL=all \
+        -DMAX_UNICAST_DESTINATIONS=512
+
+
+SUCCESS CRITERIA
+================
+
+Phase 0 Complete When:
+- ✓ Baseline autotools build successful
+- ✓ Baseline binary saved to /tmp/ptpd2-autotools-baseline
+- ✓ configure--help output documented
+- ✓ Test matrix defined (16 configurations)
+- ✓ Comparison scripts created and functional
+
+Phase 1+ Complete When:
+- CMake builds successfully for default configuration
+- Binary equivalence verified (size, symbols, functionality)
+- All 16 test configurations pass equivalence checks
+- No regressions in any configuration
