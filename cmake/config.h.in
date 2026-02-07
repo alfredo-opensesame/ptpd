@@ -164,4 +164,85 @@
     typedef long ssize_t;
 #endif
 
+/* ========================================================================
+ * Phase 4: Build configuration options (from cmake/Options.cmake)
+ * These correspond to configure.ac --enable-xxx / --disable-xxx flags
+ * ======================================================================== */
+
+/* POSIX timers support (--enable-posix-timers / --disable-posix-timers) */
+#cmakedefine ENABLE_POSIX_TIMERS 1
+#ifdef ENABLE_POSIX_TIMERS
+    #define PTP_PTIMERS 1
+#endif
+
+/* PCAP support (--enable-pcap / --disable-pcap) */
+#cmakedefine PTPD_PCAP 1
+
+/* SNMP support (--enable-snmp / --disable-snmp) */
+#cmakedefine PTPD_SNMP 1
+
+/* Runtime debug (--enable-runtime-debug) */
+#cmakedefine ENABLE_RUNTIME_DEBUG 1
+#ifdef ENABLE_RUNTIME_DEBUG
+    #define PTPD_DBG 1
+    #define PTPD_DBG2 1
+    #define PTPD_DBGV 1
+#endif
+
+/* Debug level (--enable-debug-level=basic/medium/all) */
+#cmakedefine DEBUG_LEVEL_BASIC 1
+#cmakedefine DEBUG_LEVEL_MEDIUM 1
+#cmakedefine DEBUG_LEVEL_ALL 1
+
+#ifdef DEBUG_LEVEL_BASIC
+    #define PTPD_DBG 1
+#endif
+
+#ifdef DEBUG_LEVEL_MEDIUM
+    #define PTPD_DBG 1
+    #define PTPD_DBG2 1
+#endif
+
+#ifdef DEBUG_LEVEL_ALL
+    #define PTPD_DBG 1
+    #define PTPD_DBG2 1
+    #define PTPD_DBGV 1
+#endif
+
+/* Daemon mode (--enable-daemon / --disable-daemon) */
+#cmakedefine ENABLE_DAEMON 1
+#ifndef ENABLE_DAEMON
+    #define PTPD_NO_DAEMON 1
+#endif
+
+/* Experimental options (--enable-experimental-options) */
+#cmakedefine ENABLE_EXPERIMENTAL 1
+#ifdef ENABLE_EXPERIMENTAL
+    #define PTPD_EXPERIMENTAL 1
+#endif
+
+/* Statistics support (--enable-statistics / --disable-statistics) */
+#cmakedefine ENABLE_STATISTICS 1
+#ifdef ENABLE_STATISTICS
+    #define PTPD_STATISTICS 1
+#endif
+
+/* Software clock (--enable-sw-clock) */
+#cmakedefine ENABLE_SW_CLOCK 1
+
+/* SO_TIMESTAMPING support (--enable-so-timestamping / --disable-so-timestamping) */
+#cmakedefine ENABLE_SO_TIMESTAMPING 1
+#ifdef ENABLE_SO_TIMESTAMPING
+    #define SO_TIMESTAMPING_SUPPORT 1
+#endif
+
+/* Slave-only mode (--enable-slave-only) */
+#cmakedefine ENABLE_SLAVE_ONLY 1
+#ifdef ENABLE_SLAVE_ONLY
+    #define PTPD_SLAVE_ONLY 1
+#endif
+
+/* Maximum unicast destinations (--with-max-unicast-destinations=N) */
+#define UNICAST_MAX_DESTINATIONS @MAX_UNICAST_DESTINATIONS@
+
 #endif /* CONFIG_H */

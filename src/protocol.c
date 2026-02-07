@@ -110,7 +110,7 @@ indexSync(TimeInternal *timeStamp, UInteger16 sequenceId, Integer32 transportAdd
 
     uint32_t hash = 0;
 
-#if defined(RUNTIME_DEBUG) || defined (PTPD_DBGV)
+#if defined(RUNTIME_DEBUG) || defined (PTPD_DBG) || defined (PTPD_DBG2) || defined (PTPD_DBGV)
 	struct in_addr tmpAddr;
 	tmpAddr.s_addr = transportAddress;
 #endif /* RUNTIME_DEBUG */
@@ -1272,7 +1272,7 @@ processMessage(RunTimeOpts* rtOpts, PtpClock* ptpClock, TimeInternal* timeStamp,
     /* packet is not from self, and is from a non-zero source address - check ACLs */
     if(ptpClock->netPath.lastSourceAddr &&
 	(ptpClock->netPath.lastSourceAddr != ptpClock->netPath.interfaceAddr.s_addr)) {
-#if defined(RUNTIME_DEBUG) || defined (PTPD_DBGV)
+#if defined(RUNTIME_DEBUG) || defined (PTPD_DBG) || defined (PTPD_DBG2) || defined (PTPD_DBGV)
 		struct in_addr tmpAddr;
 		tmpAddr.s_addr = ptpClock->netPath.lastSourceAddr;
 #endif /* RUNTIME_DEBUG */

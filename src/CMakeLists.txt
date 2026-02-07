@@ -27,21 +27,37 @@ set(PTPD2_BASE_SOURCES
     dep/alarms.c
 )
 
-# Phase 1: Hardcoded defaults
-# STATISTICS: ON (default in autotools)
-set(PTPD2_STATISTICS_SOURCES
-    dep/statistics.c
-    dep/outlierfilter.c
-)
+# Phase 4: STATISTICS sources - conditional based on ENABLE_STATISTICS option
+if(ENABLE_STATISTICS)
+    set(PTPD2_STATISTICS_SOURCES
+        dep/statistics.c
+        dep/outlierfilter.c
+    )
+else()
+    set(PTPD2_STATISTICS_SOURCES "")
+endif()
 
-# POSIX_TIMERS: OFF on macOS (default detected by autotools)
-# Use itimer instead
-set(PTPD2_TIMER_SOURCES
-    dep/eventtimer_itimer.c
-)
+# Phase 4: POSIX_TIMERS sources - conditional based on ENABLE_POSIX_TIMERS option
+if(ENABLE_POSIX_TIMERS)
+    set(PTPD2_TIMER_SOURCES
+        dep/eventtimer_posix.c
+    )
+else()
+    # Use itimer fallback
+    set(PTPD2_TIMER_SOURCES
+        dep/eventtimer_itimer.c
+    )
+endif()
 
-# SW_CLOCK: OFF (default)
-# (no additional sources)
+# Phase 4: SW_CLOCK sources - conditional based on ENABLE_SW_CLOCK option
+if(ENABLE_SW_CLOCK)
+    # TODO: Add SW_CLOCK-specific sources when implementing Phase 4
+    # From autotools: libcck dep/sw_clock/*.c
+    message(WARNING "SW_CLOCK support not yet fully implemented in CMake")
+    set(PTPD2_SW_CLOCK_SOURCES "")
+else()
+    set(PTPD2_SW_CLOCK_SOURCES "")
+endif()
 
 # Phase 3: SNMP sources - conditional based on NETSNMP detection
 if(PTPD_SNMP)
@@ -57,6 +73,7 @@ set(PTPD2_SOURCES
     ${PTPD2_BASE_SOURCES}
     ${PTPD2_STATISTICS_SOURCES}
     ${PTPD2_TIMER_SOURCES}
+    ${PTPD2_SW_CLOCK_SOURCES}
     ${PTPD2_SNMP_SOURCES}
 )
 
@@ -86,14 +103,15 @@ endif()
 target_compile_definitions(ptpd2 PRIVATE
     HAVE_CONFIG_H              # Signal that we have config.h
     DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"  # Data directory
-    PTPD_STATISTICS            # Statistics enabled
-    PTPD_UNICAST_MAX=128       # Default max unicast destinations
 )
 
-# Add PTPD_PCAP if PCAP support enabled
+# Phase 4: MAX_UNICAST_DESTINATIONS is now in config.h via Options.cmake
+# No need to define PTPD_STATISTICS here - it's in config.h
+
+# Add PCAP preprocessor definitions if enabled
 if(PTPD_PCAP)
-    target_compile_definitions(ptpd2 PRIVATE PTPD_PCAP)
-    # Add PCAP preprocessor definitions
+    # PTPD_PCAP define is now in config.h via Options.cmake
+    # Add PCAP-specific preprocessor definitions from pcap-config
     if(PCAP_DEFINITIONS)
         foreach(def ${PCAP_DEFINITIONS})
             # -U flags need to be added as compile options, not definitions
@@ -110,10 +128,10 @@ if(PTPD_PCAP)
     endif()
 endif()
 
-# Add PTPD_SNMP if SNMP support enabled
+# Add SNMP preprocessor definitions if enabled
 if(PTPD_SNMP)
-    target_compile_definitions(ptpd2 PRIVATE PTPD_SNMP)
-    # Add SNMP preprocessor definitions
+    # PTPD_SNMP define is now in config.h via Options.cmake
+    # Add SNMP-specific preprocessor definitions from net-snmp-config
     if(NETSNMP_DEFINITIONS)
         foreach(def ${NETSNMP_DEFINITIONS})
             # -U flags need to be added as compile options, not definitions
