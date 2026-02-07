@@ -630,16 +630,16 @@ Commit: "Phase 5: Compiler flags complete"
 PHASE 6: INSTALL TARGETS & DATA FILES
 ======================================
 
-Status: [ ] Not Started  [ ] In Progress  [ ] Complete  [ ] Verified
+Status: [X] Complete - February 7, 2026
 
 Goal: Install binaries, man pages, and data files to correct locations.
 
 From Makefile.am:
-  [ ] Binary: ptpd2 → $(sbindir)/ptpd2
-  [ ] Man pages: 
+  [X] Binary: ptpd2 → $(sbindir)/ptpd2
+  [X] Man pages: 
       - ptpd2.8 → $(mandir)/man8/ptpd2.8
       - ptpd2.conf.5 → $(mandir)/man5/ptpd2.conf.5
-  [ ] Data files → $(datadir)/ptpd/:
+  [X] Data files → $(datadir)/ptpd/:
       - src/leap-seconds.list
       - src/ptpd2.conf.minimal
       - src/ptpd2.conf.default-full
@@ -647,8 +647,10 @@ From Makefile.am:
       - doc/PTPBASE-MIB.txt
 
 Man Page Generation:
-  [ ] src/ptpd2.8.in → src/ptpd2.8 (substitute VERSION_NUMBER, RELEASE_DATE)
-  [ ] src/ptpd2.conf.5.in → src/ptpd2.conf.5 (substitute VERSION_NUMBER)
+  [X] src/ptpd2.8.in → src/ptpd2.8 (substitute VERSION_NUMBER, RELEASE_DATE)
+  [X] src/ptpd2.conf.5.in → src/ptpd2.conf.5 (substitute VERSION_NUMBER)
+  [X] Runtime variables preserved: @instance@, @pid@, @hostname@, @name@
+  [X] Install prefix substituted: @prefix@, @PACKAGE_NAME@
 
 Install Test:
   cmake -B build-cmake-install -DCMAKE_INSTALL_PREFIX=/tmp/ptpd-cmake-install
@@ -660,15 +662,21 @@ Install Test:
   make install
   
 Verification Steps:
-  [ ] Compare install directory structure:
+  [X] Compare install directory structure:
       find /tmp/ptpd-autotools-install -type f | sort
       find /tmp/ptpd-cmake-install -type f | sort
+      Result: ✓ Identical file lists (8 files)
       
-  [ ] Verify file permissions match
+  [X] Verify file permissions match
+      Result: ✓ All files have correct permissions
   
-  [ ] Verify man page content identical:
-      diff /tmp/ptpd-autotools-install/share/man/man8/ptpd2.8 \
-           /tmp/ptpd-cmake-install/share/man/man8/ptpd2.8
+  [X] Verify man page content identical:
+      diff /tmp/ptpd-autotools-test/share/man/man8/ptpd2.8 \
+           /tmp/ptpd-cmake-test/share/man/man8/ptpd2.8
+      Result: ✓ Man pages identical
+      
+  [X] Verify all data files match:
+      Result: ✓ All 5 data files verified identical
 
 Commit: "Phase 6: Install targets complete"
 
@@ -1007,8 +1015,8 @@ CURRENT STATUS
 
 Branch: cmake-port
 Last Updated: February 7, 2026
-Current Phase: Phase 5 - COMPLETE ✓
-Next Phase: Phase 6 (Install Targets & Data Files)
+Current Phase: Phase 6 - COMPLETE ✓
+Next Phase: Phase 7 (Version Information)
 Blockers: None
 
 Completed:
@@ -1022,9 +1030,14 @@ Completed:
   - Build types: Debug (-g -O0), Release (-O2), RelWithDebInfo (-g -O2)
   - Added Linux kernel header detection
   - Binary equivalence maintained
+- ✓ Phase 6: Install targets & data files (Feb 7)
+  - Generated man pages with proper variable substitution
+  - Install paths match autotools: sbin/, share/man/, share/ptpd/
+  - All man pages and data files verified identical
+  - Runtime variables preserved: @instance@, @pid@, @hostname@, @name@
 
 Next Steps:
-  1. Begin Phase 6: Install Targets & Data Files
-  2. Add install() commands for binary, man pages, data files
-  3. Generate man pages from .in templates
-  4. Verify install matches autotools locations
+  1. Begin Phase 7: Version Information
+  2. Add version extraction from Git (branch, commit hash)
+  3. Add build date/time
+  4. Update displayed version string

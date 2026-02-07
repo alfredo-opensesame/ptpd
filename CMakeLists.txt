@@ -52,8 +52,55 @@ configure_file(
 # Set install directories (matching autotools defaults)
 include(GNUInstallDirs)
 
+# Phase 6: Man page variables for substitution (matching m4/version.m4)
+set(VERSION_NUMBER "6.6.6")
+set(RELEASE_DATE "October, 2015")
+set(PACKAGE_NAME "ptpd")
+
+# Set install prefix for man pages (matching autotools @prefix@ substitution)
+set(prefix ${CMAKE_INSTALL_PREFIX})
+
+# Runtime template variables that should remain in man pages
+# These are substituted at runtime by ptpd, not at build time
+set(instance "@instance@")
+set(pid "@pid@")
+set(hostname "@hostname@")
+set(name "@name@")
+
+# Phase 6: Generate man pages from templates
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.8.in
+    ${PROJECT_BINARY_DIR}/ptpd2.8
+    @ONLY
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.5.in
+    ${PROJECT_BINARY_DIR}/ptpd2.conf.5
+    @ONLY
+)
+
 # Add source directory
 add_subdirectory(src)
+
+# Phase 6: Install targets
+# Install man pages (generated from .in templates)
+install(FILES ${PROJECT_BINARY_DIR}/ptpd2.8
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man8)
+install(FILES ${PROJECT_BINARY_DIR}/ptpd2.conf.5
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
+
+# Install configuration files to ${datadir}/ptpd
+install(FILES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.minimal
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.default-full
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/templates.conf
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
+
+# Install data files to ${datadir}/ptpd
+install(FILES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/leap-seconds.list
+    ${CMAKE_CURRENT_SOURCE_DIR}/doc/PTPBASE-MIB.txt
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
 
 # Show configuration summary
 message(STATUS "")

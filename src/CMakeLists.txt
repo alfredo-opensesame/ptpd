@@ -210,9 +210,9 @@ endif()
 # config.h is now generated in root CMakeLists.txt (Phase 2)
 # with full platform detection from cmake/CheckPlatform.cmake
 
-# Install targets (matching autotools)
+# Phase 6: Install binary target (matching autotools)
 install(TARGETS ptpd2
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
 
-# Man pages and data files will be added in Phase 6
+# Man pages and data files installed in root CMakeLists.txt
