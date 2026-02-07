@@ -44,14 +44,11 @@ endif()
 
 # ===================================================================
 # Option: SNMP Support (--enable-snmp / --disable-snmp)
-# Default: ON if net-snmp-config found, OFF otherwise
+# Default: OFF (user must explicitly enable)
+# Note: Autotools auto-detects but often fails to find headers on macOS SDK
+#       For consistency with typical autotools builds, we default to OFF
 # ===================================================================
-if(NETSNMP_FOUND)
-    set(ENABLE_SNMP_DEFAULT ON)
-else()
-    set(ENABLE_SNMP_DEFAULT OFF)
-endif()
-option(ENABLE_SNMP "Enable SNMP support" ${ENABLE_SNMP_DEFAULT})
+option(ENABLE_SNMP "Enable SNMP support" OFF)
 
 # Override PTPD_SNMP based on option
 if(ENABLE_SNMP AND NETSNMP_FOUND)

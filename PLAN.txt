@@ -455,11 +455,13 @@ Configuration Options Implemented:
       - Set PTPD_PCAP define
       - User can disable with -DENABLE_PCAP=OFF
       
-  [X] ENABLE_SNMP (default: ON if net-snmp-config found)
+  [X] ENABLE_SNMP (default: OFF, user must explicitly enable)
       - Integrated with Phase 3 SNMP detection
       - Set PTPD_SNMP define
       - Add dep/snmp.c to sources when enabled
-      - User can disable with -DENABLE_SNMP=OFF
+      - User can enable with -DENABLE_SNMP=ON
+      - Note: Autotools auto-detects but often fails header check on macOS
+              For consistency with typical autotools builds, CMake defaults to OFF
       
   [X] ENABLE_RUNTIME_DEBUG (default: OFF)
       - Set RUNTIME_DEBUG define
