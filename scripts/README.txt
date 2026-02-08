@@ -64,7 +64,7 @@ ptpd-run.sh
             - Packet capture (tcpdump) and protocol analysis
             - Automatic cleanup and resource management
             - Live master detection and synchronization monitoring
-  Example:  sudo ./scripts/ptpd-run.sh en0 resources/conf/ptpd-daemon.conf -d 120
+  Example:  sudo ./scripts/ptpd-run.sh en0 resources/ptpd-daemon.conf -d 120
   Notes:    - Requires root privileges (uses sudo automatically)
             - Creates timestamped log directories
             - Generates CSV statistics files
@@ -172,7 +172,7 @@ Quick Start - Build & Run:
   cd build-cmake/debug && make -j4
 
   # Run PTPd daemon with config file (requires sudo)
-  sudo ./build-cmake/debug/src/ptpd2 -f resources/conf/ptpd-daemon.conf -m
+  sudo ./build-cmake/debug/src/ptpd2 -f resources/ptpd-daemon.conf -m
 
 Full Test Workflow:
   # Clean previous builds
@@ -182,7 +182,7 @@ Full Test Workflow:
   ./scripts/test-config.sh default
 
   # Run comprehensive daemon test
-  sudo ./scripts/ptpd-run.sh en0 resources/conf/ptpd-daemon.conf -d 120
+  sudo ./scripts/ptpd-run.sh en0 resources/ptpd-daemon.conf -d 120
 
   # Analyze results
   python3 scripts/analyze_ptp.py ptp_logs/*/stats.csv

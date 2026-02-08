@@ -75,7 +75,7 @@ show_usage() {
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 en5 conf-files/ptpd-daemon.conf                 # Run daemon with config"
+    echo "  $0 en5 resources/ptpd-daemon.conf                  # Run daemon with config"
     echo "  $0 en0 my-config.conf --duration 30                # Run for 30 seconds"
     echo ""
     echo "Configuration Requirements:"
@@ -429,8 +429,8 @@ setup_configuration() {
 setup_binary_args() {
     if [ -z "$CONFIG_FILE" ]; then
         print_error "Configuration file is required. All parameters except interface must be specified in the config file."
-        print_status "Available config files in conf-files/:"
-        ls -1 "$SCRIPT_DIR/conf-files/"*.conf 2>/dev/null | sed 's|.*/||' || echo "  No config files found"
+        print_status "Available config files in resources/:"
+        ls -1 "$PROJECT_DIR/resources/"*.conf 2>/dev/null | sed 's|.*/||' || echo "  No config files found"
         exit 1
     fi
 
