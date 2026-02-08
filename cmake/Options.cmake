@@ -59,19 +59,19 @@ endif()
 
 # ===================================================================
 # Option: Runtime Debug (--enable-runtime-debug)
-# Default: ON for Debug builds, OFF for Release
+# Default: OFF for Debug builds, ON for Release (runtime control)
 # Mutually exclusive with DEBUG_LEVEL
 # ===================================================================
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(ENABLE_RUNTIME_DEBUG_DEFAULT ON)
-else()
     set(ENABLE_RUNTIME_DEBUG_DEFAULT OFF)
+else()
+    set(ENABLE_RUNTIME_DEBUG_DEFAULT ON)
 endif()
 option(ENABLE_RUNTIME_DEBUG "Enable all runtime debug messages" ${ENABLE_RUNTIME_DEBUG_DEFAULT})
 
 # ===================================================================
 # Option: Debug Level (--enable-debug-level=basic/medium/all)
-# Default: all for Debug builds, none for Release
+# Default: all for Debug builds (compile-time), none for Release
 # Mutually exclusive with ENABLE_RUNTIME_DEBUG
 # ===================================================================
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
