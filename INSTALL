@@ -1,153 +1,122 @@
 PTP Daemon Version 2 Build and Installation Instructions
 
-15 June 2015
-
-George V. Neville-Neil, Wojciech Owczarek
+Updated: February 8, 2026 (CMake build system)
 
 The PTP Daemon is known to work on FreeBSD, NetBSD, OpenBSD,
-OpenSolaris and its derivatives, Mac OS X and Linux systems.
+OpenSolaris and its derivatives, macOS and Linux systems.
 
-*) Requirements
+REQUIREMENTS
+============
 
 You will need the following tools and libraries to build ptpd2:
 
-1. GNU autotools (automake, autoconf, libtool etc.) - essential
+1. CMake 3.15 or later - required
 
-2. PCAP libraries (libpcap/bpf) and development headers
+2. C compiler (GCC, Clang, MSVC) - required
+
+3. PCAP libraries (libpcap/bpf) and development headers
    (optional but recommended) - required for Ethernet transport
    and generally recommended for message performance
 
-   *NOTE: Libpcap seems to be broken on OpenSolaris / OmniOS,
-    builds and runs, but no data is being received.
+4. SNMP libraries (optional) - enables SNMP monitoring support
+   (net-snmp on Linux/Unix, or compatible)
 
-3. SNMP libraries (optional) - will allow building with SNMP
-   support
+QUICK START
+===========
 
-*) Building
+1. cd into the root of the tree (where this file resides)
 
-1. cd into the root of the tree (which is where the file you're
-   reading resides)
+2. Configure and build:
 
-2. If building from a repository such as Subversion, CVS or GIT, run:
+   cmake -B build -DCMAKE_BUILD_TYPE=Release
+   cmake --build build
 
-   autoreconf -vi
+   Binary will be in: build/src/ptpd2
 
-3. If building from a distribution .tar.gz package, you may run autoreconf -vi,
-   but in most cases running ./configure should be enough - you must run
-   autoreconf if configure or result in errors.
+3. Install (optional):
 
-4. ./configure
+   sudo cmake --install build --prefix /usr/local
 
-   The final section of the configure script output will show
-   the results of all library dependency checks and feature checks:
-   features and dependencies can be controled using the options
-   described below. Running ./configure --help will show all available
-   options.
+CONFIGURATION OPTIONS
+=====================
 
-   *NOTE* On QNX systems, the configure script may not accept the
-   'rm' command implementation available, so if it complains,
-   run ./configure with the following environment variable:
+CMake provides many configuration options. Common examples:
 
-   export ACCEPT_INFERIOR_RM_PROGRAM=yes
+* Disable statistics (lower CPU/RAM usage):
+  cmake -B build -DENABLE_STATISTICS=OFF
 
-   ========= configure script options for ptpd ========================
+* Build slave-only version:
+  cmake -B build -DENABLE_SLAVE_ONLY=ON
 
-   * To disable the statistics code in order to lower computational
-   expense and RAM usage, configure the build with the following options:
+* Disable POSIX timers (use interval timers):
+  cmake -B build -DENABLE_POSIX_TIMERS=OFF
 
-   ./configure --disable-statistics
+* Set maximum unicast destinations:
+  cmake -B build -DMAX_UNICAST_DESTINATIONS=256
 
-   * To build a slave-only version (with GM logic disabled), build with:
+* Enable runtime debug messages:
+  cmake -B build -DENABLE_RUNTIME_DEBUG=ON
 
-    ./configure --enable-slave-only
+* Set debug level (basic, medium, all):
+  cmake -B build -DDEBUG_LEVEL=all
 
-    This will build a version incapable of running as master.
+For complete list of options, see:
+- README.cmake.md (comprehensive build guide)
+- CONFIGURATION.md (technical details for all 12 options)
 
-    * As of 2.3.1, the default timer implamentation used for periodic
-    actions uses POSIX timers if only the OS supports it. To disable
-    POSIX timer support and use the old interval timer implementation,
-    the following switch can be used:
+Or run: cmake -B build -LH
 
-    ./configure --disable-posix-timers
+TESTING
+=======
 
-    * As of 2.3.1, support was added for multiple unicast destinations
-    (both GMs and slaves) - with negotiation (signaling) and without.
-    The default maximum number of unicast destinations (also the
-    maximum number of slaves for a signaling GM) is set to 128. This
-    setting has an impact on the amount of RAM used by PTPd. The
-    unicast table capacity can be changed to a maximum of 2048 using:
-
-   ./configure --with-max-unicast-destinations=[16...2048]
-
-    It is possible to change this limit to more than 2048, but realistically
-    due to message scheduling, timer signal usage and single-threaded
-    architecture, anywhere above 1000 ptpd will show high CPU utilisation.
-    Ptpd has been successfully tested as unicast Telecom (negotiation) master
-    at 1000 slaves and high message rates (32/sec) and provided adequate
-    performance. When running high numbers of slaves, it is recommended
-    to use libpcap (ptpengine:use_libpcap=y) to allow easier matching
-    of Sync and FollowUp, unless the NIC supports software transmit
-    timestamps. Without those and without libpcap, ptpd loops packets
-    back into its own socket, so the followUp destination cannot be
-    matched with the Sync destination, and a lookup table is used.
-    Hash collissions are low, but they may happen, in which case
-    ptpd will iterate over a table of last timestamps.  This is only and issue
-    in extreme scenarios.
-
-    * With certain NIC drivers on Linux providing the SO_TIMESTAMPING
-    functionality with software transmit timestamps (SOF_TIMESTAMPING_
-    TX_SOFTWARE), unpredictable transmit timestamp failures can occur,
-    which may cause unstable operation and in some cases high CPU usage
-    (see https://sourceforge.net/p/ptpd/discussion/469208/thread/4aea6e47).
-    While fixes have been implemented and have shown success,
-    there is still some risk. To disable SO_TIMESTAMPING support on Linux
-    completely, regardless of OS support, use:
-
-    ./configure --disable-so-timestamping
-
-    * To enable experimental options use:
-
-    ./configure --enable-experimental-options
-
-    This enables:
-
-     - running SO_TIMESTAMPING without verifying if NIC driver
-       supports the given timestamping options
-     - running message intervals outside of PTP specification
-
-    *NOTE* On QNX systems, when experimental options are enabled,
-     a clock_gettime approximation using CPU clock counter and
-     attaching to IRQ0 is used, and this is also used to retrieve
-     packet RX and TX timestamps, ignoring PCAP timestamps and
-     socket options. This is recommended for best performance,
-     but requires more testing before becoming the default.
-     by default in QNX, clock is incremented in ticks that
-     can be as long as 10 milliseconds, and PCAP and socket
-     timestamps are only accurate to several milliseconds.
-
-5. make
-
-6. Read the manual pages ptpd2(8) and ptpd2.conf(5). The man pages
+1. Read the manual pages ptpd2(8) and ptpd2.conf(5). The man pages
    are the most complete source of configuration information.
-   ptpd2 itself also provides an extensive help:
-   run ptpd2 --help to see the short help
-   run ptpd2 --long-help to see the long help for all settings
-   run ptpd2 -e [key:setting] to display help for a single setting
+   
+2. ptpd2 provides extensive help:
+   - Run: ptpd2 --help (short help)
+   - Run: ptpd2 --long-help (all settings)
+   - Run: ptpd2 -e [key:setting] (single setting help)
 
-7. Update resources/test/client-e2e-socket.conf so that its
+3. Update resources/test/client-e2e-socket.conf so that its
    "ptpengine:interface = " setting points to a network interface on
    your test machine that can see PTP packets from a grandmaster.
 
-8. Test it in place: ./src/ptpd2 -c resources/test/client-e2e-socket.conf
+4. Test in place: ./build/src/ptpd2 -c resources/test/client-e2e-socket.conf
 
-9. Check the log output of the daemon in /var/run/ptpd2.event.log
-   Check statistics output of the daemon in /var/run/ptpd2.stats.log
-   Check the status file /var/run/ptpd2.status.log
+5. Check the log output:
+   - Event log: /var/run/ptpd2.event.log
+   - Statistics: /var/run/ptpd2.stats.log
+   - Status file: /var/run/ptpd2.status.log
 
-10. If the results look good, make install
+DEVELOPMENT BUILDS
+==================
 
-The daemon may work on other POSIX based systems but this is not
-guaranteed.  Patches and fixes are welcome on the SourceForge page:
+For development with debug symbols:
 
-http://ptpd.sf.net
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug
+
+Binary with debug symbols: build-debug/src/ptpd2
+
+Multiple build configurations can coexist:
+- build-debug/ (Debug build)
+- build-release/ (Release build)
+- build-custom/ (Custom configuration)
+
+See MyREADME.txt for VS Code integration and development workflows.
+
+DOCUMENTATION
+=============
+
+- README.cmake.md - Comprehensive CMake build guide with examples
+- CONFIGURATION.md - Technical reference for all configuration options
+- MyREADME.txt - Development workflow and project structure
+- src/ptpd2.8.in - ptpd2 manual page (man ptpd2)
+- src/ptpd2.conf.5.in - ptpd2.conf manual page (man ptpd2.conf)
+
+SUPPORT
+=======
+
+Upstream PTPd: https://github.com/ptpd/ptpd
+This fork: CMake-based build system for macOS development
 

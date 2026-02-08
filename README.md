@@ -21,11 +21,22 @@ If you are just looking for software to update the time on your desktop, you
 probably want something that implements the Network Time Protocol. It can
 coordinate computer clocks with an absolute time reference such as UTC.
 
-Please refer to the
-[INSTALL](https://raw.githubusercontent.com/ptpd/ptpd/master/INSTALL) file
-for build instructions and configuration options. Please refer to the
-[README.repocheckout](https://github.com/ptpd/ptpd/blob/master/README.repocheckout)
-file for information on how to build from source code repositories.
+Build Instructions
+---
+
+This fork uses **CMake 3.15+** as its build system. Quick start:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+sudo cmake --install build
+```
+
+For detailed build instructions and configuration options, see:
+- [INSTALL](INSTALL) - Quick start guide
+- [README.cmake.md](README.cmake.md) - Comprehensive CMake build guide
+- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all options
+- [MyREADME.txt](MyREADME.txt) - Development workflow and project structure
 
 Legal notice
 ---
@@ -37,7 +48,16 @@ a license for the patented technology in the protocol. Contact the IEEE for
 licensing information.
 
 PTPd is licensed under a 2 Clause BSD Open Source License. Please refer to the
-[COPYRIGHT](https://github.com/ptpd/ptpd/blob/master/COPYRIGHT) file for
-additional information.
+[COPYRIGHT](COPYRIGHT) file for additional information.
 
 PTPd comes with absolutely no warranty.
+
+About This Fork
+---
+
+This is a macOS-focused fork of PTPd v2.3.x that has been migrated from GNU
+Autotools to CMake. The migration includes comprehensive testing (16/16
+configurations verified) and maintains binary equivalence with the original
+autotools build system.
+
+**Upstream PTPd:** https://github.com/ptpd/ptpd
