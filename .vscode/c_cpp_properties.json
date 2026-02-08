@@ -1,13 +1,13 @@
 {
     "configurations": [
         {
-            "name": "macOS-Autoconf-Debug",
+            "name": "macOS-CMake-Debug",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/src",
                 "${workspaceFolder}/src/dep",
                 "${workspaceFolder}/src/def",
-                "${workspaceFolder}/build/debug",
+                "${workspaceFolder}/build-cmake/debug",
                 "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
                 "/usr/include",
                 "/usr/local/include",
@@ -37,7 +37,7 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
             },
-            "compileCommands": "${workspaceFolder}/build/debug/compile_commands.json"
+            "compileCommands": "${workspaceFolder}/build-cmake/debug/compile_commands.json"
         }
     ],
     "version": 4

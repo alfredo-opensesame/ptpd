@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug PTPd (Autoconf Debug)",
+            "name": "Debug PTPd",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/src/ptpd2",
+            "program": "${workspaceFolder}/build-cmake/debug/src/ptpd2",
             "args": [
                 "-f",
                 "ptpd.conf",
@@ -16,35 +16,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Run PTPd (Autoconf Release)",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/release/src/ptpd2",
-            "args": [
-                "-f",
-                "ptpd.conf",
-                "-m"
-            ],
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build Release",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug PTPd (CMake Debug)",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build-cmake/debug/src/ptpd2",
-            "args": [
-                "-f",
-                "ptpd.conf",
-                "-m"
-            ],
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Build Debug",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run PTPd (CMake Release)",
+            "name": "Run PTPd (Release)",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build-cmake/release/src/ptpd2",
@@ -54,7 +26,7 @@
                 "-m"
             ],
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake Build Release",
+            "preLaunchTask": "Build Release",
             "console": "integratedTerminal"
         }
     ]

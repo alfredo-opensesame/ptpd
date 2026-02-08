@@ -46,7 +46,6 @@
         "**/build/**": true,
         "**/build-*/**": true,
         "**/.git/**": true,
-        "**/autom4te.cache/**": true,
         "**/ptp_logs/**": true
     },
 
@@ -55,7 +54,6 @@
         "**/build/**": true,
         "**/build-*/**": true,
         "**/.git/**": true,
-        "**/autom4te.cache/**": true,
         "**/ptp_logs/**": true
     },
 
