@@ -365,7 +365,11 @@ setup_configuration() {
             if [ -z "$resolved_conf" ] && [ -f "$PWD/$REQ_CONF" ]; then
                 resolved_conf="$PWD/$REQ_CONF"
             fi
-            # 3) script directory
+            # 3) project directory (parent of scripts/)
+            if [ -z "$resolved_conf" ] && [ -f "$PROJECT_DIR/$REQ_CONF" ]; then
+                resolved_conf="$PROJECT_DIR/$REQ_CONF"
+            fi
+            # 4) script directory
             if [ -z "$resolved_conf" ] && [ -f "$SCRIPT_DIR/$REQ_CONF" ]; then
                 resolved_conf="$SCRIPT_DIR/$REQ_CONF"
             fi
@@ -376,6 +380,7 @@ setup_configuration() {
         print_error "Configuration file not found (searched):"
         print_error "  - $REQ_CONF"
         print_error "  - $PWD/$REQ_CONF"
+        print_error "  - $PROJECT_DIR/$REQ_CONF"
         print_error "  - $SCRIPT_DIR/$REQ_CONF"
         exit 1
     fi
