@@ -8,7 +8,7 @@
             "program": "${workspaceFolder}/build-cmake/debug/src/ptpd2",
             "args": [
                 "-f",
-                "ptpd.conf",
+                "resources/ptpd-daemon.conf",
                 "-m"
             ],
             "cwd": "${workspaceFolder}",
@@ -22,7 +22,7 @@
             "program": "${workspaceFolder}/build-cmake/release/src/ptpd2",
             "args": [
                 "-f",
-                "ptpd.conf",
+                "resources/ptpd-daemon.conf",
                 "-m"
             ],
             "cwd": "${workspaceFolder}",
