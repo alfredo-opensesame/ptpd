@@ -962,11 +962,12 @@ Actions Completed:
   [✓] Deleted m4/ directory
   [✓] Removed autotools build scripts (config-debug.sh, config-release.sh)
   [✓] Removed autotools-only macos/ptpd-build-macos.sh
-  [✓] Updated macos/clean-ptpd.sh for CMake-only
+  [✓] Updated clean-ptpd.sh for CMake-only
   [✓] Updated .vscode/tasks.json to CMake-only
   [✓] Updated all documentation (MyREADME.txt, README.md, etc.)
   [✓] Cleaned .gitignore of autotools entries
   [✓] Commit: "Phase 12: Remove autotools, CMake is sole build system"
+  [✓] Removed macos/ directory, consolidated into scripts/ and test/
 
 Option B: Keep Both (if both have value)
   [REJECTED] Would require ongoing maintenance burden

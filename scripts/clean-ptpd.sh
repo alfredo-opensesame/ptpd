@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# macos/clean-ptpd.sh
-# Clean PTPd CMake build artifacts. Call from ptpd/macos or anywhere.
+# scripts/clean-ptpd.sh
+# Clean PTPd CMake build artifacts.
 #   Default: remove CMake build directories and object/temp files.
 #   -L : also remove ./ptp_test and ./ptp_logs
 #   -n : dry run (show what would be removed)
@@ -37,7 +37,7 @@ rmx() { if [[ $DRY -eq 1 ]]; then echo "  (dry) rm -rf $*"; else rm -rf "$@"; fi
 runmake() { if [[ $DRY -eq 1 ]]; then echo "  (dry) make -C $1 $2"; else make -C "$1" "$2" -k || true; fi; }
 
 # 1) CMake build directories
-for build_dir in build-cmake macos/build-cmake build/ninja-debug-macos build/ninja-release-macos build/ninja-gtest-macos; do
+for build_dir in build-cmake build/ninja-debug-macos build/ninja-release-macos build/ninja-gtest-macos; do
   if [[ -d "$build_dir" ]]; then
     echo "▶ Cleaning ./$build_dir..."
     [[ -f "$build_dir/Makefile" ]] && runmake "$build_dir" clean

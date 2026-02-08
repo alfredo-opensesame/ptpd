@@ -24,7 +24,6 @@ Documentation:
 Development Tools (Custom Additions):
   scripts/          - Build automation, testing, and analysis tools
   resources/        - Configuration templates and resources
-  macos/            - Standalone macOS toolkit (legacy/alternative)
 
 Build Outputs:
   build-cmake/debug/      - Debug build artifacts
@@ -56,7 +55,7 @@ Uses scripts/ + VS Code tasks + launch configurations
 
 4. Clean:
    - Run Task: "Clean"
-   - Or: ./macos/clean-ptpd.sh
+   - Or: ./scripts/clean-ptpd.sh
 
 
 Option B: Manual CMake Build (For Newcomers or CI)
@@ -111,7 +110,7 @@ BUILD ARTIFACTS & CLEANING
 ---------------------------
 
 Clean build artifacts:
-  ./macos/clean-ptpd.sh
+  ./scripts/clean-ptpd.sh
 
 This removes:
   - build-cmake/ directories
@@ -133,13 +132,14 @@ Root:
 resources/:
   ptpd-daemon.conf              - Production-style slave config
 
-macos/conf-files/:
-  ptpd2-slave-sw-multicast.conf - SW clock multicast
-  ptpd2-slave-sw-unicast.conf   - SW clock unicast
-  ptpd2-slave-sw-mixed.conf     - SW clock mixed mode
+test/:
+  client-e2e-*.conf             - E2E test configurations
+  ptpd2-slave-sw-multicast.conf - SW clock multicast test config
+  ptpd2-slave-sw-unicast.conf   - SW clock unicast test config
+  ptpd2-slave-sw-mixed.conf     - SW clock mixed mode test config
 
 Use resources/ for configuration templates.
-Use macos/conf-files/ for testing with macos/ptpd-run-macos.sh
+Use test/ for test configurations.
 
 
 GIT TRACKED vs IGNORED
@@ -149,7 +149,7 @@ Tracked (source):
   - *.c, *.h (source code)
   - CMakeLists.txt (CMake build definition)
   - cmake/ (CMake modules)
-  - Custom scripts (scripts/, macos/)
+  - Custom scripts (scripts/)
   - Documentation (README.md, COPYRIGHT, etc.)
 
 Ignored (generated/logs):
@@ -297,10 +297,10 @@ TESTING
 -------
 
 To build with SW clock support:
-  ./configure --enable-sw-clock
-  make
+  cmake -B build -DENABLE_SW_CLOCK=ON
+  cmake --build build
 
-Test configurations available in macos/conf-files/ptpd2-slave-sw-*.conf
+Test configurations available in test/ptpd2-slave-sw-*.conf
 
 
 FOR MORE INFORMATION
@@ -309,4 +309,5 @@ FOR MORE INFORMATION
 Upstream PTPd: https://github.com/ptpd/ptpd
 Documentation: doc/ folder
 Man pages: src/ptpd2.8.in, src/ptpd2.conf.5.in
-macOS README: macos/README.md (Note: CMake sections are outdated)
+CMake Build Guide: README.cmake.md
+Configuration Reference: CONFIGURATION.md
