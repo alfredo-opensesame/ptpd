@@ -1,29 +1,24 @@
 #!/usr/bin/env bash
 # macos/clean-ptpd.sh
-# Clean PTPd build artifacts. Call from ptpd/macos or anywhere.
-#   Default: remove ./build and object/temp files.
-#   -a : also remove configure-generated files (distclean-ish)
-#        NOTE: Preserves source files (.ac, .am, .in templates) but removes generated files
+# Clean PTPd CMake build artifacts. Call from ptpd/macos or anywhere.
+#   Default: remove CMake build directories and object/temp files.
 #   -L : also remove ./ptp_test and ./ptp_logs
 #   -n : dry run (show what would be removed)
 
 set -euo pipefail
 
-ALL=0        # -a
 WIPE_LOGS=0  # -L
 DRY=0        # -n
 
 usage() {
-  echo "Usage: $0 [-a] [-L] [-n]"
-  echo "  -a : also remove configure outputs (Makefiles, config.h, etc.)"
+  echo "Usage: $0 [-L] [-n]"
   echo "  -L : also remove ./ptp_test and ./ptp_logs"
   echo "  -n : dry run (show actions only)"
   exit 1
 }
 
-while getopts ":aLn" opt; do
+while getopts ":Ln" opt; do
   case "$opt" in
-    a) ALL=1 ;;
     L) WIPE_LOGS=1 ;;
     n) DRY=1 ;;
     *) usage ;;
@@ -36,18 +31,48 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "▶ Repo root      : $ROOT_DIR"
-echo "▶ Mode           : clean$([[ $ALL -eq 1 ]] && echo ' +distclean')$([[ $WIPE_LOGS -eq 1 ]] && echo ' +logs')$([[ $DRY -eq 1 ]] && echo ' (dry)')"
+echo "▶ Mode           : clean$([[ $WIPE_LOGS -eq 1 ]] && echo ' +logs')$([[ $DRY -eq 1 ]] && echo ' (dry)')"
 
 rmx() { if [[ $DRY -eq 1 ]]; then echo "  (dry) rm -rf $*"; else rm -rf "$@"; fi; }
 runmake() { if [[ $DRY -eq 1 ]]; then echo "  (dry) make -C $1 $2"; else make -C "$1" "$2" -k || true; fi; }
 
-# 1) Out-of-tree build directories (autotools + CMake + VSCode Ninja)
-for build_dir in build macos/build build-cmake macos/build-cmake build/ninja-debug-macos build/ninja-release-macos build/ninja-gtest-macos; do
+# 1) CMake build directories
+for build_dir in build-cmake macos/build-cmake build/ninja-debug-macos build/ninja-release-macos build/ninja-gtest-macos; do
   if [[ -d "$build_dir" ]]; then
     echo "▶ Cleaning ./$build_dir..."
     [[ -f "$build_dir/Makefile" ]] && runmake "$build_dir" clean
     [[ -f "$build_dir/build.ninja" ]] && {
       if [[ $DRY -eq 1 ]]; then
+        echo "  (dry) ninja -C $build_dir clean"
+      else
+        (cd "$build_dir" && ninja clean) 2>/dev/null || true
+      fi
+    }
+    rmx "$build_dir"
+  fi
+done
+
+# 2) Compiled artifacts
+echo "▶ Removing .o / .lo / .la / .a / ptpd2 in src/…"
+find src -type f \( -name '*.o' -o -name '*.lo' -o -name '*.la' -o -name '*.a' -o -name 'ptpd2' \) -not -path './.git/*' -exec sh -c 'if [[ '$DRY' -eq 1 ]]; then echo "  (dry) rm {}"; else rm "{}"; fi' \; 2>/dev/null || true
+
+# 3) macOS junk
+if [[ $DRY -eq 1 ]]; then
+  find . -name '.DS_Store' -not -path './.git/*' -print | sed 's/^/  (dry) rm /'
+else
+  find . -name '.DS_Store' -not -path './.git/*' -delete 2>/dev/null || true
+fi
+
+# 4) Optional: test artifacts
+if [[ $WIPE_LOGS -eq 1 ]]; then
+  [[ -d ptp_test ]] && { echo "▶ Removing ./ptp_test…"; rmx ptp_test; }
+  [[ -d ptp_logs ]] && { echo "▶ Removing ./ptp_logs…"; rmx ptp_logs; }
+fi
+
+# 5) Symlink (if present)
+[[ -L compile_commands.json ]] && { echo "▶ Removing compile_commands.json symlink…"; rmx compile_commands.json; }
+
+echo "✅ Done."
         echo "  (dry) ninja -C $build_dir clean"
       else
         ninja -C "$build_dir" clean 2>/dev/null || true

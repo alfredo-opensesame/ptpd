@@ -4,12 +4,7 @@ PTPd Development Notes
 PROJECT OVERVIEW
 ----------------
 This is a fork of PTPd (Precision Time Protocol daemon) v2.3.x for macOS
-development. The project supports TWO build systems:
-  - GNU Autotools (autoconf/automake) - Traditional build system
-  - CMake 3.15+ - Modern alternative build system
-
-Both build systems are fully maintained in parallel and produce equivalent
-binaries. Use whichever fits your workflow better.
+development. The project uses CMake 3.15+ as its build system.
 
 
 DIRECTORY STRUCTURE
@@ -17,9 +12,6 @@ DIRECTORY STRUCTURE
 
 Source & Build System:
   src/              - PTPd source code
-  m4/               - Autoconf macros
-  configure.ac      - Autoconf input
-  Makefile.am       - Automake input
   CMakeLists.txt    - CMake build definition (root)
   cmake/            - CMake modules (platform detection, options)
 
@@ -34,23 +26,9 @@ Development Tools (Custom Additions):
   resources/        - Configuration templates and resources
   macos/            - Standalone macOS toolkit (legacy/alternative)
 
-Generated (by autotools):
-  configure         - Configuration script (from configure.ac)
-  Makefile.in       - Makefile template (from Makefile.am)
-  aclocal.m4        - Autoconf macros (from m4/)
-  config.h.in       - Config header template
-  build-aux/        - Autotools helper scripts
-  autom4te.cache/   - Autoconf cache
-
-Generated (by configure):
-  Makefile          - Actual makefiles
-  config.h          - Configuration header
-  config.status     - Configuration state
-  libtool           - Libtool script
-
 Build Outputs:
-  build/debug/      - Debug build artifacts
-  build/release/    - Release build artifacts
+  build-cmake/debug/      - Debug build artifacts
+  build-cmake/release/    - Release build artifacts
 
 
 DEVELOPMENT WORKFLOWS
@@ -63,12 +41,12 @@ Uses scripts/ + VS Code tasks + launch configurations
 1. Configure & Build:
    - Press Cmd+Shift+B (default build task)
    - Or: Terminal → Run Task → "Build Debug"
-   - This runs: scripts/config-debug.sh then make
+   - This runs: scripts/config-cmake-debug.sh then cmake --build
 
 2. Debug:
    - Press F5 or Run → Start Debugging
    - Uses configuration from .vscode/launch.json
-   - Binary: build/debug/src/ptpd2
+   - Binary: build-cmake/debug/src/ptpd2
    - Config: ptpd.conf (in root)
 
 3. Test:
@@ -77,84 +55,36 @@ Uses scripts/ + VS Code tasks + launch configurations
    - Logs saved to: logs/<timestamp>/
 
 4. Clean:
-   - Run Task: "Distclean"
-   - Or: ./macos/clean-ptpd.sh -a
+   - Run Task: "Clean"
+   - Or: ./macos/clean-ptpd.sh
 
 
-Option B: Standalone Scripts (For Newcomers or CI)
+Option B: Manual CMake Build (For Newcomers or CI)
 ---------------------------------------------------
-Uses macos/ scripts - self-contained, no VS Code needed
-
-1. Build:
-   ./macos/ptpd-build-macos.sh
-   - Checks dependencies
-   - Runs autoreconf
-   - Configures and builds
-   - Output: macos/build/src/ptpd2
-
-2. Test:
-   ./macos/ptpd-run-macos.sh -i <interface> -t <seconds>
-   - Simpler test runner
-   - Auto-detects binary
-   - Creates plots in ./ptp_logs/
-
-3. Clean:
-   ./macos/clean-ptpd.sh -a
-
-
-COMPARISON: scripts/ vs macos/
--------------------------------
-
-scripts/config-debug.sh:
-  - VS Code task integration
-  - Builds to: build/debug/
-  - Generates compile_commands.json (IntelliSense)
-  - Minimal: configure only
-
-macos/ptpd-build-macos.sh:
-  - Standalone script
-  - Builds to: macos/build/
-  - Full: deps + autoreconf + configure + compile
-  - No VS Code integration
-
-scripts/ptpd-run.sh (949 lines):
-  - Advanced testing framework
-  - Configuration validation
-  - Health checks
-  - Comprehensive logging
-
-macos/ptpd-run-macos.sh (329 lines):
-  - Simple test runner
-  - Quick plotting
-  - Auto-detection
-
-Both are valid! Use scripts/ for daily development in VS Code,
-use macos/ for quick standalone testing or onboarding new developers.
-
-
-Option C: CMake Build (Modern Alternative)
--------------------------------------------
-Uses CMake 3.15+ as alternative to autotools. See README.cmake.md for details.
+Direct CMake commands - works anywhere
 
 1. Configure & Build (Debug):
-   cmake -B build-cmake -DCMAKE_BUILD_TYPE=Debug
-   cmake --build build-cmake
-   - Binary: build-cmake/src/ptpd2
-   - Or use VS Code tasks: "CMake Configure Debug" + "CMake Build Debug"
+   ./scripts/config-cmake-debug.sh
+   # Or manually:
+   cmake -B build-cmake/debug -DCMAKE_BUILD_TYPE=Debug
+   cmake --build build-cmake/debug
+   - Binary: build-cmake/debug/src/ptpd2
 
 2. Configure & Build (Release):
-   cmake -B build-release -DCMAKE_BUILD_TYPE=Release
-   cmake --build build-release
-   - Binary: build-release/src/ptpd2
+   ./scripts/config-cmake-release.sh
+   # Or manually:
+   cmake -B build-cmake/release -DCMAKE_BUILD_TYPE=Release -DENABLE_RUNTIME_DEBUG=OFF
+   cmake --build build-cmake/release
+   - Binary: build-cmake/release/src/ptpd2
    - Optimized with -O2
 
 3. Configuration Options:
    cmake -B build -DENABLE_SNMP=ON -DENABLE_SLAVE_ONLY=ON -DDEBUG_LEVEL=all
-   - All autotools options have CMake equivalents
    - See README.cmake.md for complete option reference
+   - See CONFIGURATION.md for technical details on each option
 
 4. Install:
-   sudo cmake --install build-cmake --prefix /usr/local
+   sudo cmake --install build-cmake/debug --prefix /usr/local
    - Installs binary, man pages, and data files
 
 5. Multiple Configurations (CMake advantage):
@@ -173,38 +103,25 @@ Why CMake?
   + Multiple build configs simultaneously (debug + release + custom)
   + Cross-platform (Linux, macOS, Windows, FreeBSD)
   + Modern dependency management
-  + Faster configuration than autotools
-  = Binary equivalence verified (98-100% symbol match)
-
-Why Autotools?
-  + Traditional Unix/Linux build system
-  + Widely understood by sysadmins
-  + Proven stability (decades of use)
-  = Binary equivalence verified
-
-Both systems tested comprehensively. Choose based on preference!
+  + Faster configuration
+  = Binary equivalence verified (98-100% symbol match with original autotools builds)
 
 
 BUILD ARTIFACTS & CLEANING
 ---------------------------
 
-Clean build artifacts only (keeps configure scripts):
+Clean build artifacts:
   ./macos/clean-ptpd.sh
 
-Full distclean (removes all generated files):
-  ./macos/clean-ptpd.sh -a
-
 This removes:
-  - build/ directories
-  - Object files (*.o, *.lo, *.la)
-  - Binaries (src/ptpd2)
-  - Generated autotools files (configure, Makefile.in, config.h.in, etc.)
-  - build-aux/, autom4te.cache/
-  - Makefiles, config.h, config.status, libtool
+  - build-cmake/ directories
+  - Object files (*.o)
+  - Binaries (ptpd2)
+  - compile_commands.json symlink
 
-To rebuild after distclean:
-  autoreconf -i   # Regenerates configure scripts
-  ./configure     # Or use scripts/config-debug.sh
+To rebuild after cleaning:
+  ./scripts/config-cmake-debug.sh
+  # Or: cmake -B build-cmake/debug && cmake --build build-cmake/debug
 
 
 CONFIGURATION FILES
@@ -230,14 +147,14 @@ GIT TRACKED vs IGNORED
 
 Tracked (source):
   - *.c, *.h (source code)
-  - Makefile.am (automake input)
-  - configure.ac (autoconf input)
+  - CMakeLists.txt (CMake build definition)
+  - cmake/ (CMake modules)
   - Custom scripts (scripts/, macos/)
   - Documentation (README.md, COPYRIGHT, etc.)
 
 Ignored (generated/logs):
-  - Build artifacts (build/, *.o, ptpd2)
-  - Autotools generated (configure, Makefile.in, config.h.in, etc.)
+  - Build artifacts (build-cmake/, *.o, ptpd2)
+  - CMake generated files (CMakeCache.txt, cmake_install.cmake, etc.)
   - VS Code database (.vscode/browse.vc.db)
   - Test logs (logs/)
   - Local config (ptpd.conf)
@@ -248,24 +165,27 @@ See .gitignore for complete list.
 NOTES FOR CONTRIBUTORS
 ----------------------
 
-1. Both autotools and CMake build systems are supported and maintained.
+1. CMake 3.15+ is the build system for this project.
 
 2. See README.cmake.md for CMake build instructions.
 
-3. The scripts/ folder contains development tools consolidated from previous
+3. See CONFIGURATION.md for detailed technical reference on all 12 configuration options.
+
+4. The scripts/ folder contains development tools consolidated from previous
    @build-scripts/ and @test-scripts/ directories.
 
-4. VS Code configuration supports both autotools and CMake builds.
+5. VS Code configuration supports CMake builds with IntelliSense, debugging, and tasks.
 
-5. Test logs can be safely deleted - they're not tracked in git.
+6. Test logs can be safely deleted - they're not tracked in git.
 
 
 RECENT CHANGES
 --------------
 
-- Feb 2026: CMake build system added (parallel with autotools)
+- Feb 2026: Completed CMake migration, removed autotools
 - Feb 2026: Consolidated scripts into scripts/ directory
 - Feb 2026: Created resources/ for configuration templates
+- Feb 2026: Added comprehensive CONFIGURATION.md reference
 - Oct 2025: Added SW clock implementation
 - Oct 2025: VS Code integration enhanced
 
