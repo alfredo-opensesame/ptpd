@@ -59,17 +59,27 @@ endif()
 
 # ===================================================================
 # Option: Runtime Debug (--enable-runtime-debug)
-# Default: OFF
+# Default: ON for Debug builds, OFF for Release
 # Mutually exclusive with DEBUG_LEVEL
 # ===================================================================
-option(ENABLE_RUNTIME_DEBUG "Enable all runtime debug messages" OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(ENABLE_RUNTIME_DEBUG_DEFAULT ON)
+else()
+    set(ENABLE_RUNTIME_DEBUG_DEFAULT OFF)
+endif()
+option(ENABLE_RUNTIME_DEBUG "Enable all runtime debug messages" ${ENABLE_RUNTIME_DEBUG_DEFAULT})
 
 # ===================================================================
 # Option: Debug Level (--enable-debug-level=basic/medium/all)
-# Default: none
+# Default: all for Debug builds, none for Release
 # Mutually exclusive with ENABLE_RUNTIME_DEBUG
 # ===================================================================
-set(DEBUG_LEVEL "none" CACHE STRING "Debug message level: none, basic, medium, all")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEBUG_LEVEL_DEFAULT "all")
+else()
+    set(DEBUG_LEVEL_DEFAULT "none")
+endif()
+set(DEBUG_LEVEL "${DEBUG_LEVEL_DEFAULT}" CACHE STRING "Debug message level: none, basic, medium, all")
 set_property(CACHE DEBUG_LEVEL PROPERTY STRINGS none basic medium all)
 
 # Validate mutual exclusivity
