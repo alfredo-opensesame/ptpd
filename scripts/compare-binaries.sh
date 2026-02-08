@@ -40,7 +40,7 @@ CMAKE_SIZE=$(stat -f%z "$CMAKE_BIN" 2>/dev/null || stat -c%s "$CMAKE_BIN" 2>/dev
 if [ -n "$AUTO_SIZE" ] && [ -n "$CMAKE_SIZE" ]; then
     DIFF=$(echo "scale=2; ($CMAKE_SIZE - $AUTO_SIZE) / $AUTO_SIZE * 100" | bc)
     echo "  Size difference: ${DIFF}%"
-    
+
     # Check if within 5% tolerance
     ABS_DIFF=$(echo "$DIFF" | tr -d -)
     if (( $(echo "$ABS_DIFF < 5" | bc -l) )); then

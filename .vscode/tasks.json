@@ -4,7 +4,7 @@
         {
             "label": "Configure Debug",
             "type": "shell",
-            "command": "./@build-scripts/config-debug.sh",
+            "command": "./scripts/config-debug.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],
@@ -20,7 +20,7 @@
         {
             "label": "Configure Release",
             "type": "shell",
-            "command": "./@build-scripts/config-release.sh",
+            "command": "./scripts/config-release.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],
@@ -102,7 +102,7 @@
         {
             "label": "CMake Configure Debug",
             "type": "shell",
-            "command": "./@build-scripts/config-cmake-debug.sh",
+            "command": "./scripts/config-cmake-debug.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],
@@ -118,7 +118,7 @@
         {
             "label": "CMake Configure Release",
             "type": "shell",
-            "command": "./@build-scripts/config-cmake-release.sh",
+            "command": "./scripts/config-cmake-release.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],

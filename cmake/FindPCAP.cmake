@@ -19,7 +19,7 @@ find_program(PCAP_CONFIG_EXECUTABLE
 
 if(PCAP_CONFIG_EXECUTABLE)
     message(STATUS "Found pcap-config: ${PCAP_CONFIG_EXECUTABLE}")
-    
+
     # Get libraries from pcap-config --libs
     execute_process(
         COMMAND ${PCAP_CONFIG_EXECUTABLE} --libs
@@ -27,7 +27,7 @@ if(PCAP_CONFIG_EXECUTABLE)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         RESULT_VARIABLE PCAP_CONFIG_LIBS_RESULT
     )
-    
+
     # Get compiler flags from pcap-config --cflags
     execute_process(
         COMMAND ${PCAP_CONFIG_EXECUTABLE} --cflags
@@ -35,20 +35,20 @@ if(PCAP_CONFIG_EXECUTABLE)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         RESULT_VARIABLE PCAP_CONFIG_CFLAGS_RESULT
     )
-    
+
     if(PCAP_CONFIG_LIBS_RESULT EQUAL 0 AND PCAP_CONFIG_CFLAGS_RESULT EQUAL 0)
         # Parse libraries (remove -l prefix and -L paths)
         string(REGEX REPLACE "-l([^ ]+)" "\\1" PCAP_LIBRARIES "${PCAP_LIBS_RAW}")
         string(REGEX REPLACE "-L([^ ]+)" "" PCAP_LIBRARIES "${PCAP_LIBRARIES}")
         string(STRIP "${PCAP_LIBRARIES}" PCAP_LIBRARIES)
-        
+
         # Separate CFLAGS into CPPFLAGS (preprocessor) and CFLAGS (compiler)
         # CPPFLAGS: -D, -I, -F, -U
         # CFLAGS: everything else
         set(PCAP_DEFINITIONS "")
         set(PCAP_INCLUDE_DIRS "")
         set(PCAP_CFLAGS "")
-        
+
         string(REPLACE " " ";" CFLAGS_LIST "${PCAP_CFLAGS_RAW}")
         foreach(flag ${CFLAGS_LIST})
             if(flag MATCHES "^-D" OR flag MATCHES "^-U")
@@ -62,7 +62,7 @@ if(PCAP_CONFIG_EXECUTABLE)
                 list(APPEND PCAP_CFLAGS ${flag})
             endif()
         endforeach()
-        
+
         # Convert library names to full paths if possible
         set(PCAP_LIBRARIES_LIST "")
         foreach(lib ${PCAP_LIBRARIES})
@@ -74,7 +74,7 @@ if(PCAP_CONFIG_EXECUTABLE)
             endif()
         endforeach()
         set(PCAP_LIBRARIES ${PCAP_LIBRARIES_LIST})
-        
+
         set(PCAP_CONFIG_METHOD "pcap-config")
     else()
         message(WARNING "pcap-config found but failed to execute")
@@ -85,19 +85,19 @@ endif()
 # Fallback: try to find libpcap directly if pcap-config not found or failed
 if(NOT PCAP_CONFIG_EXECUTABLE)
     message(STATUS "pcap-config not found, trying direct library search")
-    
+
     find_library(PCAP_LIBRARY
         NAMES pcap
         PATHS /usr/lib /usr/local/lib /opt/local/lib
         DOC "PCAP library"
     )
-    
+
     find_path(PCAP_INCLUDE_DIR
         NAMES pcap/pcap.h pcap.h
         PATHS /usr/include /usr/local/include /opt/local/include
         DOC "PCAP include directory"
     )
-    
+
     if(PCAP_LIBRARY)
         set(PCAP_LIBRARIES ${PCAP_LIBRARY})
         set(PCAP_INCLUDE_DIRS ${PCAP_INCLUDE_DIR})

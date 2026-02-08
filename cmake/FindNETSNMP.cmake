@@ -19,7 +19,7 @@ find_program(NETSNMP_CONFIG_EXECUTABLE
 
 if(NETSNMP_CONFIG_EXECUTABLE)
     message(STATUS "Found net-snmp-config: ${NETSNMP_CONFIG_EXECUTABLE}")
-    
+
     # Get agent libraries from net-snmp-config --agent-libs
     execute_process(
         COMMAND ${NETSNMP_CONFIG_EXECUTABLE} --agent-libs
@@ -27,7 +27,7 @@ if(NETSNMP_CONFIG_EXECUTABLE)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         RESULT_VARIABLE NETSNMP_CONFIG_LIBS_RESULT
     )
-    
+
     # Get base compiler flags from net-snmp-config --base-cflags
     execute_process(
         COMMAND ${NETSNMP_CONFIG_EXECUTABLE} --base-cflags
@@ -35,19 +35,19 @@ if(NETSNMP_CONFIG_EXECUTABLE)
         OUTPUT_STRIP_TRAILING_WHITESPACE
         RESULT_VARIABLE NETSNMP_CONFIG_CFLAGS_RESULT
     )
-    
+
     if(NETSNMP_CONFIG_LIBS_RESULT EQUAL 0 AND NETSNMP_CONFIG_CFLAGS_RESULT EQUAL 0)
         # The --agent-libs output includes full link line with -L and -l flags
         # We'll use it as-is for linking
         set(NETSNMP_LIBRARIES ${NETSNMP_LIBS_RAW})
-        
+
         # Separate CFLAGS into CPPFLAGS (preprocessor) and CFLAGS (compiler)
         # CPPFLAGS: -D, -I, -F, -U
         # CFLAGS: everything else
         set(NETSNMP_DEFINITIONS "")
         set(NETSNMP_INCLUDE_DIRS "")
         set(NETSNMP_CFLAGS "")
-        
+
         string(REPLACE " " ";" CFLAGS_LIST "${NETSNMP_CFLAGS_RAW}")
         foreach(flag ${CFLAGS_LIST})
             if(flag MATCHES "^-D" OR flag MATCHES "^-U")
@@ -61,7 +61,7 @@ if(NETSNMP_CONFIG_EXECUTABLE)
                 list(APPEND NETSNMP_CFLAGS ${flag})
             endif()
         endforeach()
-        
+
         set(NETSNMP_CONFIG_METHOD "net-snmp-config")
     else()
         message(WARNING "net-snmp-config found but failed to execute")

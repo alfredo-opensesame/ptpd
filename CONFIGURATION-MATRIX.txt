@@ -22,7 +22,7 @@ Feature Flags (--enable/--disable):
    Default: enabled (if pcap-config found)
    Effect: Disable PCAP packet capture support
    Define: PTPD_PCAP
-   
+
 3. --disable-snmp
    Default: enabled (if net-snmp-config found)
    Effect: Disable SNMP monitoring support
@@ -82,7 +82,7 @@ Package Options (--with/--without):
 12. --with-pcap-config=<path>
     Default: search PATH
     Effect: Specify pcap-config location
-    
+
 13. --with-net-snmp-config=<path>
     Default: search PATH
     Effect: Specify net-snmp-config location
@@ -218,25 +218,25 @@ For each of the 16 configurations above:
    ./configure [options...]
    make clean && make
    cp src/ptpd2 /tmp/ptpd2-auto-config-<N>
-   
+
 2. Build with CMake:
    cmake -B build-test-<N> [options...]
    cmake --build build-test-<N>
    cp build-test-<N>/src/ptpd2 /tmp/ptpd2-cmake-config-<N>
-   
+
 3. Compare binaries:
    ./scripts/compare-binaries.sh \
      /tmp/ptpd2-auto-config-<N> \
      /tmp/ptpd2-cmake-config-<N> \
      > results/comparison-config-<N>.txt
-     
+
 4. Verify:
    - File size within 5% tolerance
    - Symbol count within 3%
    - Symbols functionally equivalent
    - Both binaries run successfully
    - --help and --version output match
-   
+
 5. Document results in results/test-matrix-results.txt
 
 

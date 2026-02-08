@@ -173,7 +173,7 @@ findUnicastGrants
 	    tmpIdentity.portNumber |= index->portMask;
 	    found = lookupUnicastIndex(&tmpIdentity, transportAddress, index);
 	}
-	
+
 	if(found != NULL) {
 	    DBG("findUnicastGrants: cache hit\n");
 		/* do not overwrite address if zero given
@@ -380,7 +380,7 @@ handleSMRequestUnicastTransmission(MsgSignaling* incoming, MsgSignaling* outgoin
 
 
 	if (granted) {
-	   
+
 	    /* do not deny if requested longer interval than supported - just offer the longest */
 	    if(requestData->logInterMessagePeriod > myGrant->logMaxInterval) {
 		    grantData->logInterMessagePeriod = myGrant->logMaxInterval;
@@ -499,7 +499,7 @@ handleSMGrantUnicastTransmission(MsgSignaling* incoming, Integer32 sourceAddress
 
 		/* grant was denied so let's try a higher interval next time */
     		myGrant->logInterval++;
-		
+
 		/* if we're above max, cycle through back to minimum */
 		if(myGrant->logInterval > myGrant->logMaxInterval) {
 			myGrant->logInterval = myGrant->logMinInterval;
@@ -776,10 +776,10 @@ initUnicastGrantTable(UnicastGrantTable *grantTable, Enumeration8 delayMechanism
 
     ptpClock->grantIndex.portMask = rtOpts->unicastPortMask;
 
-    for(j=0; j<nodeCount; j++) {   
+    for(j=0; j<nodeCount; j++) {
 
 	nodeTable = &grantTable[j];
-	
+
 	memset(nodeTable, 0, sizeof(UnicastGrantTable));
 
 	if(destinations != NULL && (destinations[j].transportAddress != 0)) {
@@ -821,7 +821,7 @@ initUnicastGrantTable(UnicastGrantTable *grantTable, Enumeration8 delayMechanism
 		    grantData->logMaxInterval = rtOpts->logMaxAnnounceInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->requestable = TRUE;
-		    break;		   
+		    break;
 
 		case SYNC:
 
@@ -829,7 +829,7 @@ initUnicastGrantTable(UnicastGrantTable *grantTable, Enumeration8 delayMechanism
 		    grantData->logMaxInterval = rtOpts->logMaxSyncInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->requestable = TRUE;
-		    break;		   
+		    break;
 
 		case DELAY_RESP:
 
@@ -838,7 +838,7 @@ initUnicastGrantTable(UnicastGrantTable *grantTable, Enumeration8 delayMechanism
 		    grantData->logMaxInterval = rtOpts->logMaxDelayReqInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->requestable = TRUE;
-		    break;		   
+		    break;
 
 		default:
 		    break;
@@ -864,9 +864,9 @@ updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount, const RunT
     UnicastGrantData *grantData;
     UnicastGrantTable *nodeTable;
 
-    for(j=0; j<nodeCount; j++) {   
+    for(j=0; j<nodeCount; j++) {
 	nodeTable = &grantTable[j];
-	
+
 	for(i=0; i < PTP_MAX_MESSAGE_INDEXED; i++) {
 
 	    grantData = &nodeTable->grantData[i];
@@ -887,12 +887,12 @@ updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount, const RunT
 
 		case ANNOUNCE:
 
-		   
+
 		    grantData->logMinInterval = rtOpts->logAnnounceInterval;
 		    grantData->logMaxInterval = rtOpts->logMaxAnnounceInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->timeLeft = 0;
-		    break;		   
+		    break;
 
 		case SYNC:
 
@@ -900,7 +900,7 @@ updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount, const RunT
 		    grantData->logMaxInterval = rtOpts->logMaxSyncInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->timeLeft = 0;
-		    break;		   
+		    break;
 
 		case DELAY_RESP:
 
@@ -908,7 +908,7 @@ updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount, const RunT
 		    grantData->logMaxInterval = rtOpts->logMaxDelayReqInterval;
 		    grantData->logInterval = grantData->logMinInterval;
 		    grantData->timeLeft = 0;
-		    break;		   
+		    break;
 
 		default:
 		    break;
@@ -1241,7 +1241,7 @@ refreshUnicastGrants(UnicastGrantTable *grantTable, int nodeCount, const RunTime
 		}
 
 		actionRequired = FALSE;
-	
+
 		if(grantData->granted) {
 		    /* re-request 5 seconds before expiry for continuous service.
 		     * masters set this to +10 sec so will keep +5 sec extra
@@ -1346,7 +1346,7 @@ refreshUnicastGrants(UnicastGrantTable *grantTable, int nodeCount, const RunTime
 			grantData=&nodeTable->grantData[SYNC_INDEXED];
 			requestUnicastTransmission(grantData,
 			    rtOpts->unicastGrantDuration, rtOpts, ptpClock);
-		
+
 		}
 
 		if (nodeTable->grantData[SYNC_INDEXED].granted) {
@@ -1370,7 +1370,7 @@ refreshUnicastGrants(UnicastGrantTable *grantTable, int nodeCount, const RunTime
 		    }
 
 		}
-	
+
 	}
 
 }

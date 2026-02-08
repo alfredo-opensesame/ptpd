@@ -123,14 +123,14 @@ install(FILES ${PROJECT_BINARY_DIR}/ptpd2.conf.5
         DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
 
 # Install configuration files to ${datadir}/ptpd
-install(FILES 
+install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.minimal
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.default-full
     ${CMAKE_CURRENT_SOURCE_DIR}/src/templates.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
 
 # Install data files to ${datadir}/ptpd
-install(FILES 
+install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/leap-seconds.list
     ${CMAKE_CURRENT_SOURCE_DIR}/doc/PTPBASE-MIB.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
@@ -150,4 +150,3 @@ message(STATUS "  RT Library:        ${RT_LIBRARY}")
 endif()
 message(STATUS "====================================")
 message(STATUS "")
-

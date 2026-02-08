@@ -167,7 +167,7 @@ endif()
 if(HAVE_SYS_TIMEX_H)
     check_struct_has_member("struct timex" tick "sys/timex.h" HAVE_STRUCT_TIMEX_TICK LANGUAGE C)
     check_struct_has_member("struct timex" tai "sys/timex.h" HAVE_STRUCT_TIMEX_TAI LANGUAGE C)
-    
+
     check_c_source_compiles("
         #include <sys/time.h>
         #include <sys/timex.h>

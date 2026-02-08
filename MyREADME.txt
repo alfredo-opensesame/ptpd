@@ -30,9 +30,8 @@ Documentation:
   PLAN.txt          - CMake migration plan and status
 
 Development Tools (Custom Additions):
-  @build-scripts/   - VS Code integrated build automation
-  @conf-files/      - Configuration templates for testing
-  @test-scripts/    - Advanced testing and analysis tools
+  scripts/          - Build automation, testing, and analysis tools
+  resources/        - Configuration templates and resources
   macos/            - Standalone macOS toolkit (legacy/alternative)
 
 Generated (by autotools):
@@ -59,12 +58,12 @@ DEVELOPMENT WORKFLOWS
 
 Option A: VS Code Integrated (Recommended for Active Development)
 ------------------------------------------------------------------
-Uses @build-scripts/ + VS Code tasks + launch configurations
+Uses scripts/ + VS Code tasks + launch configurations
 
 1. Configure & Build:
    - Press Cmd+Shift+B (default build task)
    - Or: Terminal → Run Task → "Build Debug"
-   - This runs: @build-scripts/config-debug.sh then make
+   - This runs: scripts/config-debug.sh then make
 
 2. Debug:
    - Press F5 or Run → Start Debugging
@@ -73,9 +72,9 @@ Uses @build-scripts/ + VS Code tasks + launch configurations
    - Config: ptpd.conf (in root)
 
 3. Test:
-   - Run: ./@test-scripts/ptpd-run.sh -i <interface>
+   - Run: ./scripts/ptpd-run.sh -i <interface>
    - Advanced features: validation, pcap capture, analysis
-   - Logs saved to: @test-scripts/ptpd_logs/<timestamp>/
+   - Logs saved to: logs/<timestamp>/
 
 4. Clean:
    - Run Task: "Distclean"
@@ -103,10 +102,10 @@ Uses macos/ scripts - self-contained, no VS Code needed
    ./macos/clean-ptpd.sh -a
 
 
-COMPARISON: @build-scripts vs macos/
--------------------------------------
+COMPARISON: scripts/ vs macos/
+-------------------------------
 
-@build-scripts/config-debug.sh:
+scripts/config-debug.sh:
   - VS Code task integration
   - Builds to: build/debug/
   - Generates compile_commands.json (IntelliSense)
@@ -118,7 +117,7 @@ macos/ptpd-build-macos.sh:
   - Full: deps + autoreconf + configure + compile
   - No VS Code integration
 
-@test-scripts/ptpd-run.sh (949 lines):
+scripts/ptpd-run.sh (949 lines):
   - Advanced testing framework
   - Configuration validation
   - Health checks
@@ -129,7 +128,7 @@ macos/ptpd-run-macos.sh (329 lines):
   - Quick plotting
   - Auto-detection
 
-Both are valid! Use @build-scripts for daily development in VS Code,
+Both are valid! Use scripts/ for daily development in VS Code,
 use macos/ for quick standalone testing or onboarding new developers.
 
 
@@ -205,7 +204,7 @@ This removes:
 
 To rebuild after distclean:
   autoreconf -i   # Regenerates configure scripts
-  ./configure     # Or use @build-scripts/config-debug.sh
+  ./configure     # Or use scripts/config-debug.sh
 
 
 CONFIGURATION FILES
@@ -214,7 +213,7 @@ CONFIGURATION FILES
 Root:
   ptpd.conf                     - Local dev config (not in git)
 
-@conf-files/:
+resources/:
   ptpd-daemon.conf              - Production-style slave config
 
 macos/conf-files/:
@@ -222,7 +221,7 @@ macos/conf-files/:
   ptpd2-slave-sw-unicast.conf   - SW clock unicast
   ptpd2-slave-sw-mixed.conf     - SW clock mixed mode
 
-Use @conf-files/ for testing with @test-scripts/
+Use resources/ for configuration templates.
 Use macos/conf-files/ for testing with macos/ptpd-run-macos.sh
 
 
@@ -233,14 +232,14 @@ Tracked (source):
   - *.c, *.h (source code)
   - Makefile.am (automake input)
   - configure.ac (autoconf input)
-  - Custom scripts (@build-scripts/, @test-scripts/, macos/)
+  - Custom scripts (scripts/, macos/)
   - Documentation (README.md, COPYRIGHT, etc.)
 
 Ignored (generated/logs):
   - Build artifacts (build/, *.o, ptpd2)
   - Autotools generated (configure, Makefile.in, config.h.in, etc.)
   - VS Code database (.vscode/browse.vc.db)
-  - Test logs (@test-scripts/ptpd_logs/)
+  - Test logs (logs/)
   - Local config (ptpd.conf)
 
 See .gitignore for complete list.
@@ -249,13 +248,14 @@ See .gitignore for complete list.
 NOTES FOR CONTRIBUTORS
 ----------------------
 
-1. This is autoconf-only. Do not add CMake files.
+1. Both autotools and CMake build systems are supported and maintained.
 
-2. Any macos/README.md references to CMake are outdated and should be ignored.
+2. See README.cmake.md for CMake build instructions.
 
-3. The @* folders are custom development tools, not part of upstream ptpd.
+3. The scripts/ folder contains development tools consolidated from previous
+   @build-scripts/ and @test-scripts/ directories.
 
-4. VS Code configuration in .vscode/ expects autoconf build structure.
+4. VS Code configuration supports both autotools and CMake builds.
 
 5. Test logs can be safely deleted - they're not tracked in git.
 
@@ -263,11 +263,11 @@ NOTES FOR CONTRIBUTORS
 RECENT CHANGES
 --------------
 
-- Oct 2025: Reverted from CMake to autoconf (too risky to port)
+- Feb 2026: CMake build system added (parallel with autotools)
+- Feb 2026: Consolidated scripts into scripts/ directory
+- Feb 2026: Created resources/ for configuration templates
 - Oct 2025: Added SW clock implementation
-- Oct 2025: Created @build-scripts/ for VS Code integration
-- Oct 2025: Created @test-scripts/ for advanced testing
-- Feb 2026: Updated clean-ptpd.sh to remove .in template files
+- Oct 2025: VS Code integration enhanced
 
 
 SOURCE CODE CHANGES (Since Fork)
