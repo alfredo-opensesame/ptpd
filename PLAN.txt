@@ -967,7 +967,7 @@ Actions Completed:
   [✓] Updated all documentation (MyREADME.txt, README.md, etc.)
   [✓] Cleaned .gitignore of autotools entries
   [✓] Commit: "Phase 12: Remove autotools, CMake is sole build system"
-  [✓] Removed macos/ directory, consolidated into scripts/ and test/
+  [✓] Removed macos/ directory, consolidated into scripts/ and resources/
 
 Option B: Keep Both (if both have value)
   [REJECTED] Would require ongoing maintenance burden

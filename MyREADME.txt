@@ -131,15 +131,13 @@ Root:
 
 resources/:
   ptpd-daemon.conf              - Production-style slave config
+  test/
+    client-e2e-*.conf             - E2E test configurations
+    ptpd2-slave-sw-multicast.conf - SW clock multicast test config
+    ptpd2-slave-sw-unicast.conf   - SW clock unicast test config
+    ptpd2-slave-sw-mixed.conf     - SW clock mixed mode test config
 
-test/:
-  client-e2e-*.conf             - E2E test configurations
-  ptpd2-slave-sw-multicast.conf - SW clock multicast test config
-  ptpd2-slave-sw-unicast.conf   - SW clock unicast test config
-  ptpd2-slave-sw-mixed.conf     - SW clock mixed mode test config
-
-Use resources/ for configuration templates.
-Use test/ for test configurations.
+All configuration files (production and test) are now under resources/.
 
 
 GIT TRACKED vs IGNORED
@@ -300,7 +298,7 @@ To build with SW clock support:
   cmake -B build -DENABLE_SW_CLOCK=ON
   cmake --build build
 
-Test configurations available in test/ptpd2-slave-sw-*.conf
+Test configurations available in resources/test/ptpd2-slave-sw-*.conf
 
 
 FOR MORE INFORMATION
