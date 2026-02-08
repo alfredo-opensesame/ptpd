@@ -8,9 +8,8 @@
                 "long": "Debug build with full symbols and runtime checks",
                 "buildType": "Debug",
                 "settings": {
-                    "PTPD_DEBUG_LEVEL": "all",
-                    "PTPD_RUNTIME_DEBUG": "ON",
-                    "CMAKE_BUILD_TYPE": "Debug"
+                    "DEBUG_LEVEL": "all",
+                    "ENABLE_RUNTIME_DEBUG": "ON"
                 }
             },
             "release": {
@@ -18,9 +17,8 @@
                 "long": "Optimized release build",
                 "buildType": "Release",
                 "settings": {
-                    "PTPD_DEBUG_LEVEL": "none",
-                    "PTPD_RUNTIME_DEBUG": "OFF",
-                    "CMAKE_BUILD_TYPE": "Release"
+                    "DEBUG_LEVEL": "none",
+                    "ENABLE_RUNTIME_DEBUG": "OFF"
                 }
             },
             "relwithdebinfo": {
@@ -28,20 +26,8 @@
                 "long": "Release build with debug information",
                 "buildType": "RelWithDebInfo",
                 "settings": {
-                    "PTPD_DEBUG_LEVEL": "basic",
-                    "PTPD_RUNTIME_DEBUG": "OFF",
-                    "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-                }
-            },
-            "gtest": {
-                "short": "GTest",
-                "long": "Debug build optimized for testing with Google Test",
-                "buildType": "Debug",
-                "settings": {
-                    "PTPD_DEBUG_LEVEL": "medium",
-                    "PTPD_RUNTIME_DEBUG": "OFF",
-                    "PTPD_ENABLE_TESTING": "ON",
-                    "CMAKE_BUILD_TYPE": "Debug"
+                    "DEBUG_LEVEL": "basic",
+                    "ENABLE_RUNTIME_DEBUG": "OFF"
                 }
             }
         }

@@ -37,7 +37,7 @@ rmx() { if [[ $DRY -eq 1 ]]; then echo "  (dry) rm -rf $*"; else rm -rf "$@"; fi
 runmake() { if [[ $DRY -eq 1 ]]; then echo "  (dry) make -C $1 $2"; else make -C "$1" "$2" -k || true; fi; }
 
 # 1) CMake build directories
-for build_dir in build-cmake build/ninja-debug-macos build/ninja-release-macos build/ninja-gtest-macos; do
+for build_dir in build-cmake build/ninja-debug-macos build/ninja-release-macos; do
   if [[ -d "$build_dir" ]]; then
     echo "▶ Cleaning ./$build_dir..."
     [[ -f "$build_dir/Makefile" ]] && runmake "$build_dir" clean
