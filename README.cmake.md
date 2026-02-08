@@ -450,6 +450,7 @@ The script compares:
 
 ## Getting Help
 
+- Check [CONFIGURATION.md](CONFIGURATION.md) for complete technical reference on all configuration options
 - Check [PLAN.txt](PLAN.txt) for detailed migration notes
 - Check [cmake/README.md](cmake/README.md) for CMake module documentation
 - See [MyREADME.txt](MyREADME.txt) for general build workflows

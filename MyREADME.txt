@@ -23,6 +23,12 @@ Source & Build System:
   CMakeLists.txt    - CMake build definition (root)
   cmake/            - CMake modules (platform detection, options)
 
+Documentation:
+  README.cmake.md   - CMake build instructions and examples
+  CONFIGURATION.md  - Complete technical reference for all config options
+  MyREADME.txt      - This file (workflow guide)
+  PLAN.txt          - CMake migration plan and status
+
 Development Tools (Custom Additions):
   @build-scripts/   - VS Code integrated build automation
   @conf-files/      - Configuration templates for testing
