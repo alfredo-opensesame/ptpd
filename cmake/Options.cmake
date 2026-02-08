@@ -123,9 +123,9 @@ endif()
 
 # ===================================================================
 # Option: Slave Only Mode (--enable-slave-only)
-# Default: OFF
+# Default: ON
 # ===================================================================
-option(ENABLE_SLAVE_ONLY "Enable slave-only mode" OFF)
+option(ENABLE_SLAVE_ONLY "Enable slave-only mode" ON)
 
 # ===================================================================
 # Option: Maximum Unicast Destinations (--with-max-unicast-destinations)
