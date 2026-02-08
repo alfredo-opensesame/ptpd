@@ -14,7 +14,6 @@ EXTRA_DIST =			\
 	doc			\
 	tools			\
 	test			\
-	packagebuild		\
 	src/ptpd2.conf.default-full\
 	src/ptpd2.conf.minimal\
 	src/ptpd2.8\
@@ -26,9 +25,6 @@ EXTRA_DIST =			\
 	src/templates.conf\
 	\
 	$(NULL)
-
-dist-hook:
-	rm -f $(distdir)/packagebuild/rpm-rh/*.rpm
 
 CLEANFILES =
 #DISTCLEANFILES = .gcc-warning

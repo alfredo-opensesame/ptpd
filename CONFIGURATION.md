@@ -14,7 +14,7 @@ PTPd supports 12 major configuration options that control features, debug output
 
 **Default**: Auto-detected (ON if platform supports POSIX timers, OFF otherwise)
 
-**Autotools**: `--enable-posix-timers` / `--disable-posix-timers`  
+**Autotools**: `--enable-posix-timers` / `--disable-posix-timers`
 **CMake**: `-DENABLE_POSIX_TIMERS=ON` / `-DENABLE_POSIX_TIMERS=OFF`
 
 #### Description
@@ -60,7 +60,7 @@ If all three are present, `POSIX_TIMERS_SUPPORTED` is set to TRUE.
 
 **Default**: Auto-detected (ON if pcap-config found, OFF otherwise)
 
-**Autotools**: `--enable-pcap` / `--disable-pcap`  
+**Autotools**: `--enable-pcap` / `--disable-pcap`
 **CMake**: `-DENABLE_PCAP=ON` / `-DENABLE_PCAP=OFF`
 
 #### Description
@@ -81,7 +81,7 @@ Enables packet capture library (libpcap) for low-level network access and timest
 **When OFF**:
 - **Define**: `PTPD_PCAP` is NOT set
 - **Fallback**: Uses standard BSD sockets (AF_INET/SOCK_DGRAM)
-- **Limitations**: 
+- **Limitations**:
   - No hardware timestamping
   - No raw Ethernet frame access
   - Higher latency
@@ -94,7 +94,7 @@ Files with `#ifdef PTPD_PCAP`:
 - Various protocol handlers
 
 #### When to Use
-- **Enable**: 
+- **Enable**:
   - Need hardware timestamping
   - Precision-critical applications
   - 802.3 Ethernet transport
@@ -115,7 +115,7 @@ Files with `#ifdef PTPD_PCAP`:
 
 **Default**: OFF (must be explicitly enabled)
 
-**Autotools**: `--enable-snmp`  
+**Autotools**: `--enable-snmp`
 **CMake**: `-DENABLE_SNMP=ON`
 
 #### Description
@@ -182,7 +182,7 @@ When enabled, exposes:
 
 **Default**: ON
 
-**Autotools**: `--enable-statistics` / `--disable-statistics`  
+**Autotools**: `--enable-statistics` / `--disable-statistics`
 **CMake**: `-DENABLE_STATISTICS=ON` / `-DENABLE_STATISTICS=OFF`
 
 #### Description
@@ -245,7 +245,7 @@ When enabled:
 
 **Default**: none
 
-**Autotools**: `--enable-debug-level=basic|medium|all`  
+**Autotools**: `--enable-debug-level=basic|medium|all`
 **CMake**: `-DDEBUG_LEVEL=basic|medium|all`
 
 #### Description
@@ -315,7 +315,7 @@ Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 
 **Default**: OFF
 
-**Autotools**: `--enable-runtime-debug`  
+**Autotools**: `--enable-runtime-debug`
 **CMake**: `-DENABLE_RUNTIME_DEBUG=ON`
 
 #### Description
@@ -367,7 +367,7 @@ debug_level = 3    # Verbose (DBG + DBG2 + DBGV)
 
 **Default**: ON
 
-**Autotools**: `--disable-daemon`  
+**Autotools**: `--disable-daemon`
 **CMake**: `-DENABLE_DAEMON=OFF`
 
 #### Description
@@ -383,7 +383,7 @@ Controls whether PTPd can run as a Unix daemon (background process).
   - Can create PID file
   - Proper signal handling
   - Session leader creation
-  
+
 **When OFF**:
 - **Define**: `PTPD_NO_DAEMON` is set
 - **Behavior**: Always runs in foreground
@@ -426,7 +426,7 @@ ExecStart=/usr/sbin/ptpd2 -c /etc/ptpd2.conf
 
 **Default**: OFF
 
-**Autotools**: `--enable-slave-only`  
+**Autotools**: `--enable-slave-only`
 **CMake**: `-DENABLE_SLAVE_ONLY=ON`
 
 #### Description
@@ -482,7 +482,7 @@ When slave-only, these are disabled:
 
 **Default**: OFF
 
-**Autotools**: `--enable-sw-clock`  
+**Autotools**: `--enable-sw-clock`
 **CMake**: `-DENABLE_SW_CLOCK=ON`
 
 #### Description
@@ -539,7 +539,7 @@ Enables software clock simulation for testing without real hardware clock.
 
 **Default**: ON (Linux only), N/A (other platforms)
 
-**Autotools**: `--disable-sotimestamping`  
+**Autotools**: `--disable-sotimestamping`
 **CMake**: `-DENABLE_SO_TIMESTAMPING=OFF`
 
 #### Description
@@ -555,7 +555,7 @@ Enables SO_TIMESTAMPING socket option on Linux for hardware/kernel timestamping.
   - Kernel software timestamps
   - Multiple timestamp types
   - Sub-microsecond precision
-- **Requirements**: 
+- **Requirements**:
   - Linux kernel 2.6.30+
   - `linux/net_tstamp.h` header
   - NIC with timestamping support (for HW timestamps)
@@ -603,7 +603,7 @@ ethtool -T eth0
 
 **Default**: 128
 
-**Autotools**: `--with-max-unicast-destinations=N`  
+**Autotools**: `--with-max-unicast-destinations=N`
 **CMake**: `-DMAX_UNICAST_DESTINATIONS=N`
 
 **Valid Range**: 16 to 2048
@@ -621,7 +621,7 @@ Sets the maximum number of simultaneous unicast PTP clients (master → slave un
 #### Memory Calculations
 ```
 N=128  (default): ~25 KB
-N=512          : ~100 KB  
+N=512          : ~100 KB
 N=2048         : ~400 KB
 ```
 
@@ -647,7 +647,7 @@ N=2048         : ~400 KB
 #### Validation
 CMake validates range at configure time:
 ```cmake
-if(MAX_UNICAST_DESTINATIONS LESS 16 OR 
+if(MAX_UNICAST_DESTINATIONS LESS 16 OR
    MAX_UNICAST_DESTINATIONS GREATER 2048)
   message(FATAL_ERROR "Value must be between 16 and 2048")
 endif()
@@ -665,7 +665,7 @@ endif()
 
 **Default**: OFF
 
-**Autotools**: `--enable-experimental-options`  
+**Autotools**: `--enable-experimental-options`
 **CMake**: `-DENABLE_EXPERIMENTAL=ON`
 
 #### Description
@@ -766,7 +766,7 @@ Features: Slave-only, optimized, statistics for monitoring
 
 #### Enterprise with SNMP
 ```bash
-# CMake  
+# CMake
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_SNMP=ON \
   -DENABLE_STATISTICS=ON \
@@ -863,12 +863,12 @@ All configurations tested for binary equivalence between autotools and CMake bui
 ## See Also
 
 - [README.cmake.md](README.cmake.md) - CMake build instructions
-- [cmake/README.md](cmake/README.md) - CMake module documentation  
+- [cmake/README.md](cmake/README.md) - CMake module documentation
 - [CONFIGURATION-MATRIX.txt](CONFIGURATION-MATRIX.txt) - Test configuration matrix
 - [PLAN.txt](PLAN.txt) - Migration plan and verification results
 - Configuration file format: `man ptpd2.conf` or see `src/ptpd2.conf.default-full`
 
 ---
 
-**Last Updated**: February 8, 2026  
+**Last Updated**: February 8, 2026
 **Applies To**: PTPd 2.3.1, CMake 3.15+, Autotools
