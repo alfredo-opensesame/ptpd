@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug PTPd",
+            "name": "Run PTPd (Debug)",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build-cmake/debug/src/ptpd2",
