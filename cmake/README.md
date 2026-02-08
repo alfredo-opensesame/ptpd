@@ -372,7 +372,7 @@ When modifying CMake modules:
 - [CMake Documentation](https://cmake.org/documentation/)
 - [CMake Check Modules](https://cmake.org/cmake/help/latest/module/CheckIncludeFile.html)
 - [CMake Find Modules](https://cmake.org/cmake/help/latest/manual/cmake-developer.7.html#find-modules)
-- [Original autotools files](../configure.ac)
+- [BUILD.md](../BUILD.md) - Comprehensive build guide
 
 ---
 

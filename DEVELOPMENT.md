@@ -16,9 +16,9 @@ Source & Build System:
   cmake/            - CMake modules (platform detection, options)
 
 Documentation:
-  README.cmake.md   - CMake build instructions and examples
+  BUILD.md          - CMake build instructions and examples
   CONFIGURATION.md  - Complete technical reference for all config options
-  MyREADME.txt      - This file (workflow guide)
+  DEVELOPMENT.md    - This file (workflow guide)
   PLAN.txt          - CMake migration plan and status
 
 Development Tools (Custom Additions):
@@ -79,7 +79,7 @@ Direct CMake commands - works anywhere
 
 3. Configuration Options:
    cmake -B build -DENABLE_SNMP=ON -DENABLE_SLAVE_ONLY=ON -DDEBUG_LEVEL=all
-   - See README.cmake.md for complete option reference
+   - See BUILD.md for complete option reference
    - See CONFIGURATION.md for technical details on each option
 
 4. Install:
@@ -165,7 +165,7 @@ NOTES FOR CONTRIBUTORS
 
 1. CMake 3.15+ is the build system for this project.
 
-2. See README.cmake.md for CMake build instructions.
+2. See BUILD.md for CMake build instructions.
 
 3. See CONFIGURATION.md for detailed technical reference on all 12 configuration options.
 
@@ -307,5 +307,5 @@ FOR MORE INFORMATION
 Upstream PTPd: https://github.com/ptpd/ptpd
 Documentation: doc/ folder
 Man pages: src/ptpd2.8.in, src/ptpd2.conf.5.in
-CMake Build Guide: README.cmake.md
+CMake Build Guide: BUILD.md
 Configuration Reference: CONFIGURATION.md

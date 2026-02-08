@@ -1,6 +1,8 @@
 # PTPd Configuration Reference
 
-Complete technical reference for all PTPd configuration options in both autotools and CMake build systems.
+Complete technical reference for all PTPd configuration options.
+
+**See also**: [BUILD.md](BUILD.md) for build instructions and examples.
 
 ## Overview
 

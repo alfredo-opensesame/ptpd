@@ -453,7 +453,7 @@ The script compares:
 - Check [CONFIGURATION.md](CONFIGURATION.md) for complete technical reference on all configuration options
 - Check [PLAN.txt](PLAN.txt) for detailed migration notes
 - Check [cmake/README.md](cmake/README.md) for CMake module documentation
-- See [MyREADME.txt](MyREADME.txt) for general build workflows
+- See [DEVELOPMENT.md](DEVELOPMENT.md) for general build workflows
 - Report issues on the project issue tracker
 
 ## Migration from Autotools
@@ -486,6 +486,13 @@ If you're migrating from autotools builds:
    ```
 
 Both build systems will be maintained in parallel for the foreseeable future.
+
+## See Also
+
+- [README.md](README.md) - Project overview and quick start
+- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all 12 options
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Developer workflows and VS Code integration
+- [PLAN.txt](PLAN.txt) - CMake migration history
 
 ## Version
 
