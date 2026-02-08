@@ -16,7 +16,6 @@ PTPd supports 12 major configuration options that control features, debug output
 
 **Default**: Auto-detected (ON if platform supports POSIX timers, OFF otherwise)
 
-**Autotools**: `--enable-posix-timers` / `--disable-posix-timers`
 **CMake**: `-DENABLE_POSIX_TIMERS=ON` / `-DENABLE_POSIX_TIMERS=OFF`
 
 #### Description
@@ -62,7 +61,6 @@ If all three are present, `POSIX_TIMERS_SUPPORTED` is set to TRUE.
 
 **Default**: Auto-detected (ON if pcap-config found, OFF otherwise)
 
-**Autotools**: `--enable-pcap` / `--disable-pcap`
 **CMake**: `-DENABLE_PCAP=ON` / `-DENABLE_PCAP=OFF`
 
 #### Description
@@ -117,7 +115,6 @@ Files with `#ifdef PTPD_PCAP`:
 
 **Default**: OFF (must be explicitly enabled)
 
-**Autotools**: `--enable-snmp`
 **CMake**: `-DENABLE_SNMP=ON`
 
 #### Description
@@ -184,7 +181,6 @@ When enabled, exposes:
 
 **Default**: ON
 
-**Autotools**: `--enable-statistics` / `--disable-statistics`
 **CMake**: `-DENABLE_STATISTICS=ON` / `-DENABLE_STATISTICS=OFF`
 
 #### Description
@@ -245,17 +241,20 @@ When enabled:
 
 ### 5. DEBUG_LEVEL
 
-**Default**: none
+**Default**: Auto-detected (all for Debug builds, none for Release)
 
-**Autotools**: `--enable-debug-level=basic|medium|all`
-**CMake**: `-DDEBUG_LEVEL=basic|medium|all`
+**CMake**: `-DDEBUG_LEVEL=none|basic|medium|all`
 
 #### Description
 Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 
+**Build-Type Defaults**:
+- Debug builds (`CMAKE_BUILD_TYPE=Debug`): `all` (all debug compiled in)
+- Release builds (`CMAKE_BUILD_TYPE=Release`): `none` (no debug overhead)
+
 #### Technical Details
 
-**Level: none** (default):
+**Level: none**:
 - No debug defines set
 - Only ERROR and WARNING messages
 - Minimal output
@@ -315,13 +314,16 @@ Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 
 ### 6. ENABLE_RUNTIME_DEBUG
 
-**Default**: OFF
+**Default**: Auto-detected (OFF for Debug builds, ON for Release)
 
-**Autotools**: `--enable-runtime-debug`
-**CMake**: `-DENABLE_RUNTIME_DEBUG=ON`
+**CMake**: `-DENABLE_RUNTIME_DEBUG=ON` / `-DENABLE_RUNTIME_DEBUG=OFF`
 
 #### Description
 Enables runtime control of debug output levels. Mutually exclusive with DEBUG_LEVEL.
+
+**Build-Type Defaults**:
+- Debug builds (`CMAKE_BUILD_TYPE=Debug`): `OFF` (use compile-time DEBUG_LEVEL=all)
+- Release builds (`CMAKE_BUILD_TYPE=Release`): `ON` (enable runtime control)
 
 #### Technical Details
 
@@ -350,14 +352,13 @@ debug_level = 3    # Verbose (DBG + DBG2 + DBGV)
 
 #### When to Use
 - **Enable**:
-  - Development environments
-  - Test environments
-  - Flexible debugging needs
+  - Production/release builds (allows runtime troubleshooting)
   - Single binary for multiple scenarios
+  - Field debugging without recompilation
 - **Disable**:
-  - Production (fixed debug level)
-  - Minimal overhead
-  - Fixed configuration deployments
+  - Development builds (compile-time DEBUG_LEVEL=all preferred)
+  - Fixed debug level sufficient
+  - Minimal overhead needed
 
 #### Trade-offs
 - **Advantage**: Flexibility without recompiling
@@ -369,8 +370,7 @@ debug_level = 3    # Verbose (DBG + DBG2 + DBGV)
 
 **Default**: ON
 
-**Autotools**: `--disable-daemon`
-**CMake**: `-DENABLE_DAEMON=OFF`
+**CMake**: `-DENABLE_DAEMON=ON` / `-DENABLE_DAEMON=OFF`
 
 #### Description
 Controls whether PTPd can run as a Unix daemon (background process).
@@ -426,13 +426,15 @@ ExecStart=/usr/sbin/ptpd2 -c /etc/ptpd2.conf
 
 ### 8. ENABLE_SLAVE_ONLY
 
-**Default**: OFF
+**Default**: ON (slave-only mode by default)
 
-**Autotools**: `--enable-slave-only`
-**CMake**: `-DENABLE_SLAVE_ONLY=ON`
+**CMake**: `-DENABLE_SLAVE_ONLY=ON` / `-DENABLE_SLAVE_ONLY=OFF`
 
 #### Description
 Builds a slave-only version that can never become a PTP master.
+
+**Note**: As of this version, slave-only mode is the **default**. To enable master capability,
+explicitly set `-DENABLE_SLAVE_ONLY=OFF`.
 
 #### Technical Details
 
@@ -484,8 +486,7 @@ When slave-only, these are disabled:
 
 **Default**: OFF
 
-**Autotools**: `--enable-sw-clock`
-**CMake**: `-DENABLE_SW_CLOCK=ON`
+**CMake**: `-DENABLE_SW_CLOCK=ON` / `-DENABLE_SW_CLOCK=OFF`
 
 #### Description
 Enables software clock simulation for testing without real hardware clock.
@@ -541,8 +542,7 @@ Enables software clock simulation for testing without real hardware clock.
 
 **Default**: ON (Linux only), N/A (other platforms)
 
-**Autotools**: `--disable-sotimestamping`
-**CMake**: `-DENABLE_SO_TIMESTAMPING=OFF`
+**CMake**: `-DENABLE_SO_TIMESTAMPING=ON` / `-DENABLE_SO_TIMESTAMPING=OFF`
 
 #### Description
 Enables SO_TIMESTAMPING socket option on Linux for hardware/kernel timestamping.
@@ -605,7 +605,6 @@ ethtool -T eth0
 
 **Default**: 128
 
-**Autotools**: `--with-max-unicast-destinations=N`
 **CMake**: `-DMAX_UNICAST_DESTINATIONS=N`
 
 **Valid Range**: 16 to 2048
@@ -667,8 +666,7 @@ endif()
 
 **Default**: OFF
 
-**Autotools**: `--enable-experimental-options`
-**CMake**: `-DENABLE_EXPERIMENTAL=ON`
+**CMake**: `-DENABLE_EXPERIMENTAL=ON` / `-DENABLE_EXPERIMENTAL=OFF`
 
 #### Description
 Enables experimental and unstable features under development.
@@ -719,10 +717,6 @@ Enables experimental and unstable features under development.
 
 #### Production Server (Standard)
 ```bash
-# Autotools
-./configure --enable-statistics
-
-# CMake
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_STATISTICS=ON
 ```
@@ -750,31 +744,34 @@ Features: Smallest binary, basic functionality only
 
 #### Development with Debug
 ```bash
-# CMake
 cmake -B build -DCMAKE_BUILD_TYPE=Debug \
-  -DENABLE_RUNTIME_DEBUG=ON \
   -DENABLE_STATISTICS=ON
 ```
-Features: Runtime debug control, full symbols, statistics
+Features: All debug messages compiled in (DEBUG_LEVEL=all by default), full symbols, statistics
 
 #### Dedicated Slave Device
 ```bash
-# CMake
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
-  -DENABLE_SLAVE_ONLY=ON \
   -DENABLE_STATISTICS=ON
 ```
-Features: Slave-only, optimized, statistics for monitoring
+Features: Slave-only (default), optimized, statistics for monitoring
 
-#### Enterprise with SNMP
+Note: ENABLE_SLAVE_ONLY is ON by default. To enable master capability:
 ```bash
-# CMake
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DENABLE_SLAVE_ONLY=OFF \
+  -DENABLE_STATISTICS=ON
+```
+
+#### Enterprise with SNMP and Master Capability
+```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_SNMP=ON \
+  -DENABLE_SLAVE_ONLY=OFF \
   -DENABLE_STATISTICS=ON \
   -DMAX_UNICAST_DESTINATIONS=512
 ```
-Features: SNMP monitoring, statistics, medium scale
+Features: SNMP monitoring, statistics, medium scale, master/slave modes
 
 ---
 
@@ -837,7 +834,7 @@ See [CONFIGURATION-MATRIX.txt](CONFIGURATION-MATRIX.txt) for the complete test m
 ```
 
 ### Verification
-All configurations tested for binary equivalence between autotools and CMake builds. See [PLAN.txt](PLAN.txt) Phase 9 for detailed test results.
+All configurations tested and validated with CMake build system. See [PLAN.txt](PLAN.txt) for migration testing details.
 
 ---
 
@@ -845,32 +842,32 @@ All configurations tested for binary equivalence between autotools and CMake bui
 
 ### Option Summary Table
 
-| Option | Default | Autotools | CMake | Define | Impact |
-|--------|---------|-----------|-------|--------|--------|
-| POSIX Timers | Auto | `--enable-posix-timers` | `-DENABLE_POSIX_TIMERS=ON` | `PTP_PTIMERS` | Timer precision |
-| PCAP | Auto | `--enable-pcap` | `-DENABLE_PCAP=ON` | `PTPD_PCAP` | HW timestamps |
-| SNMP | OFF | `--enable-snmp` | `-DENABLE_SNMP=ON` | `PTPD_SNMP` | +100KB, monitoring |
-| Statistics | ON | `--enable-statistics` | `-DENABLE_STATISTICS=ON` | `PTPD_STATISTICS` | Stats file |
-| Debug Level | none | `--enable-debug-level=X` | `-DDEBUG_LEVEL=X` | `PTPD_DBG*` | Log volume |
-| Runtime Debug | OFF | `--enable-runtime-debug` | `-DENABLE_RUNTIME_DEBUG=ON` | `RUNTIME_DEBUG` | Debug flexibility |
-| Daemon | ON | `--disable-daemon` | `-DENABLE_DAEMON=OFF` | `PTPD_NO_DAEMON` | Background mode |
-| Slave Only | OFF | `--enable-slave-only` | `-DENABLE_SLAVE_ONLY=ON` | `PTPD_SLAVE_ONLY` | Role restriction |
-| SW Clock | OFF | `--enable-sw-clock` | `-DENABLE_SW_CLOCK=ON` | `SW_CLOCK_ENABLED` | Testing only |
-| SO_TIMESTAMPING | ON | `--disable-sotimestamping` | `-DENABLE_SO_TIMESTAMPING=OFF` | `PTPD_DISABLE_*` | HW timestamps |
-| Max Unicast | 128 | `--with-max-unicast-destinations=N` | `-DMAX_UNICAST_DESTINATIONS=N` | `PTPD_UNICAST_MAX` | Scale limit |
-| Experimental | OFF | `--enable-experimental-options` | `-DENABLE_EXPERIMENTAL=ON` | `PTPD_EXPERIMENTAL` | Unstable |
+| Option | Default | CMake | Define | Impact |
+|--------|---------|-------|--------|--------|
+| POSIX Timers | Auto | `-DENABLE_POSIX_TIMERS=ON/OFF` | `PTP_PTIMERS` | Timer precision |
+| PCAP | Auto | `-DENABLE_PCAP=ON/OFF` | `PTPD_PCAP` | HW timestamps |
+| SNMP | OFF | `-DENABLE_SNMP=ON` | `PTPD_SNMP` | +100KB, monitoring |
+| Statistics | ON | `-DENABLE_STATISTICS=ON/OFF` | `PTPD_STATISTICS` | Stats file |
+| Debug Level | Debug:all<br>Release:none | `-DDEBUG_LEVEL=none/basic/medium/all` | `PTPD_DBG*` | Log volume |
+| Runtime Debug | Debug:OFF<br>Release:ON | `-DENABLE_RUNTIME_DEBUG=ON/OFF` | `RUNTIME_DEBUG` | Debug flexibility |
+| Daemon | ON | `-DENABLE_DAEMON=ON/OFF` | `PTPD_NO_DAEMON` | Background mode |
+| Slave Only | ON | `-DENABLE_SLAVE_ONLY=ON/OFF` | `PTPD_SLAVE_ONLY` | Role restriction |
+| SW Clock | OFF | `-DENABLE_SW_CLOCK=ON` | `SW_CLOCK_ENABLED` | Testing only |
+| SO_TIMESTAMPING | ON (Linux) | `-DENABLE_SO_TIMESTAMPING=ON/OFF` | `PTPD_DISABLE_*` | HW timestamps |
+| Max Unicast | 128 | `-DMAX_UNICAST_DESTINATIONS=N` | `PTPD_UNICAST_MAX` | Scale limit |
+| Experimental | OFF | `-DENABLE_EXPERIMENTAL=ON` | `PTPD_EXPERIMENTAL` | Unstable |
 
 ---
 
 ## See Also
 
-- [README.cmake.md](README.cmake.md) - CMake build instructions
+- [BUILD.md](BUILD.md) - CMake build instructions
 - [cmake/README.md](cmake/README.md) - CMake module documentation
-- [CONFIGURATION-MATRIX.txt](CONFIGURATION-MATRIX.txt) - Test configuration matrix
-- [PLAN.txt](PLAN.txt) - Migration plan and verification results
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Development workflows
+- [PLAN.txt](PLAN.txt) - CMake migration history
 - Configuration file format: `man ptpd2.conf` or see `src/ptpd2.conf.default-full`
 
 ---
 
 **Last Updated**: February 8, 2026
-**Applies To**: PTPd 2.3.1, CMake 3.15+, Autotools
+**Applies To**: PTPd 2.3.1, CMake 3.15+
