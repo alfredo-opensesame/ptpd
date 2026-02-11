@@ -227,9 +227,6 @@
     #define PTPD_STATISTICS 1
 #endif
 
-/* Software clock (--enable-sw-clock) */
-#cmakedefine ENABLE_SW_CLOCK 1
-
 /* SO_TIMESTAMPING support (--enable-so-timestamping / --disable-so-timestamping) */
 #cmakedefine ENABLE_SO_TIMESTAMPING 1
 #ifdef ENABLE_SO_TIMESTAMPING

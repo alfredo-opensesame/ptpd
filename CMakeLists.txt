@@ -124,14 +124,14 @@ install(FILES ${PROJECT_BINARY_DIR}/ptpd2.conf.5
 
 # Install configuration files to ${datadir}/ptpd
 install(FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.minimal
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ptpd2.conf.default-full
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/templates.conf
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/ptpd2.conf.minimal
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/ptpd2.conf.default-full
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/templates.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
 
 # Install data files to ${datadir}/ptpd
 install(FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/leap-seconds.list
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/leap-seconds.list
     ${CMAKE_CURRENT_SOURCE_DIR}/doc/PTPBASE-MIB.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/ptpd)
 

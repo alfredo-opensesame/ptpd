@@ -116,12 +116,6 @@ option(ENABLE_EXPERIMENTAL "Enable experimental options" OFF)
 option(ENABLE_STATISTICS "Enable realtime statistics support" ON)
 
 # ===================================================================
-# Option: Software Clock (--enable-sw-clock)
-# Default: OFF
-# ===================================================================
-option(ENABLE_SW_CLOCK "Enable software clock implementation" OFF)
-
-# ===================================================================
 # Option: SO_TIMESTAMPING (--enable-so-timestamping / --disable-so-timestamping)
 # Default: ON on Linux, N/A elsewhere
 # ===================================================================
@@ -164,7 +158,6 @@ message(STATUS "  ENABLE_POSIX_TIMERS:     ${ENABLE_POSIX_TIMERS}")
 message(STATUS "  ENABLE_PCAP:             ${ENABLE_PCAP}")
 message(STATUS "  ENABLE_SNMP:             ${ENABLE_SNMP}")
 message(STATUS "  ENABLE_STATISTICS:       ${ENABLE_STATISTICS}")
-message(STATUS "  ENABLE_SW_CLOCK:         ${ENABLE_SW_CLOCK}")
 message(STATUS "  ENABLE_DAEMON:           ${ENABLE_DAEMON}")
 message(STATUS "  ENABLE_EXPERIMENTAL:     ${ENABLE_EXPERIMENTAL}")
 message(STATUS "  ENABLE_RUNTIME_DEBUG:    ${ENABLE_RUNTIME_DEBUG}")

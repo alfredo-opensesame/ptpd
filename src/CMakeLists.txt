@@ -49,16 +49,6 @@ else()
     )
 endif()
 
-# Phase 4: SW_CLOCK sources - conditional based on ENABLE_SW_CLOCK option
-if(ENABLE_SW_CLOCK)
-    # TODO: Add SW_CLOCK-specific sources when implementing Phase 4
-    # From autotools: libcck dep/sw_clock/*.c
-    message(WARNING "SW_CLOCK support not yet fully implemented in CMake")
-    set(PTPD2_SW_CLOCK_SOURCES "")
-else()
-    set(PTPD2_SW_CLOCK_SOURCES "")
-endif()
-
 # Phase 3: SNMP sources - conditional based on NETSNMP detection
 if(PTPD_SNMP)
     set(PTPD2_SNMP_SOURCES
@@ -73,7 +63,6 @@ set(PTPD2_SOURCES
     ${PTPD2_BASE_SOURCES}
     ${PTPD2_STATISTICS_SOURCES}
     ${PTPD2_TIMER_SOURCES}
-    ${PTPD2_SW_CLOCK_SOURCES}
     ${PTPD2_SNMP_SOURCES}
 )
 

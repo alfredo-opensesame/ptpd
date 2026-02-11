@@ -632,15 +632,6 @@ void ptpdShutdown(PtpClock * ptpClock)
 
 	timerShutdown(ptpClock->timers);
 
-#ifdef SW_CLOCK_ENABLED
-    /* This is a good place to free the software clock */
-    if (NULL != ptpClock->pSwClock) {
-        swclock_destroy(ptpClock->pSwClock);
-        ptpClock->pSwClock = NULL;
-        DBG("Software clock instance destroyed\n");
-    }
-#endif
-
 	free(ptpClock);
 	ptpClock = NULL;
 
@@ -878,25 +869,6 @@ configcheck:
 				sizeof(ForeignMasterRecord)));
 		}
 	}
-
-#ifdef SW_CLOCK_ENABLED
-    /** The PTPClock structure has just been allocated this is a good
-     * place to initialize the Software Clock.
-     */
-    SwClock* pSwClock = swclock_create();
-    if (!pSwClock) {
-        PERROR("Error: Failed to create software clock");
-        *ret = 2;
-        free(pSwClock);
-        goto fail;
-    }
-    else {
-        DBG("Software clock created successfully\n");
-        ptpClock->pSwClock = pSwClock;
-
-        swclock_align_now(ptpClock->pSwClock, 0);
-    }
-#endif
 
 	if(rtOpts->statisticsLog.logEnabled)
 		ptpClock->resetStatisticsLog = TRUE;

@@ -10,9 +10,6 @@
 #include <dep/statistics.h>
 #endif /* PTPD_STATISTICS */
 #include "dep/alarms.h"
-#ifdef SW_CLOCK_ENABLED
-#include "dep/sw_clock/swclock.h"
-#endif
 
 /**
  * \struct PtpdCounters
@@ -710,10 +707,6 @@ typedef struct {
 #endif
 
 	RunTimeOpts *rtOpts;
-
-#ifdef SW_CLOCK_ENABLED
-    SwClock* pSwClock; //Pointer to software clock instance
-#endif
 
 } PtpClock;
 
