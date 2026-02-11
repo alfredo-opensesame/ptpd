@@ -4,7 +4,7 @@
         {
             "label": "Configure Debug",
             "type": "shell",
-            "command": "./scripts/config-cmake-debug.sh",
+            "command": "./scripts/build/config-cmake-debug.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],
@@ -20,7 +20,7 @@
         {
             "label": "Configure Release",
             "type": "shell",
-            "command": "./scripts/config-cmake-release.sh",
+            "command": "./scripts/build/config-cmake-release.sh",
             "args": [],
             "group": "build",
             "problemMatcher": [],

@@ -40,7 +40,7 @@ Uses scripts/ + VS Code tasks + launch configurations
 1. Configure & Build:
    - Press Cmd+Shift+B (default build task)
    - Or: Terminal → Run Task → "Build Debug"
-   - This runs: scripts/config-cmake-debug.sh then cmake --build
+   - This runs: scripts/build/config-cmake-debug.sh then cmake --build
 
 2. Debug:
    - Press F5 or Run → Start Debugging
@@ -49,13 +49,13 @@ Uses scripts/ + VS Code tasks + launch configurations
    - Config: ptpd.conf (in root)
 
 3. Test:
-   - Run: ./scripts/ptpd-run.sh -i <interface>
+   - Run: ./scripts/testing/ptpd-run.sh -i <interface>
    - Advanced features: validation, pcap capture, analysis
-   - Logs saved to: logs/<timestamp>/
+   - Logs saved to: scripts/ptpd_logs/<timestamp>/
 
 4. Clean:
    - Run Task: "Clean"
-   - Or: ./scripts/clean-ptpd.sh
+   - Or: ./scripts/tools/clean-ptpd.sh
 
 
 Option B: Manual CMake Build (For Newcomers or CI)
@@ -63,14 +63,14 @@ Option B: Manual CMake Build (For Newcomers or CI)
 Direct CMake commands - works anywhere
 
 1. Configure & Build (Debug):
-   ./scripts/config-cmake-debug.sh
+   ./scripts/build/config-cmake-debug.sh
    # Or manually:
    cmake -B build-cmake/debug -DCMAKE_BUILD_TYPE=Debug
    cmake --build build-cmake/debug
    - Binary: build-cmake/debug/src/ptpd2
 
 2. Configure & Build (Release):
-   ./scripts/config-cmake-release.sh
+   ./scripts/build/config-cmake-release.sh
    # Or manually:
    cmake -B build-cmake/release -DCMAKE_BUILD_TYPE=Release -DENABLE_RUNTIME_DEBUG=OFF
    cmake --build build-cmake/release
@@ -110,7 +110,7 @@ BUILD ARTIFACTS & CLEANING
 ---------------------------
 
 Clean build artifacts:
-  ./scripts/clean-ptpd.sh
+  ./scripts/tools/clean-ptpd.sh
 
 This removes:
   - build-cmake/ directories
@@ -119,7 +119,7 @@ This removes:
   - compile_commands.json symlink
 
 To rebuild after cleaning:
-  ./scripts/config-cmake-debug.sh
+  ./scripts/build/config-cmake-debug.sh
   # Or: cmake -B build-cmake/debug && cmake --build build-cmake/debug
 
 

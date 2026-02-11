@@ -312,7 +312,7 @@ parse_arguments() {
 # Function to setup output directories and files
 setup_output() {
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    OUTPUT_DIR="$SCRIPT_DIR/ptpd_logs/${timestamp}"
+    OUTPUT_DIR="$(dirname "$SCRIPT_DIR")/ptpd_logs/${timestamp}"
     mkdir -p "$OUTPUT_DIR"
     mkdir -p "$OUTPUT_DIR/locks"
 

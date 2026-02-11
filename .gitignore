@@ -19,6 +19,9 @@ ptpd.conf
 /build/
 /build-*/
 /cmake-build-*/
+!scripts/build/
+!scripts/testing/
+!scripts/tools/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
