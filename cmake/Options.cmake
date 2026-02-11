@@ -99,9 +99,9 @@ endif()
 
 # ===================================================================
 # Option: Daemon Mode (--enable-daemon / --disable-daemon)
-# Default: ON
+# Default: OFF
 # ===================================================================
-option(ENABLE_DAEMON "Enable daemon mode" ON)
+option(ENABLE_DAEMON "Enable daemon mode" OFF)
 
 # ===================================================================
 # Option: Experimental Options (--enable-experimental-options)

@@ -102,12 +102,12 @@ int main(int argc, char **argv)
 	ts = timingDomain.services[0];
 	strncpy(ts->id, "PTP0", TIMINGSERVICE_MAX_DESC);
 	ts->dataSet.priority1	  = rtOpts.preferNTP;
-	ts->dataSet.type	  = TIMINGSERVICE_PTP;
-	ts->config		  = &rtOpts;
-	ts->controller		  = ptpClock;
-	ts->timeout		  = rtOpts.idleTimeout;
-	ts->updateInterval	  = 1;
-	ts->holdTime		  = rtOpts.ntpOptions.failoverTimeout;
+	ts->dataSet.type	      = TIMINGSERVICE_PTP;
+	ts->config		          = &rtOpts;
+	ts->controller		      = ptpClock;
+	ts->timeout		          = rtOpts.idleTimeout;
+	ts->updateInterval	      = 1;
+	ts->holdTime		      = rtOpts.ntpOptions.failoverTimeout;
 	timingDomain.serviceCount = 1;
 
 	if (rtOpts.ntpOptions.enableEngine) {
