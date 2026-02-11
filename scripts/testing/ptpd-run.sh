@@ -846,12 +846,24 @@ analyze_results() {
         fi
     fi
 
-    # Try statistical analysis if tools available
+    # Run analysis scripts
+    local analysis_dir="$(dirname "$SCRIPT_DIR")/analysis"
+    
+    # Analyze CSV statistics
     if [ -f "$STATS_FILE" ] && command -v python3 >/dev/null 2>&1; then
-        local tools_dir="$(dirname "$SCRIPT_DIR")/tools"
-        if [ -f "$tools_dir/ptp_analyze.py" ]; then
-            print_status "📈 Running statistical analysis..."
-            cd "$tools_dir" && python3 ptp_analyze.py "$STATS_FILE" 2>/dev/null || print_warning "Statistical analysis failed"
+        if [ -f "$analysis_dir/analyze_ptp.py" ]; then
+            print_header "📈 PTP STATISTICS ANALYSIS"
+            python3 "$analysis_dir/analyze_ptp.py" "$STATS_FILE" || print_warning "Statistical analysis failed"
+            echo ""
+        fi
+    fi
+    
+    # Analyze packet capture
+    if [ -f "$PCAP_FILE" ] && command -v tcpdump >/dev/null 2>&1; then
+        if [ -f "$analysis_dir/analyze_pcap.sh" ]; then
+            print_header "📦 PACKET CAPTURE ANALYSIS"
+            "$analysis_dir/analyze_pcap.sh" "$PCAP_FILE" || print_warning "Packet analysis failed"
+            echo ""
         fi
     fi
 
@@ -937,13 +949,12 @@ main() {
     # Start live monitoring
     monitor_sw_clock "$DURATION" "$LOG_FILE" "$STATS_FILE"
 
-    # Stop and analyze
-    print_status "🛑 Stopping and analyzing results..."
+    # Stop daemon
+    print_status "🛑 Stopping daemon..."
     if [ -n "$BINARY_PID" ]; then
         sudo kill -TERM "$BINARY_PID" 2>/dev/null || true
     fi
 
-    analyze_results
     print_success "Test completed successfully!"
 }
 
