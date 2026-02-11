@@ -11,7 +11,7 @@
 set -e  # Exit on any error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BINARY="$PROJECT_DIR/build-cmake/debug/src/ptpd2"
 #BINARY="/opt/homebrew/sbin/ptpd2"
 
