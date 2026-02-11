@@ -1,20 +1,20 @@
 /*-
  * Copyright (c) 2012-2013 Wojciech Owczarek,
  * Copyright (c) 2011-2012 George V. Neville-Neil,
- *                         Steven Kreuzer,
- *                         Martin Burnicki,
- *                         Jan Breuer,
- *                         Gael Mace,
- *                         Alexandre Van Kempen,
- *                         Inaqui Delgado,
- *                         Rick Ratzel,
- *                         National Instruments.
+ *			   Steven Kreuzer,
+ *			   Martin Burnicki,
+ *			   Jan Breuer,
+ *			   Gael Mace,
+ *			   Alexandre Van Kempen,
+ *			   Inaqui Delgado,
+ *			   Rick Ratzel,
+ *			   National Instruments.
  * Copyright (c) 2009-2010 George V. Neville-Neil,
- *                         Steven Kreuzer,
- *                         Martin Burnicki,
- *                         Jan Breuer,
- *                         Gael Mace,
- *                         Alexandre Van Kempen
+ *			   Steven Kreuzer,
+ *			   Martin Burnicki,
+ *			   Jan Breuer,
+ *			   Gael Mace,
+ *			   Alexandre Van Kempen
  *
  * Copyright (c) 2005-2008 Kendall Correll, Aidan Williams
  *
@@ -74,12 +74,11 @@ PtpClock *G_ptpClock = NULL;
 
 TimingDomain timingDomain;
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-	PtpClock *ptpClock;
-	Integer16 ret;
-	TimingService *ts;
+	PtpClock       *ptpClock;
+	Integer16      ret;
+	TimingService  *ts;
 
 	startupInProgress = TRUE;
 
@@ -102,20 +101,20 @@ main(int argc, char **argv)
 	timingDomain.services[0] = &ptpClock->timingService;
 	ts = timingDomain.services[0];
 	strncpy(ts->id, "PTP0", TIMINGSERVICE_MAX_DESC);
-	ts->dataSet.priority1 = rtOpts.preferNTP;
-	ts->dataSet.type = TIMINGSERVICE_PTP;
-	ts->config = &rtOpts;
-	ts->controller = ptpClock;
-	ts->timeout = rtOpts.idleTimeout;
-	ts->updateInterval = 1;
-	ts->holdTime = rtOpts.ntpOptions.failoverTimeout;
+	ts->dataSet.priority1	  = rtOpts.preferNTP;
+	ts->dataSet.type	  = TIMINGSERVICE_PTP;
+	ts->config		  = &rtOpts;
+	ts->controller		  = ptpClock;
+	ts->timeout		  = rtOpts.idleTimeout;
+	ts->updateInterval	  = 1;
+	ts->holdTime		  = rtOpts.ntpOptions.failoverTimeout;
 	timingDomain.serviceCount = 1;
 
 	if (rtOpts.ntpOptions.enableEngine) {
 		ntpSetup(&rtOpts, ptpClock);
 	} else {
 	    timingDomain.serviceCount = 1;
-	    timingDomain.services[1] = NULL;
+	    timingDomain.services[1]  = NULL;
 	}
 
 	timingDomain.init(&timingDomain);
