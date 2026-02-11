@@ -74,20 +74,41 @@ ptpd-run.sh
                             ANALYSIS SCRIPTS
 ================================================================================
 
+All analysis scripts are located in scripts/analysis/
+
 analyze_ptp.py
-  Purpose:  Analyze PTP statistics from CSV log files
-  Usage:    python3 scripts/analyze_ptp.py <csv_file>
+  Purpose:  Comprehensive PTP statistics analysis from CSV log files
+  Usage:    python3 scripts/analysis/analyze_ptp.py <csv_file>
   Input:    CSV file with PTP statistics (from ptpd-run.sh or ptpd2 logs)
-  Output:   Statistical analysis including:
-            - Offset from Master (mean, median, std dev, RMS, peak-to-peak)
-            - Jitter analysis (mean, std dev)
-            - Allan Deviation approximation
-            - Path Delay statistics
-  Example:  python3 scripts/analyze_ptp.py ptp_logs/20240101_120000/stats.csv
+  Output:   Detailed statistical analysis including:
+            - All data statistics (min, max, mean, median, std dev, RMS)
+            - Offset distribution by magnitude (<1ms, <10ms, <100ms)
+            - Well-synchronized period analysis (|offset| < 1ms)
+            - Jitter analysis for synchronized data
+            - Path delay statistics
+  Example:  python3 scripts/analysis/analyze_ptp.py ptpd_logs/DATE/ptpd_daemon_en0.csv
   Requires: Python 3, numpy
-  Notes:    - Filters outliers (>10ms)
+  Notes:    - Analyzes all data including large offsets during sync acquisition
+            - Shows synchronization quality distribution
             - Converts values to microseconds for readability
             - Only analyzes slave state data
+
+analyze_pcap.sh
+  Purpose:  Comprehensive PTP packet capture analysis
+  Usage:    scripts/analysis/analyze_pcap.sh <pcap_file>
+  Input:    PCAP file with PTP traffic (from ptpd-run.sh)
+  Output:   Detailed protocol analysis including:
+            - Capture summary (packet count, duration)
+            - PTP message type distribution
+            - Master and slave clock identities and IP addresses
+            - Grandmaster clock properties (class, accuracy, priority)
+            - Transport configuration and multicast addressing
+            - Timing intervals and message sequencing
+  Example:  scripts/analysis/analyze_pcap.sh ptpd_logs/DATE/ptp_en0.pcap
+  Requires: tcpdump
+  Notes:    - Validates PTP protocol operation
+            - Identifies timing irregularities
+            - Useful for network troubleshooting
 
 compare-binaries.sh
   Purpose:  Compare two PTPd binaries for equivalence
