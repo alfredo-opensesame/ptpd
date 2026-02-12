@@ -1,0 +1,5 @@
+[submodule "libraries/swclock"]
+	path = libraries/swclock
+	url = https://github.com/aberserk/SwClock.git
+	branch = main
+	shallow = true
