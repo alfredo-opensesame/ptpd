@@ -51,7 +51,13 @@
  *
  */
 
+/* Include swclock BEFORE ptpd.h to prevent sys/timex.h conflicts */
+#ifdef PTPD_USE_SWCLOCK
+#include "sw_clock.h"
+#endif
+
 #include "../ptpd.h"
+#include "ptpd_clock.h"
 
 #define CLAMP(var,bound) {\
     if(var < -bound) {\
@@ -757,6 +763,30 @@ void adjFreq_wrapper(const RunTimeOpts * rtOpts, PtpClock * ptpClock, double adj
 		DBGV("adjFreq2: noAdjust on, returning\n");
 		return;
 	}
+
+#ifdef PTPD_USE_SWCLOCK
+	/* Use swclock backend when enabled */
+	if (ptpClock->swclock) {
+		struct timex tx;
+		memset(&tx, 0, sizeof(tx));
+		
+		CLAMP(adj, ptpClock->servo.maxOutput);
+		
+		/* Configure timex for frequency and offset adjustment */
+		tx.modes = ADJ_FREQUENCY | ADJ_OFFSET | ADJ_NANO;
+		/* Convert ppb to scaled ppm (2^-16 ppm units) */
+		tx.freq = (long)(adj * 65.536);
+		/* Apply phase offset from servo input */
+		tx.offset = ptpClock->currentDS.offsetFromMaster.nanoseconds;
+		
+		if (swclock_adjtime((SwClock*)ptpClock->swclock, &tx) != 0) {
+			DBGV("swclock_adjtime() failed: %s\n", strerror(errno));
+		}
+		DBG2("     adjFreq_swclock: freq=%.09f ppb, offset=%ld ns\n", 
+		     adj / DBG_UNIT, (long)tx.offset);
+		return;
+	}
+#endif
 
 /*
  * adjFreq simulation for QNX: correct clock by x ns per tick over clock adjust interval,

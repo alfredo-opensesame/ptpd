@@ -81,6 +81,28 @@ int ptpd_is_running(PtpClock *ptpClock);
  */
 void ptpd_shutdown(PtpClock *ptpClock);
 
+/**
+ * @brief Get time from PTP daemon's underlying clock
+ * @param ptpClock PTP clock instance
+ * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW)
+ * @param tp Timespec structure to receive the time
+ * @return 0 on success, -1 on error
+ * 
+ * When ptpd is built with swclock support (BUILD_WITH_SWCLOCK=ON), this
+ * function returns time from the software clock that is being disciplined
+ * by the PTP servo. Otherwise, it returns system clock time.
+ * 
+ * Applications should use this function instead of clock_gettime() to read
+ * the time that PTP is controlling.
+ * 
+ * Example:
+ *   struct timespec ts;
+ *   if (ptpd_gettime(ptp, CLOCK_REALTIME, &ts) == 0) {
+ *       printf("Time: %ld.%09ld\n", ts.tv_sec, ts.tv_nsec);
+ *   }
+ */
+int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp);
+
 #ifdef __cplusplus
 }
 #endif

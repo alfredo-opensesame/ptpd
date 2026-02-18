@@ -52,6 +52,7 @@
  */
 
 #include "../ptpd.h"
+#include "ptpd_clock.h"
 
 #ifdef HAVE_NETINET_ETHER_H
 #  include <netinet/ether.h>
@@ -1497,6 +1498,20 @@ static const struct sigevent* timerIntHandler(void* data, int id) {
 #if defined(POSIX_TIMERS_SUPPORTED)
 
 	struct timespec tp;
+
+#ifdef PTPD_USE_SWCLOCK
+	/* Use swclock if available and initialized */
+	if (G_ptpClock && G_ptpClock->swclock) {
+		if (swclock_gettime((SwClock*)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
+			PERROR("swclock_gettime() failed, exiting.");
+			exit(0);
+		}
+		time->seconds = tp.tv_sec;
+		time->nanoseconds = tp.tv_nsec;
+		return;
+	}
+#endif
+
 	if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
 		PERROR("clock_gettime() failed, exiting.");
 		exit(0);
@@ -1520,6 +1535,20 @@ void getTimeMonotonic(TimeInternal * time)
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
 
 	struct timespec tp;
+
+#ifdef PTPD_USE_SWCLOCK
+	/* Use swclock MONOTONIC if available */
+	if (G_ptpClock && G_ptpClock->swclock) {
+		if (swclock_gettime((SwClock*)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) < 0) {
+			PERROR("swclock_gettime(MONOTONIC) failed, exiting.");
+			exit(0);
+		}
+		time->seconds = tp.tv_sec;
+		time->nanoseconds = tp.tv_nsec;
+		return;
+	}
+#endif
+
 #ifndef CLOCK_MONOTONIC
 	if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
 #else
@@ -1560,6 +1589,15 @@ void setTime(TimeInternal * time)
 
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
 
+#ifdef PTPD_USE_SWCLOCK
+	/* Use swclock settime if available */
+	if (G_ptpClock && G_ptpClock->swclock) {
+		if (swclock_settime((SwClock*)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
+			PERROR("Could not set swclock time");
+			return;
+		}
+	} else
+#endif
 	if (clock_settime(CLOCK_REALTIME, &tp) < 0) {
 		PERROR("Could not set system time");
 		return;

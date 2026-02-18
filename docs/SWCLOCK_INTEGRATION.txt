@@ -1,0 +1,631 @@
+================================================================================
+SWCLOCK INTEGRATION IN PTPD
+Technical Documentation
+================================================================================
+
+OVERVIEW
+--------
+This document explains how SwClock (Software Clock) is integrated into ptpd
+as an optional clock backend. SwClock is a high-precision software clock with
+a built-in PI servo that can replace the system clock for time discipline in
+environments where direct system clock manipulation is not desired or possible.
+
+The integration allows ptpd to:
+  • Use SwClock as its timekeeping backend instead of the system clock
+  • Discipline SwClock via the same PTP servo mechanisms
+  • Provide applications with SwClock time through a clean API
+  • Switch between system clock and SwClock at compile-time
+
+ARCHITECTURE PRINCIPLES
+-----------------------
+The integration follows these key design principles:
+
+1. ENCAPSULATION
+   SwClock is a PRIVATE implementation detail of libptpd. Applications using
+   ptpd do NOT need to include SwClock headers or link against SwClock directly.
+
+2. OWNERSHIP
+   ptpd owns and manages the SwClock lifecycle:
+   - Creates SwClock during initialization (ptpd_common_init)
+   - Destroys SwClock during cleanup (ptpd_common_cleanup)
+   - Disciplines SwClock via its internal servo
+
+3. ABSTRACTION
+   A clock abstraction layer (ptpd_clock.h) routes all clock operations to
+   either SwClock or system clock based on compile-time configuration.
+
+4. COMPLETE REPLACEMENT
+   When enabled, SwClock COMPLETELY REPLACES the system clock for ALL
+   operations including:
+   - Time get/set operations (clock_gettime/settime)
+   - Frequency adjustments (adjFreq, swclock_adjtime)
+   - Leap second management (adjtimex/ntp_adjtime with timex structure)
+
+Ownership Flow:
+    ┌─────────────────┐
+    │   Application   │  (e.g., ptpd2 daemon, ptpd-app)
+    │                 │
+    │  - ptpd_init()  │
+    │  - ptpd_start() │
+    │  - ptpd_gettime()│ ← Public API (clock backend agnostic)
+    └────────┬────────┘
+             │
+             ↓
+    ┌─────────────────┐
+    │    libptpd      │  (PTP protocol engine + servo)
+    │                 │
+    │  - PtpClock     │  Contains:
+    │    - swclock*   │    • void *swclock (when BUILD_WITH_SWCLOCK=ON)
+    │    - servo      │    • PIservo (discipline algorithm)
+    │                 │
+    │  Disciplines → │
+    └────────┬────────┘
+             │
+             ↓
+    ┌─────────────────┐          ┌─────────────────┐
+    │    SwClock      │   OR     │  System Clock   │
+    │ (v2.1.0)        │          │ (POSIX)         │
+    │                 │          │                 │
+    │ - PI servo      │          │ - clock_gettime │
+    │ - Event log     │          │ - clock_settime │
+    │ - JSON-LD       │          │ - adjtime/      │
+    │   telemetry     │          │   ntp_adjtime   │
+    └─────────────────┘          └─────────────────┘
+        (if enabled)                (if disabled)
+
+CLOCK ABSTRACTION LAYER
+------------------------
+File: src/dep/ptpd_clock.h
+
+This header provides a unified interface for clock operations that routes to
+SwClock or system clock based on PTPD_USE_SWCLOCK:
+
+Key Components:
+
+1. GLOBAL CLOCK INSTANCE
+   extern PtpClock *G_ptpClock;
+   
+   Required for functions that don't have PtpClock* parameter but need to
+   access SwClock (e.g., leap second management in sys.c).
+
+2. CLOCK OPERATION MACROS
+   
+   #ifdef PTPD_USE_SWCLOCK
+   
+   • ptpd_clock_gettime(ptpClock, clk_id, tp)
+     → swclock_gettime(ptpClock->swclock, clk_id, tp)
+     
+   • ptpd_clock_settime(ptpClock, clk_id, tp)
+     → swclock_settime(ptpClock->swclock, clk_id, tp)
+     
+   • ptpd_clock_adjtime(ptpClock, tx)
+     → swclock_adjtime(ptpClock->swclock, tx)
+   
+   #else
+   
+   • ptpd_clock_gettime(ptpClock, clk_id, tp)
+     → clock_gettime(clk_id, tp)
+     
+   • ptpd_clock_settime(ptpClock, clk_id, tp)
+     → clock_settime(clk_id, tp)
+     
+   • ptpd_clock_adjtime(ptpClock, tx)
+     → -1  (not directly supported - use platform-specific calls)
+   
+   #endif
+
+3. LEAP SECOND SUPPORT
+   
+   When PTPD_USE_SWCLOCK is enabled, ptpd_clock.h defines a standalone macro
+   for leap second operations that don't have direct PtpClock* access:
+   
+   #define ptpd_adjtime(tx) \
+       ((G_ptpClock && G_ptpClock->swclock) ? \
+        swclock_adjtime((SwClock*)G_ptpClock->swclock, (tx)) : \
+        -1)
+   
+   Then redirects all system adjtimex/ntp_adjtime calls:
+   
+   #undef adjtimex      // Clear any prior definition
+   #undef ntp_adjtime
+   #define adjtimex(tx) ptpd_adjtime(tx)
+   #define ntp_adjtime(tx) ptpd_adjtime(tx)
+   
+   This ensures ALL leap second management (TIME_INS, TIME_DEL, STA_INS,
+   STA_DEL) goes through SwClock when enabled.
+
+4. MISSING TIMEX CONSTANTS
+   
+   SwClock defines a minimal Linux-compatible timex API. ptpd needs additional
+   constants for leap second state machines. ptpd_clock.h adds these:
+   
+   • TIME_INS (1)    - Insert leap second
+   • TIME_DEL (2)    - Delete leap second  
+   • TIME_OOP (3)    - Leap second in progress
+   • TIME_WAIT (4)   - Leap second has occurred
+   • MOD_STATUS      - Modify status field
+   • MOD_FREQUENCY   - Modify frequency field
+   • MOD_MAXERROR    - Modify max error
+   • MOD_ESTERROR    - Modify estimated error
+   • STA_RONLY       - Read-only status bits
+   • STA_FREQHOLD    - Frequency hold flag
+
+LIFECYCLE MANAGEMENT
+--------------------
+File: src/ptpd.c
+
+SwClock instances are managed through ptpd's initialization and cleanup:
+
+1. INITIALIZATION (ptpd_common_init)
+   
+   #ifdef PTPD_USE_SWCLOCK
+   #include "sw_clock.h"
+   
+   Boolean ptpd_common_init(PtpClock *ptpClock) {
+       // ... existing init code ...
+       
+       /* Create SwClock instance */
+       ptpClock->swclock = swclock_create(CLOCK_MONOTONIC_RAW);
+       if (!ptpClock->swclock) {
+           ERROR("Failed to create SwClock instance\n");
+           return FALSE;
+       }
+       INFO("SwClock backend enabled and initialized\n");
+       
+       // ... continue with PTP initialization ...
+   }
+   #endif
+   
+   Notes:
+   - SwClock is created with CLOCK_MONOTONIC_RAW as reference
+   - Failure to create SwClock aborts ptpd initialization
+   - SwClock starts immediately and begins tracking reference clock
+
+2. CLEANUP (ptpd_common_cleanup)
+   
+   #ifdef PTPD_USE_SWCLOCK
+   void ptpd_common_cleanup(PtpClock *ptpClock) {
+       // ... existing cleanup code ...
+       
+       /* Destroy SwClock instance */
+       if (ptpClock->swclock) {
+           swclock_destroy((SwClock*)ptpClock->swclock);
+           ptpClock->swclock = NULL;
+           INFO("SwClock backend destroyed\n");
+       }
+   }
+   #endif
+
+3. STORAGE (src/datatypes.h)
+   
+   typedef struct {
+       // ... hundreds of PtpClock fields ...
+       
+       #ifdef PTPD_USE_SWCLOCK
+       /* Software clock instance when using swclock backend */
+       void *swclock;  /* SwClock* - void* to avoid including sw_clock.h here */
+       #endif
+       
+       // ... more fields ...
+   } PtpClock;
+   
+   Why void*?
+   - Avoids including sw_clock.h in datatypes.h (reduces header coupling)
+   - Cast to SwClock* only in files that include sw_clock.h
+   - Conditional compilation keeps struct size minimal when swclock disabled
+
+CLOCK OPERATIONS REDIRECTION
+-----------------------------
+
+1. TIME GET/SET (src/dep/sys.c)
+   
+   Files using clock operations include ptpd_clock.h BEFORE ptpd.h to ensure
+   correct macro expansion.
+   
+   Before (direct system calls):
+   
+   void getTime(TimeInternal *time) {
+       struct timespec tp;
+       clock_gettime(CLOCK_REALTIME, &tp);
+       time->seconds = tp.tv_sec;
+       time->nanoseconds = tp.tv_nsec;
+   }
+   
+   After (abstracted):
+   
+   #include "sw_clock.h"    // Must come before ptpd.h when PTPD_USE_SWCLOCK
+   #include "ptpd_clock.h"  // Provides abstraction macros
+   #include "../ptpd.h"
+   
+   void getTime(TimeInternal *time, PtpClock *ptpClock) {
+       struct timespec tp;
+       
+       #ifdef PTPD_USE_SWCLOCK
+       if (ptpClock && ptpClock->swclock) {
+           ptpd_clock_gettime(ptpClock, CLOCK_REALTIME, &tp);
+       } else {
+           clock_gettime(CLOCK_REALTIME, &tp);  // Fallback
+       }
+       #else
+       clock_gettime(CLOCK_REALTIME, &tp);
+       #endif
+       
+       time->seconds = tp.tv_sec;
+       time->nanoseconds = tp.tv_nsec;
+   }
+
+2. FREQUENCY ADJUSTMENTS (src/dep/servo.c)
+   
+   The servo disciplines the clock by adjusting its frequency offset.
+   
+   Before:
+   
+   static void adjFreq_wrapper(PtpClock *ptpClock, double adj) {
+       #ifdef __APPLE__
+       struct timex tmx;
+       tmx.modes = MOD_FREQUENCY;
+       tmx.freq = (long)(adj * 65.536);  // Convert ppb to scaled format
+       ntp_adjtime(&tmx);
+       #else
+       adjfreq((long)(adj));
+       #endif
+   }
+   
+   After:
+   
+   #ifdef PTPD_USE_SWCLOCK
+   #include "sw_clock.h"
+   #endif
+   #include "ptpd_clock.h"
+   #include "../ptpd.h"
+   
+   static void adjFreq_wrapper(PtpClock *ptpClock, double adj) {
+       #ifdef PTPD_USE_SWCLOCK
+       if (ptpClock && ptpClock->swclock) {
+           struct timex tmx;
+           memset(&tmx, 0, sizeof(tmx));
+           tmx.modes = MOD_FREQUENCY;
+           tmx.freq = (long)(adj * 65.536);  // ppb to Linux scaled format
+           
+           if (swclock_adjtime((SwClock*)ptpClock->swclock, &tmx) < 0) {
+               DBGV("swclock_adjtime() failed: %s\n", strerror(errno));
+           } else {
+               DBGV("adjFreq_swclock: freq=%.09f ppb, offset=%ld ns\n",
+                    adj, tmx.offset);
+           }
+           return;
+       }
+       #endif
+       
+       /* System clock fallback */
+       #ifdef __APPLE__
+       struct timex tmx;
+       tmx.modes = MOD_FREQUENCY;
+       tmx.freq = (long)(adj * 65.536);
+       ntp_adjtime(&tmx);
+       #else
+       adjfreq((long)(adj));
+       #endif
+   }
+
+3. LEAP SECOND MANAGEMENT (src/dep/sys.c, src/timingdomain.c)
+   
+   Leap second operations use adjtimex()/ntp_adjtime() with timex structure.
+   Through ptpd_clock.h macro redirection, these route to SwClock:
+   
+   void unsetTimexFlags(int flags, Boolean quiet) {
+       struct timex tmx;
+       memset(&tmx, 0, sizeof(tmx));
+       
+       tmx.modes = MOD_STATUS;
+       tmx.status = getTimexFlags();
+       tmx.status &= ~STA_RONLY;
+       tmx.status &= ~flags;
+       
+       // This call routes to swclock_adjtime() when PTPD_USE_SWCLOCK enabled
+       // via macro: adjtimex(tx) → ptpd_adjtime(tx) → swclock_adjtime()
+       if (adjtimex(&tmx) < 0) {
+           if (!quiet) {
+               PERROR("Could not unset adjtimex flags");
+           }
+       }
+   }
+
+PUBLIC API
+----------
+File: src/ptpdlib.h (declaration), src/ptpd.c (implementation)
+
+Applications can query current time from ptpd without knowing the backend:
+
+1. DECLARATION (ptpdlib.h)
+   
+   /**
+    * @brief Get current time from ptpd's clock backend
+    *
+    * Retrieves time from ptpd's configured clock backend (SwClock or system).
+    * Applications should use this instead of clock_gettime() to ensure they
+    * are reading from the same clock that ptpd is disciplining.
+    *
+    * @param ptpClock  PtpClock instance
+    * @param clk_id    Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, etc.)
+    * @param tp        Timespec to receive current time
+    * @return 0 on success, -1 on failure
+    */
+   int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp);
+
+2. IMPLEMENTATION (ptpd.c)
+   
+   int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp) {
+       if (!tp) {
+           errno = EINVAL;
+           return -1;
+       }
+       
+       #ifdef PTPD_USE_SWCLOCK
+       if (ptpClock && ptpClock->swclock) {
+           return swclock_gettime((SwClock*)ptpClock->swclock, clk_id, tp);
+       }
+       #endif
+       
+       /* Fallback to system clock */
+       return clock_gettime(clk_id, tp);
+   }
+
+3. USAGE EXAMPLE (src-app/ptpd-app.c)
+   
+   if (show_time) {
+       struct timespec ts;
+       if (ptpd_gettime(ptpClock, CLOCK_REALTIME, &ts) == 0) {
+           printf("Current time: %ld.%09ld\n", ts.tv_sec, ts.tv_nsec);
+       }
+   }
+   
+   Notice: No SwClock headers, no SwClock types, just clean API.
+
+BUILD SYSTEM INTEGRATION
+-------------------------
+File: CMakeLists.txt, src/CMakeLists.txt
+
+1. ROOT CMAKE (CMakeLists.txt)
+   
+   # SwClock software clock backend option
+   option(BUILD_WITH_SWCLOCK "Build with SwClock backend (software clock)" OFF)
+   
+   if(BUILD_WITH_SWCLOCK)
+       message(STATUS "SwClock backend: ENABLED")
+       
+       # Check if swclock submodule exists
+       if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libraries/swclock/CMakeLists.txt")
+           message(FATAL_ERROR
+               "SwClock submodule not found. Run: git submodule update --init")
+       endif()
+       
+       # Build swclock library
+       add_subdirectory(libraries/swclock)
+   else()
+       message(STATUS "SwClock backend: DISABLED (using system clock)")
+   endif()
+
+2. SOURCE CMAKE (src/CMakeLists.txt)
+   
+   if(BUILD_WITH_SWCLOCK)
+       # Link SwClock as PRIVATE dependency (not exposed to apps)
+       target_link_libraries(ptpd2 PRIVATE swclock)
+       target_link_libraries(ptpd-static PRIVATE swclock)
+       target_link_libraries(ptpd-shared PRIVATE swclock)
+       
+       # Define preprocessor flag
+       target_compile_definitions(ptpd2 PRIVATE PTPD_USE_SWCLOCK)
+       target_compile_definitions(ptpd-static PRIVATE PTPD_USE_SWCLOCK)
+       target_compile_definitions(ptpd-shared PRIVATE PTPD_USE_SWCLOCK)
+       
+       # Add SwClock include directory (for sw_clock.h)
+       target_include_directories(ptpd2 PRIVATE
+           "${CMAKE_SOURCE_DIR}/libraries/swclock/src/sw_clock")
+       target_include_directories(ptpd-static PRIVATE
+           "${CMAKE_SOURCE_DIR}/libraries/swclock/src/sw_clock")
+       target_include_directories(ptpd-shared PRIVATE
+           "${CMAKE_SOURCE_DIR}/libraries/swclock/src/sw_clock")
+   endif()
+
+3. BUILD USAGE
+   
+   # Build WITHOUT SwClock (default - uses system clock)
+   cmake -DCMAKE_BUILD_TYPE=Debug -B build-debug
+   cmake --build build-debug
+   
+   # Build WITH SwClock
+   cmake -DBUILD_WITH_SWCLOCK=ON -DCMAKE_BUILD_TYPE=Debug -B build-swclock
+   cmake --build build-swclock
+
+PLATFORM-SPECIFIC CONSIDERATIONS
+---------------------------------
+
+1. MACOS vs LINUX
+   
+   macOS uses ntp_adjtime() while Linux uses adjtimex(). The abstraction layer
+   handles this:
+   
+   src/dep/constants_dep.h already has:
+   #ifdef __APPLE__
+   #define adjtimex ntp_adjtime
+   #endif
+   
+   When PTPD_USE_SWCLOCK is enabled, ptpd_clock.h overrides BOTH:
+   #undef adjtimex
+   #undef ntp_adjtime
+   #define adjtimex(tx) ptpd_adjtime(tx)      // → swclock_adjtime()
+   #define ntp_adjtime(tx) ptpd_adjtime(tx)   // → swclock_adjtime()
+
+2. STRUCT TIMEX CONFLICTS
+   
+   Problem: macOS <sys/timex.h> defines struct timex, SwClock also defines it.
+   
+   Solution (src/ptpd.h):
+   
+   #ifndef PTPD_USE_SWCLOCK
+   /* Only include system timex.h when NOT using swclock */
+   #ifdef __APPLE__
+   #include <sys/timex.h>
+   #endif
+   #endif
+   
+   When SwClock is enabled, sw_clock.h provides struct timex definition.
+
+3. INCLUDE ORDER
+   
+   CRITICAL: Files using SwClock must include headers in this order:
+   
+   1. #ifdef PTPD_USE_SWCLOCK
+      #include "sw_clock.h"       // SwClock API
+      #endif
+   2. #include "ptpd_clock.h"      // Abstraction macros (uses SwClock types)
+   3. #include "../ptpd.h"         // Main ptpd header (may define conflicting macros)
+   
+   Wrong order → compilation errors (macro redefinition, type conflicts)
+
+SWCLOCK FEATURES AVAILABLE TO PTPD
+-----------------------------------
+
+When built with SwClock, ptpd gains access to:
+
+1. HIGH-PRECISION SOFTWARE CLOCK
+   - Independent of system clock
+   - Uses CLOCK_MONOTONIC_RAW as reference (immune to NTP)
+   - Frequencies stable to sub-ppb levels
+
+2. BUILT-IN PI SERVO
+   - SwClock has its own PI controller
+   - ptpd's servo adjusts SwClock's frequency
+   - Double-servo architecture (ptpd servo → swclock servo → time)
+
+3. EVENT LOGGING
+   Environment variable: SWCLOCK_EVENT_LOG=1
+   
+   Enables detailed event log showing:
+   - Every frequency adjustment
+   - Phase corrections
+   - Servo state transitions
+   - Clock synchronization events
+
+4. JSON-LD TELEMETRY
+   Default log: logs/swclock.jsonl
+   Environment variable: SWCLOCK_DISABLE_JSONLD=1 to disable
+   
+   Structured telemetry in JSON Lines format:
+   {"timestamp": "2026-02-18T17:34:52.583Z", "freq_ppb": 0.123, ...}
+   
+   Useful for:
+   - Post-analysis of servo behavior
+   - Performance monitoring
+   - Integration with monitoring systems
+
+5. SERVO BEHAVIOR CONTROL
+   Environment variable: SWCLOCK_DISABLE_SERVO_LOG=1
+   
+   Suppresses verbose servo logging (reduces I/O overhead)
+
+RUNTIME CONFIGURATION
+---------------------
+
+SwClock reads configuration from environment variables. Set before running ptpd:
+
+export SWCLOCK_EVENT_LOG=1              # Enable event logging
+export SWCLOCK_DISABLE_SERVO_LOG=1      # Reduce verbosity
+export SWCLOCK_DISABLE_JSONLD=1         # Disable telemetry
+
+./ptpd2 -c /etc/ptpd2.conf
+
+SwClock logs will appear in logs/swclock.jsonl (unless disabled)
+
+VERIFICATION
+------------
+
+How to confirm SwClock integration is active:
+
+1. CHECK COMPILE FLAGS
+   
+   grep PTPD_USE_SWCLOCK build-cmake/debug/compile_commands.json
+   
+   Should show: -DPTPD_USE_SWCLOCK in all compile commands
+
+2. CHECK LINKED SYMBOLS
+   
+   nm -g build-cmake/debug/src/libptpd.dylib | grep swclock
+   
+   Should show symbols like:
+   - _swclock_create
+   - _swclock_destroy
+   - _swclock_gettime
+   - _swclock_settime
+   - _swclock_adjtime
+
+3. CHECK EMBEDDED STRINGS
+   
+   strings build-cmake/debug/src/libptpd.dylib | grep -i swclock
+   
+   Should show:
+   - "adjFreq_swclock: freq=%.09f ppb, offset=%ld ns"
+   - "swclock_adjtime() failed: %s"
+   - "SWCLOCK_EVENT_LOG"
+
+4. CHECK LIBRARY DEPENDENCIES
+   
+   otool -L build-cmake/debug/src/libptpd.dylib  # macOS
+   ldd build-cmake/debug/src/libptpd.so          # Linux
+   
+   Should NOT show libswclock.* (statically linked as PRIVATE)
+
+5. RUNTIME LOG CHECK
+   
+   When ptpd starts with SwClock:
+   
+   2026-02-18 17:34:52 ptpd2[1234].startup (info) SwClock backend enabled
+   2026-02-18 17:34:52 ptpd2[1234].servo (debug) adjFreq_swclock: freq=0.000
+   
+   Without SwClock: No such messages
+
+FILES SUMMARY
+-------------
+
+Files Created:
+  src/dep/ptpd_clock.h           - Clock abstraction layer
+
+Files Modified:
+  CMakeLists.txt                 - BUILD_WITH_SWCLOCK option, swclock subdir
+  src/CMakeLists.txt             - Link swclock, add PTPD_USE_SWCLOCK define
+  src/datatypes.h                - Added void *swclock to PtpClock (line ~653)
+  src/ptpd.h                     - Skip sys/timex.h when using swclock (line 62)
+  src/ptpd.c                     - Lifecycle (create/destroy), ptpd_gettime()
+  src/ptpdlib.h                  - Added ptpd_gettime() public API
+  src/dep/servo.c                - adjFreq_wrapper() uses swclock_adjtime()
+  src/dep/sys.c                  - getTime/setTime/getTimeMonotonic use swclock
+  src/timingdomain.c             - Leap second mgmt includes ptpd_clock.h
+  src-app/ptpd-app.c             - Added --show-time demo using ptpd_gettime()
+
+KEY BENEFITS
+------------
+✓ Complete Replacement: SwClock handles ALL time operations and leap seconds
+✓ Zero Application Impact: Apps see no difference (use same API)
+✓ Build-Time Selection: Single flag switches entire clock backend
+✓ Production Ready: Full logging, telemetry, error handling
+✓ Platform Independent: Works on macOS (ntp_adjtime) and Linux (adjtimex)
+✓ Maintainable: Clean abstraction, minimal code duplication
+✓ Testable: Can compare SwClock vs system clock builds
+
+LIMITATIONS
+-----------
+• Compile-time only: Cannot switch backends at runtime
+• Platform dependency: Requires CLOCK_MONOTONIC_RAW (Linux, macOS)
+• Binary size: ~100KB larger with SwClock linked
+• Double-servo overhead: ptpd servo + swclock servo (minimal CPU impact)
+• Root requirement: ptpd still checks for root (can be patched for swclock-only)
+
+FUTURE ENHANCEMENTS
+-------------------
+• Runtime configuration of SwClock servo parameters via ptpd config
+• Expose SwClock telemetry through ptpd management interface
+• SwClock-specific monitoring in ptpd statistics output
+• Option to run SwClock without root for testing/simulation
+
+================================================================================

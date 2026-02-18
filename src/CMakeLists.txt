@@ -88,11 +88,23 @@ if(PTPD_SNMP AND NETSNMP_INCLUDE_DIRS)
     target_include_directories(ptpd2 PRIVATE ${NETSNMP_INCLUDE_DIRS})
 endif()
 
+# Add SwClock include directories if enabled
+if(BUILD_WITH_SWCLOCK)
+    target_include_directories(ptpd2 PRIVATE 
+        ${CMAKE_SOURCE_DIR}/libraries/swclock/src/sw_clock
+    )
+endif()
+
 # Set compiler definitions (matching autotools AM_CPPFLAGS)
 target_compile_definitions(ptpd2 PRIVATE
     HAVE_CONFIG_H              # Signal that we have config.h
     DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"  # Data directory
 )
+
+# Add SwClock compile definition if enabled
+if(BUILD_WITH_SWCLOCK)
+    target_compile_definitions(ptpd2 PRIVATE PTPD_USE_SWCLOCK)
+endif()
 
 # Phase 4: MAX_UNICAST_DESTINATIONS is now in config.h via Options.cmake
 # No need to define PTPD_STATISTICS here - it's in config.h
@@ -196,6 +208,11 @@ if(RT_LIBRARY)
     target_link_libraries(ptpd2 PRIVATE ${RT_LIBRARY})
 endif()
 
+# Link SwClock if enabled
+if(BUILD_WITH_SWCLOCK)
+    target_link_libraries(ptpd2 PRIVATE swclock)
+endif()
+
 # config.h is now generated in root CMakeLists.txt (Phase 2)
 # with full platform detection from cmake/CheckPlatform.cmake
 
@@ -235,12 +252,24 @@ if(BUILD_PTPD_LIBRARY)
             target_include_directories(${target_name} PRIVATE ${NETSNMP_INCLUDE_DIRS})
         endif()
         
+        # Add SwClock include directories if enabled
+        if(BUILD_WITH_SWCLOCK)
+            target_include_directories(${target_name} PRIVATE 
+                ${CMAKE_SOURCE_DIR}/libraries/swclock/src/sw_clock
+            )
+        endif()
+        
         # Set compiler definitions (same as ptpd2 but with PTPD_LIBRARY_MODE)
         target_compile_definitions(${target_name} PRIVATE
             HAVE_CONFIG_H
             DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"
             PTPD_LIBRARY_MODE  # Enable library mode
         )
+        
+        # Add SwClock compile definition if enabled
+        if(BUILD_WITH_SWCLOCK)
+            target_compile_definitions(${target_name} PRIVATE PTPD_USE_SWCLOCK)
+        endif()
         
         # Add PCAP preprocessor definitions if enabled
         if(PTPD_PCAP)
@@ -309,6 +338,11 @@ if(BUILD_PTPD_LIBRARY)
         
         if(RT_LIBRARY)
             target_link_libraries(${target_name} PRIVATE ${RT_LIBRARY})
+        endif()
+        
+        # Link SwClock if enabled
+        if(BUILD_WITH_SWCLOCK)
+            target_link_libraries(${target_name} PRIVATE swclock)
         endif()
     endfunction()
     

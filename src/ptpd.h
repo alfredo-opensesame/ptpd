@@ -59,7 +59,10 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #ifdef HAVE_SYS_TIMEX_H
+#ifndef PTPD_USE_SWCLOCK
+/* Skip sys/timex.h when using swclock - it provides its own timex compatibility */
 #include <sys/timex.h>
+#endif
 #endif
 #include <sys/socket.h>
 #include <sys/select.h>

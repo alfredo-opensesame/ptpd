@@ -651,6 +651,11 @@ typedef struct {
 	Boolean panicOver; /* panic mode is over, we can reset the clock */
 	int panicModeTimeLeft; /* How many 30-second periods left in panic mode */
 
+#ifdef PTPD_USE_SWCLOCK
+	/* Software clock instance when using swclock backend */
+	void *swclock; /* SwClock* - void* to avoid including swclock header here */
+#endif
+
 	/* used to wait on failure while allowing timers to tick */
 	Boolean initFailure;
 	Integer32 initFailureTimeout;

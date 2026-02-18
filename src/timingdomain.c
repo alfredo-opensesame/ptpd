@@ -1,5 +1,11 @@
+/* Include swclock BEFORE ptpd.h to prevent sys/timex.h conflicts */
+#ifdef PTPD_USE_SWCLOCK
+#include "sw_clock.h"
+#endif
+
 #include "ptpd.h"
 #include "dep/ntpengine/ntpdcontrol.h"
+#include "dep/ptpd_clock.h"
 
 #ifdef LOCAL_PREFIX
 #undef LOCAL_PREFIX

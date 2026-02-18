@@ -56,6 +56,11 @@
  * below.
  */
 
+/* Include swclock BEFORE ptpd.h to prevent sys/timex.h conflicts */
+#ifdef PTPD_USE_SWCLOCK
+#include "sw_clock.h"
+#endif
+
 #include "ptpd.h"
 
 #ifdef PTPD_LIBRARY_MODE
@@ -104,6 +109,15 @@ static PtpClock* ptpd_common_init(int argc, char **argv, Integer16 *ret)
 		return NULL;
 	}
 
+#ifdef PTPD_USE_SWCLOCK
+	/* Create software clock instance */
+	ptpClock->swclock = swclock_create();
+	if (!ptpClock->swclock) {
+		ERROR("Failed to create software clock\n");
+		/* Continue with system clock fallback - ptpd_clock.h macros will handle */
+	}
+#endif
+
 	timingDomain.electionDelay = rtOpts.electionDelay;
 
 	/* configure PTP TimeService */
@@ -137,6 +151,14 @@ static PtpClock* ptpd_common_init(int argc, char **argv, Integer16 *ret)
 /* Common cleanup function */
 static void ptpd_common_cleanup(void)
 {
+#ifdef PTPD_USE_SWCLOCK
+	/* Destroy software clock instance if it was created */
+	if (G_ptpClock && G_ptpClock->swclock) {
+		swclock_destroy((SwClock*)G_ptpClock->swclock);
+		G_ptpClock->swclock = NULL;
+	}
+#endif
+
 	/* this also calls ptpd shutdown */
 	timingDomain.shutdown(&timingDomain);
 
@@ -247,6 +269,30 @@ void ptpd_shutdown(PtpClock *ptpClock)
 	ptpd_common_cleanup();
 
 	library_ptpClock = NULL;
+}
+
+/**
+ * @brief Get time from PTP daemon's underlying clock
+ * @param ptpClock PTP clock instance
+ * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, etc.)
+ * @param tp Timespec structure to receive the time
+ * @return 0 on success, -1 on error
+ */
+int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp)
+{
+	if (!ptpClock || !tp) {
+		return -1;
+	}
+
+#ifdef PTPD_USE_SWCLOCK
+	/* Get time from swclock if available */
+	if (ptpClock->swclock) {
+		return swclock_gettime((SwClock*)ptpClock->swclock, clk_id, tp);
+	}
+#endif
+
+	/* Fall back to system clock */
+	return clock_gettime(clk_id, tp);
 }
 
 #endif /* PTPD_LIBRARY_MODE */

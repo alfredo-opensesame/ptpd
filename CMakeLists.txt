@@ -115,6 +115,20 @@ configure_file(
 # Add source directory
 add_subdirectory(src)
 
+# SwClock integration option (compile-time backend selection)
+option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend (software clock)" OFF)
+if(BUILD_WITH_SWCLOCK)
+    # Add swclock as a subdirectory
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/swclock/CMakeLists.txt")
+        add_subdirectory(libraries/swclock)
+        message(STATUS "SwClock backend: ENABLED (software clock)")
+    else()
+        message(FATAL_ERROR "BUILD_WITH_SWCLOCK is ON but libraries/swclock not found. Please initialize git submodule.")
+    endif()
+else()
+    message(STATUS "SwClock backend: DISABLED (system clock)")
+endif()
+
 # Add example application if library build is enabled
 option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
 if(BUILD_PTPD_LIBRARY)
