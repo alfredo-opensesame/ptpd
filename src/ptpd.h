@@ -327,8 +327,11 @@ Boolean acceptPortIdentity(PortIdentity thisPort, PortIdentity targetPort);
 /**
  * \brief Management message support
  */
-void handleManagement(MsgHeader *header,
-		 Boolean isFromSelf, Integer32 sourceAddress, RunTimeOpts *rtOpts, PtpClock *ptpClock);
+void handleManagement( MsgHeader   *header,
+		               Boolean     isFromSelf,
+                       Integer32   sourceAddress,
+                       RunTimeOpts *rtOpts,
+                       PtpClock    *ptpClock);
 
 /** \}*/
 
@@ -459,9 +462,9 @@ void sMAcknowledgeCancelUnicastTransmission_display(const SMAcknowledgeCancelUni
 
 void clearTime(TimeInternal *time);
 
-char *dump_TimeInternal(const TimeInternal * p);
-char *dump_TimeInternal2(const char *st1, const TimeInternal * p1, const char *st2, const TimeInternal * p2);
-const char * getTimeSourceName(Enumeration8 timeSource);
+char* dump_TimeInternal(const TimeInternal * p);
+char* dump_TimeInternal2(const char *st1, const TimeInternal * p1, const char *st2, const TimeInternal * p2);
+const char* getTimeSourceName(Enumeration8 timeSource);
 
 int snprint_TimeInternal(char *s, int max_len, const TimeInternal * p);
 

@@ -12,8 +12,10 @@ set -e  # Exit on any error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BINARY="$PROJECT_DIR/build-cmake/debug/src/ptpd2"
-#BINARY="/opt/homebrew/sbin/ptpd2"
+
+# Default to original ptpd2 binary
+BINARY_NAME="ptpd2"
+BINARY="$PROJECT_DIR/build-cmake/debug/src/$BINARY_NAME"
 
 # Colors for output
 RED='\033[0;31m'
@@ -62,7 +64,7 @@ show_usage() {
     echo "Usage: $0 <interface> [config_file] [options]"
     echo ""
     echo "Description:"
-    echo "  PTPd test runner that runs the daemon (ptpd2) with comprehensive"
+    echo "  PTPd test runner that runs the daemon (ptpd2 or ptpd-app) with comprehensive"
     echo "  logging, validation, and analysis."
     echo ""
     echo "Parameters:"
@@ -70,13 +72,19 @@ show_usage() {
     echo "  config_file       Configuration file to use (REQUIRED)"
     echo ""
     echo "Options:"
+    echo "  -b, --binary NAME Binary to run: ptpd2 (default) or ptpd-app (library-based)"
     echo "  -d, --duration N  Run duration in seconds (default: 60)"
     echo "  -v, --verbose     Enable verbose output"
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 en5 resources/ptpd-daemon.conf                  # Run daemon with config"
+    echo "  $0 en5 resources/ptpd-daemon.conf                  # Run original daemon"
+    echo "  $0 en5 resources/ptpd-daemon.conf -b ptpd-app      # Run library-based app"
     echo "  $0 en0 my-config.conf --duration 30                # Run for 30 seconds"
+    echo ""
+    echo "Binary Options:"
+    echo "  ptpd2     - Original PTPd executable (default)"
+    echo "  ptpd-app  - Library-based example application (requires -DBUILD_PTPD_LIBRARY=ON)"
     echo ""
     echo "Configuration Requirements:"
     echo "  - All PTPd settings must be in the configuration file"
@@ -261,6 +269,26 @@ parse_arguments() {
     # Parse remaining arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
+            -b|--binary)
+                BINARY_NAME="$2"
+                if [[ "$BINARY_NAME" != "ptpd2" ]] && [[ "$BINARY_NAME" != "ptpd-app" ]]; then
+                    print_error "Binary must be 'ptpd2' or 'ptpd-app', got: $BINARY_NAME"
+                    exit 1
+                fi
+                # Update BINARY path based on binary name
+                for BUILD_DIR in "build-cmake/debug" "build-cmake/release"; do
+                    if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
+                        CANDIDATE="$PROJECT_DIR/$BUILD_DIR/src-app/$BINARY_NAME"
+                    else
+                        CANDIDATE="$PROJECT_DIR/$BUILD_DIR/src/$BINARY_NAME"
+                    fi
+                    if [ -x "$CANDIDATE" ]; then
+                        BINARY="$CANDIDATE"
+                        break
+                    fi
+                done
+                shift 2
+                ;;
             -d|--duration)
                 DURATION="$2"
                 if ! [[ "$DURATION" =~ ^[0-9]+$ ]] || [ "$DURATION" -lt 1 ]; then
@@ -307,6 +335,18 @@ parse_arguments() {
         show_usage
         exit 1
     fi
+
+    # Verify binary exists
+    if [ ! -x "$BINARY" ]; then
+        print_error "Binary not found or not executable: $BINARY"
+        if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
+            print_error "Make sure you built with: cmake -B build-cmake/debug -DBUILD_PTPD_LIBRARY=ON"
+        fi
+        exit 1
+    fi
+
+    # Display which binary we're using
+    print_status "Using binary: $BINARY_NAME ($BINARY)"
 }
 
 # Function to setup output directories and files

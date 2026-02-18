@@ -115,6 +115,12 @@ configure_file(
 # Add source directory
 add_subdirectory(src)
 
+# Add example application if library build is enabled
+option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
+if(BUILD_PTPD_LIBRARY)
+    add_subdirectory(src-app)
+endif()
+
 # Phase 6: Install targets
 # Install man pages (generated from .in templates)
 install(FILES ${PROJECT_BINARY_DIR}/ptpd2.8

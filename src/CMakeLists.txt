@@ -205,3 +205,142 @@ install(TARGETS ptpd2
 )
 
 # Man pages and data files installed in root CMakeLists.txt
+
+# ==============================================================================
+# Optional Library Build
+# ==============================================================================
+
+# Option to build library (OFF by default to maintain current behavior)
+option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
+
+if(BUILD_PTPD_LIBRARY)
+    message(STATUS "Building ptpd library (static and shared)")
+    
+    # Helper function to configure library targets (avoid code duplication)
+    function(configure_ptpd_library target_name)
+        # Set target include directories
+        target_include_directories(${target_name} PRIVATE
+            ${PROJECT_BINARY_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/dep
+        )
+        
+        # Add PCAP include directories if found
+        if(PTPD_PCAP AND PCAP_INCLUDE_DIRS)
+            target_include_directories(${target_name} PRIVATE ${PCAP_INCLUDE_DIRS})
+        endif()
+        
+        # Add SNMP include directories if found
+        if(PTPD_SNMP AND NETSNMP_INCLUDE_DIRS)
+            target_include_directories(${target_name} PRIVATE ${NETSNMP_INCLUDE_DIRS})
+        endif()
+        
+        # Set compiler definitions (same as ptpd2 but with PTPD_LIBRARY_MODE)
+        target_compile_definitions(${target_name} PRIVATE
+            HAVE_CONFIG_H
+            DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"
+            PTPD_LIBRARY_MODE  # Enable library mode
+        )
+        
+        # Add PCAP preprocessor definitions if enabled
+        if(PTPD_PCAP)
+            if(PCAP_DEFINITIONS)
+                foreach(def ${PCAP_DEFINITIONS})
+                    if(def MATCHES "^-U")
+                        target_compile_options(${target_name} PRIVATE ${def})
+                    elseif(def MATCHES "^-D")
+                        string(REGEX REPLACE "^-D" "" def_clean "${def}")
+                        target_compile_definitions(${target_name} PRIVATE ${def_clean})
+                    else()
+                        target_compile_definitions(${target_name} PRIVATE ${def})
+                    endif()
+                endforeach()
+            endif()
+        endif()
+        
+        # Add SNMP preprocessor definitions if enabled
+        if(PTPD_SNMP)
+            if(NETSNMP_DEFINITIONS)
+                foreach(def ${NETSNMP_DEFINITIONS})
+                    if(def MATCHES "^-U")
+                        target_compile_options(${target_name} PRIVATE ${def})
+                    elseif(def MATCHES "^-D")
+                        string(REGEX REPLACE "^-D" "" def_clean "${def}")
+                        target_compile_definitions(${target_name} PRIVATE ${def_clean})
+                    else()
+                        target_compile_definitions(${target_name} PRIVATE ${def})
+                    endif()
+                endforeach()
+            endif()
+        endif()
+        
+        # Set compiler flags (matching ptpd2)
+        target_compile_options(${target_name} PRIVATE
+            -Wall
+            -fexceptions
+            $<$<CONFIG:Debug>:-g -O0>
+            $<$<CONFIG:Release>:-O2>
+            $<$<CONFIG:RelWithDebInfo>:-g -O2>
+        )
+        
+        # Add stack protector if supported
+        include(CheckCCompilerFlag)
+        check_c_compiler_flag(-fstack-protector HAS_STACK_PROTECTOR)
+        if(HAS_STACK_PROTECTOR)
+            target_compile_options(${target_name} PRIVATE -fstack-protector)
+        endif()
+        
+        # Link libraries (same as ptpd2 but with pthread required)
+        target_link_libraries(${target_name} PRIVATE
+            ${MATH_LIBRARY}
+            pthread  # Required for library threading
+        )
+        
+        # Link PCAP libraries if enabled
+        if(PTPD_PCAP)
+            target_link_libraries(${target_name} PRIVATE ${PCAP_LIBRARIES})
+        endif()
+        
+        # Link SNMP libraries if enabled
+        if(PTPD_SNMP)
+            separate_arguments(SNMP_LINK_ARGS UNIX_COMMAND "${NETSNMP_LIBRARIES}")
+            target_link_libraries(${target_name} PRIVATE ${SNMP_LINK_ARGS})
+        endif()
+        
+        if(RT_LIBRARY)
+            target_link_libraries(${target_name} PRIVATE ${RT_LIBRARY})
+        endif()
+    endfunction()
+    
+    # Build static library
+    add_library(ptpd-static STATIC ${PTPD2_SOURCES})
+    set_target_properties(ptpd-static PROPERTIES OUTPUT_NAME ptpd)
+    configure_ptpd_library(ptpd-static)
+    
+    # Build shared library
+    add_library(ptpd-shared SHARED ${PTPD2_SOURCES})
+    set_target_properties(ptpd-shared PROPERTIES 
+        OUTPUT_NAME ptpd
+        VERSION ${PROJECT_VERSION}
+        SOVERSION 2
+    )
+    configure_ptpd_library(ptpd-shared)
+    
+    # Install libraries
+    install(TARGETS ptpd-static ptpd-shared
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+    
+    # Install public headers
+    install(FILES 
+        ptpdlib.h
+        ptpd.h
+        datatypes.h
+        constants.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+    
+    message(STATUS "Library will be installed to: ${CMAKE_INSTALL_LIBDIR}")
+    message(STATUS "Headers will be installed to: ${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
