@@ -1,8 +1,20 @@
 #ifndef PTP_PRIMITIVES_H_
 #define PTP_PRIMITIVES_H_
 
-
+/* On iOS/macOS, Boolean is already defined in MacTypes.h */
+#if !defined(__APPLE__) || !defined(PTPD_IOS)
 typedef enum {FALSE=0, TRUE} Boolean;
+#else
+/* Use the system Boolean from MacTypes.h, but ensure TRUE/FALSE are defined */
+#include <MacTypes.h>
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+#endif
+
 typedef char Octet;
 typedef int8_t Integer8;
 typedef int16_t Integer16;

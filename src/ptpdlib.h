@@ -103,6 +103,33 @@ void ptpd_shutdown(PtpClock *ptpClock);
  */
 int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp);
 
+#ifdef PTPD_IOS
+/**
+ * @brief Register log message callback for iOS integration
+ * @param callback Function pointer to receive log messages
+ * 
+ * iOS applications can register a callback to receive all ptpd log messages
+ * for display in the UI. The callback receives the formatted message string
+ * and priority level (LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG, etc.).
+ * 
+ * The callback is invoked from the PTP daemon thread and should return quickly
+ * to avoid blocking protocol operation. It's recommended to copy the message
+ * and dispatch to the main thread for UI updates.
+ * 
+ * Example (Swift bridging):
+ *   void log_callback(const char* message, int priority) {
+ *       // Marshal to Swift/UI thread
+ *       dispatch_async(dispatch_get_main_queue(), ^{
+ *           // Update UI with message
+ *       });
+ *   }
+ *   ptpd_set_log_callback(log_callback);
+ * 
+ * @note Only available when build with -DPTPD_IOS
+ */
+void ptpd_set_log_callback(void (*callback)(const char* message, int priority));
+#endif
+
 #ifdef __cplusplus
 }
 #endif

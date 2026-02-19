@@ -103,10 +103,19 @@ typedef struct {
 /**
 * \brief The PhysicalAddress type is used to represent a physical address
  */
+#ifdef PTPD_IOS
+/* On iOS, PhysicalAddress conflicts with MacTypes.h, use PtpPhysicalAddress */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/derivedData/physicalAddress.def"
+} PtpPhysicalAddress;
+#define PhysicalAddress PtpPhysicalAddress
+#else
 typedef struct {
 	#define OPERATE( name, size, type ) type name;
 	#include "def/derivedData/physicalAddress.def"
 } PhysicalAddress;
+#endif
 
 
 /**

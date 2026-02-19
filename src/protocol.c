@@ -234,6 +234,13 @@ void protocol(RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
 	for (;;)
 	{
+#ifdef PTPD_IOS
+		/* iOS: Check for clean exit request */
+		if (ptpClock->ios_should_exit) {
+			INFO("iOS exit requested, shutting down cleanly\n");
+			break;
+		}
+#endif
 		/* 20110701: this main loop was rewritten to be more clear */
 		if(ptpClock->disabled && ptpClock->portDS.portState != PTP_DISABLED) {
 			toState(PTP_DISABLED, rtOpts, ptpClock);

@@ -56,7 +56,11 @@ typedef struct {
 	/* used by IGMP refresh */
 	struct in_addr interfaceAddr;
 	/* Typically MAC address - outer 6 octers of ClockIdendity */
+#ifndef PTPD_IOS
 	Octet interfaceID[ETHER_ADDR_LEN];
+#else
+	Octet interfaceID[6];  /* iOS doesn't have ETHER_ADDR_LEN */
+#endif
 	/* source address of last received packet - used for unicast replies to Delay Requests */
 	Integer32 lastSourceAddr;
 	/* destination address of last received packet - used for unicast FollowUp for multiple slaves*/
@@ -81,8 +85,13 @@ typedef struct {
 	int ttlEvent;
 	Boolean joinedPeer;
 	Boolean joinedGeneral;
+#ifndef PTPD_IOS
 	struct ether_addr etherDest;
 	struct ether_addr peerEtherDest;
+#else
+	Octet etherDest[6];  /* iOS doesn't have struct ether_addr */
+	Octet peerEtherDest[6];
+#endif
 	Boolean txTimestampFailure;
 
 	Ipv4AccessList* timingAcl;

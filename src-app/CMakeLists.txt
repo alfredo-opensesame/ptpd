@@ -1,7 +1,7 @@
 # Example application using ptpd library
 
 # Build ptpd-app executable
-add_executable(ptpd-app ptpd-app.c)
+add_executable(ptpd-app macos/ptpd-app.c)
 
 # Include directories for headers
 # Build directory MUST come first to find config.h

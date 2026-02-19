@@ -713,6 +713,11 @@ typedef struct {
 
 	RunTimeOpts *rtOpts;
 
+#ifdef PTPD_IOS
+	/* iOS-specific: clean exit flag for foreground-only operation */
+	volatile Boolean ios_should_exit;
+#endif
+
 } PtpClock;
 
 

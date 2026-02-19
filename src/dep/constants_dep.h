@@ -121,8 +121,18 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 	    sizeof(struct udphdr))
 #define PACKET_BEGIN_ETHER (ETHER_HDR_LEN)
 
-#define PTP_EVENT_PORT    319
-#define PTP_GENERAL_PORT  320
+/* PTP UDP Port Configuration
+ * Standard ports (319/320) require root/privileged access on Unix systems.
+ * Define PTPD_OPENSESAME to use non-standard ports (10319/10320) that don't require root.
+ * Note: ALL nodes in the PTP network (master and slaves) must use the same port numbers.
+ */
+#ifdef PTPD_OPENSESAME
+  #define PTP_EVENT_PORT    10319  /* Unprivileged port for event messages */
+  #define PTP_GENERAL_PORT  10320  /* Unprivileged port for general messages */
+#else
+  #define PTP_EVENT_PORT    319    /* Standard IEEE 1588 event message port */
+  #define PTP_GENERAL_PORT  320    /* Standard IEEE 1588 general message port */
+#endif
 
 #define DEFAULT_PTP_DOMAIN_ADDRESS     "224.0.1.129"
 #define PEER_PTP_DOMAIN_ADDRESS        "224.0.0.107"

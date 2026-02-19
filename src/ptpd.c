@@ -118,6 +118,11 @@ static PtpClock* ptpd_common_init(int argc, char **argv, Integer16 *ret)
 	}
 #endif
 
+#ifdef PTPD_IOS
+	/* Initialize iOS exit flag */
+	ptpClock->ios_should_exit = FALSE;
+#endif
+
 	timingDomain.electionDelay = rtOpts.electionDelay;
 
 	/* configure PTP TimeService */

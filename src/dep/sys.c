@@ -437,6 +437,16 @@ updateLogSize(LogFileHandler* handler)
  * Prints a message, randing from critical to debug.
  * This either prints the message to syslog, or with timestamp+state to stderr
  */
+
+#ifdef PTPD_IOS
+/* iOS log callback - set via ptpd_set_log_callback() */
+static void (*ios_log_callback)(const char* message, int priority) = NULL;
+
+void ptpd_set_log_callback(void (*callback)(const char*, int)) {
+	ios_log_callback = callback;
+}
+#endif
+
 void
 logMessage(int priority, const char * format, ...)
 {
@@ -447,6 +457,16 @@ logMessage(int priority, const char * format, ...)
 	va_copy(ap1, ap);
 	va_start(ap1, format);
 	va_start(ap, format);
+
+#ifdef PTPD_IOS
+	/* iOS: Send log message to callback if registered */
+	if (ios_log_callback) {
+		char message[1024];
+		vsnprintf(message, sizeof(message), format, ap1);
+		ios_log_callback(message, priority);
+		/* Continue to normal logging as well (for debugging) */
+	}
+#endif
 
 #ifdef RUNTIME_DEBUG
 	if ((priority >= LOG_DEBUG) && (priority > rtOpts.debug_level)) {

@@ -1039,6 +1039,15 @@ netInit(NetPath * netPath, RunTimeOpts * rtOpts, PtpClock * ptpClock)
 		return FALSE;
 	}
 
+#ifdef PTPD_SOCKET_TIMEOUT
+	/* Set receive timeout for non-blocking operation (iOS compatibility) */
+	struct timeval tv = {.tv_sec = PTPD_SOCKET_TIMEOUT, .tv_usec = 0};
+	if (setsockopt(netPath->eventSock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0 ||
+	    setsockopt(netPath->generalSock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+		DBGV("Warning: failed to set socket timeout (non-critical)\n");
+	}
+#endif
+
 	/* let's see if we have another interface left before we die */
 	if(!testInterface(rtOpts->ifaceName, rtOpts)) {
 
@@ -1068,8 +1077,16 @@ netInit(NetPath * netPath, RunTimeOpts * rtOpts, PtpClock * ptpClock)
 	/* No HW address, we'll use the protocol address to form interfaceID -> clockID */
 	if( !netPath->interfaceInfo.hasHwAddress && netPath->interfaceInfo.hasAfAddress ) {
 		uint32_t addr = ((struct sockaddr_in*)&(netPath->interfaceInfo.afAddress))->sin_addr.s_addr;
-		memcpy(netPath->interfaceID, &addr, 2);
-		memcpy(netPath->interfaceID + 4, &addr + 2, 2);
+		/* Create EUI-64 format from IP: IP[0:1] FF FE IP[2:3] */
+		memcpy(netPath->interfaceID, &addr, 2);        /* Bytes 0-1: First 2 bytes of IP */
+		netPath->interfaceID[2] = 0xFF;                /* Byte 2: EUI-64 marker */
+		netPath->interfaceID[3] = 0xFE;                /* Byte 3: EUI-64 marker */
+		memcpy(netPath->interfaceID + 4, (uint8_t*)&addr + 2, 2); /* Bytes 4-5: Last 2 bytes of IP */
+#ifdef PTPD_IOS
+		/* On iOS, add process ID to ensure uniqueness if multiple instances share same IP */
+		uint16_t pid = htons(getpid());
+		memcpy(netPath->interfaceID + 4, &pid, 2);     /* Override bytes 4-5 with PID */
+#endif
 	/* Initialise interfaceID with hardware address */
 	} else {
 		    memcpy(&netPath->interfaceID, &netPath->interfaceInfo.hwAddress,

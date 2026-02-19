@@ -22,6 +22,13 @@
 # include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+/* iOS platform support */
+#ifdef PTPD_IOS
+#define PTPD_NO_ROOT_CHECK     /* Skip privilege checks on iOS */
+#define PTPD_SOCKET_TIMEOUT 1  /* Non-blocking sockets (1 second timeout) */
+#define PTPD_OPENSESAME        /* Use non-privileged ports (10319/10320) */
+#endif
+
 
 #ifdef linux
 #	ifndef _GNU_SOURCE

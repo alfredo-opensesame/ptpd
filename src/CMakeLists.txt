@@ -66,8 +66,17 @@ set(PTPD2_SOURCES
     ${PTPD2_SNMP_SOURCES}
 )
 
-# Create executable
-add_executable(ptpd2 ${PTPD2_SOURCES})
+# Check if building in library mode (for iOS or other library use cases)
+# PTPD_LIBRARY_MODE is passed via CMAKE_C_FLAGS
+if(CMAKE_C_FLAGS MATCHES "PTPD_LIBRARY_MODE")
+    message(STATUS "Building ptpd as static library (PTPD_LIBRARY_MODE enabled)")
+    add_library(ptpd2 STATIC ${PTPD2_SOURCES})
+    set(PTPD_IS_LIBRARY TRUE)
+else()
+    message(STATUS "Building ptpd as executable (daemon mode)")
+    add_executable(ptpd2 ${PTPD2_SOURCES})
+    set(PTPD_IS_LIBRARY FALSE)
+endif()
 
 # Set target include directories
 # Build directory MUST come first to find CMake-generated config.h
@@ -217,9 +226,13 @@ endif()
 # with full platform detection from cmake/CheckPlatform.cmake
 
 # Phase 6: Install binary target (matching autotools)
-install(TARGETS ptpd2
-    RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
-)
+# Skip installation for iOS (apps are bundled differently)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    install(TARGETS ptpd2
+        RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 # Man pages and data files installed in root CMakeLists.txt
 
