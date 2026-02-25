@@ -122,11 +122,18 @@ endif()
 
 # Check for PCAP headers (pcap/pcap.h or pcap.h)
 include(CheckIncludeFile)
+
+# Force re-check by unsetting cached results from previous (possibly failed) runs
+# This is necessary because earlier builds may have set these to FALSE before
+# we properly configured PCAP_INCLUDE_DIRS
+unset(HAVE_PCAP_PCAP_H CACHE)
+unset(HAVE_PCAP_H CACHE)
+
 set(CMAKE_REQUIRED_INCLUDES ${PCAP_INCLUDE_DIRS})
 check_include_file(pcap/pcap.h HAVE_PCAP_PCAP_H)
 check_include_file(pcap.h HAVE_PCAP_H)
 
-# Note: check_include_file() already creates CACHE variables (HAVE_PCAP_PCAP_H and HAVE_PCAP_H)
+# Note: check_include_file() creates CACHE variables (HAVE_PCAP_PCAP_H and HAVE_PCAP_H)
 # These cache variables will be available globally for configure_file() to use
 # We don't need to explicitly propagate them - CMake cache is accessible everywhere
 
