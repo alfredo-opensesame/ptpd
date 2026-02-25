@@ -125,9 +125,8 @@ check_include_file(netinet/ether.h HAVE_NETINET_ETHER_H)
 # net/ethernet.h
 check_include_file(net/ethernet.h HAVE_NET_ETHERNET_H)
 
-# PCAP headers
-check_include_file(pcap/pcap.h HAVE_PCAP_PCAP_H)
-check_include_file(pcap.h HAVE_PCAP_H)
+# PCAP headers are checked in FindPCAP.cmake module (not here)
+# because we need PCAP include directories from pcap-config first
 
 # Function checks
 check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
