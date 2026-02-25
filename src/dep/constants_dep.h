@@ -22,6 +22,8 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #endif
 
 #if defined(linux) || defined(__linux__)
+#include <sys/types.h>
+#include <sys/socket.h>
 #include<netinet/in.h>
 #include<net/if.h>
 #include<net/if_arp.h>
