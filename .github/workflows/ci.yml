@@ -2,9 +2,9 @@ name: CI Build
 
 on:
   push:
-    branches: [ main, macos, develop ]
+    branches: [ main, cmake-port ]
   pull_request:
-    branches: [ main, macos ]
+    branches: [ main, cmake-port ]
 
 jobs:
   build:
