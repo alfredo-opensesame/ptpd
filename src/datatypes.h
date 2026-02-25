@@ -284,7 +284,7 @@ typedef struct {
 
 	int ttl;
 	int dscpValue;
-#if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
+#if ((defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
 	int cpuNumber;
 #endif /* linux && HAVE_SCHED_H || HAVE_SYS_CPUSET_H*/
 

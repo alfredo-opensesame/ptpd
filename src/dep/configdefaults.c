@@ -292,7 +292,7 @@ loadDefaultSettings( RunTimeOpts* rtOpts )
 	/* Try 46 for expedited forwarding */
 	rtOpts->dscpValue = 0;
 
-#if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
+#if ((defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
 	rtOpts-> cpuNumber = -1;
 #endif /* (linux && HAVE_SCHED_H) || HAVE_SYS_CPUSET_H*/
 

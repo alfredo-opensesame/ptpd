@@ -2299,7 +2299,7 @@ parseConfig ( int opCode, void *opArg, dictionary* dict, RunTimeOpts *rtOpts )
 	CONFIG_KEY_CONDITIONAL_TRIGGER(rtOpts->statisticsLog.logEnabled && !rtOpts->logStatistics,
 					rtOpts->statisticsLog.logEnabled, FALSE, rtOpts->statisticsLog.logEnabled);
 
-#if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
+#if ((defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined (__QNXNTO__)
 	parseResult &= configMapInt(opCode, opArg, dict, target, "global:cpuaffinity_cpucore", PTPD_CHANGE_CPUAFFINITY, INTTYPE_INT, &rtOpts->cpuNumber, rtOpts->cpuNumber,
 		"Bind "PTPD_PROGNAME" process to a selected CPU core number.\n"
 	"        0 = first CPU core, etc. -1 = do not bind to a single core.", RANGECHECK_RANGE,

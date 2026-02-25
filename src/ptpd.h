@@ -30,7 +30,7 @@
 #endif
 
 
-#ifdef linux
+#if defined(linux) || defined(__linux__)
 #	ifndef _GNU_SOURCE
 #		define _GNU_SOURCE
 	#endif /* _GNU_SOURCE */
@@ -135,7 +135,7 @@
 #endif /* HAVE_PCAP_H */
 #endif
 #endif
-#if defined(linux) && defined(HAVE_SCHED_H)
+#if (defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H)
 #include <sched.h>
 #endif /* linux && HAVE_SCHED_H */
 
