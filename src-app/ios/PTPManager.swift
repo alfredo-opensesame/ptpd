@@ -34,6 +34,25 @@ class PTPManager: ObservableObject {
     func start(masterIP: String) {
         guard !isRunning else { return }
         
+        // Wait for previous thread to finish if it's still running
+        if let oldThread = ptpThread, !oldThread.isFinished {
+            logs.append(LogEntry(message: "Waiting for previous session to finish...", level: 1))
+            // Give it a moment to finish
+            DispatchQueue.global().async {
+                while !oldThread.isFinished && !oldThread.isCancelled {
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+                DispatchQueue.main.async {
+                    self.actuallyStart(masterIP: masterIP)
+                }
+            }
+            return
+        }
+        
+        actuallyStart(masterIP: masterIP)
+    }
+    
+    private func actuallyStart(masterIP: String) {
         ptpBridge = PTPBridge(masterIP: masterIP)
         
         ptpThread = Thread { [weak self] in
@@ -51,6 +70,9 @@ class PTPManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.isRunning = false
                 self?.state = "STOPPED"
+                self?.offset = "--"
+                self?.delay = "--"
+                self?.drift = "--"
                 self?.logs.append(LogEntry(message: "PTP client stopped", level: 1))
             }
         }
@@ -69,12 +91,11 @@ class PTPManager: ObservableObject {
     
     func stop() {
         guard isRunning else { return }
+        
+        logs.append(LogEntry(message: "Stopping PTP client...", level: 1))
+        
+        // Signal the bridge to stop (thread will clean up and set isRunning = false)
         ptpBridge?.stop()
-        isRunning = false
-        state = "STOPPED"
-        offset = "--"
-        delay = "--"
-        drift = "--"
     }
     
     private func updateStatus() {
