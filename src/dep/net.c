@@ -1280,7 +1280,7 @@ netInit(NetPath * netPath, RunTimeOpts * rtOpts, PtpClock * ptpClock)
 #endif /* SO_RCVBUF */
 
 #ifdef USE_BINDTODEVICE
-#ifdef linux
+#if defined(linux) || defined(__linux__)
 		/*
 		 * The following code makes sure that the data is only
 		 * received on the specified interface.  Without this option,

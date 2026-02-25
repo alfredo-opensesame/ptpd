@@ -192,11 +192,7 @@ void applyConfig(dictionary *baseConfig, RunTimeOpts *rtOpts, PtpClock *ptpClock
 		    ERROR("Error: Cannot use %s interface as backup\n",tmpOpts.backupIfaceName);
 		}
 	}
-#if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
-        /* Changing the CPU affinity mask */
-        if(rtOpts->restartSubsystems & PTPD_CHANGE_CPUAFFINITY) {
-                NOTIFY("Applying CPU binding configuration: changing selected CPU core\n");
-
+#if (defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
                 if(setCpuAffinity(tmpOpts.cpuNumber) < 0) {
                         if(tmpOpts.cpuNumber == -1) {
                                 ERROR("Could not unbind from CPU core %d\n", rtOpts->cpuNumber);
@@ -927,7 +923,7 @@ configcheck:
 	}
 #endif
 
-#if (defined(linux) && defined(HAVE_SCHED_H)) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
+#if (defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
 	/* Try binding to a single CPU core if configured to do so */
 	if(rtOpts->cpuNumber > -1) {
     		if(setCpuAffinity(rtOpts->cpuNumber) < 0) {

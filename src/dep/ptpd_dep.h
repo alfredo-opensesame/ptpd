@@ -460,7 +460,7 @@ Boolean nanoSleep(TimeInternal*);
 void getTime(TimeInternal*);
 void getTimeMonotonic(TimeInternal*);
 void setTime(TimeInternal*);
-#ifdef linux
+#if defined(linux) || defined(__linux__)
 void setRtc(TimeInternal *);
 #endif /* linux */
 double getRand(void);

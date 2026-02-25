@@ -15,13 +15,13 @@
 
 /* platform dependent */
 
-#if !defined(linux) && !defined(__NetBSD__) && !defined(__FreeBSD__) && \
+#if !defined(linux) && !defined(__linux__) && !defined(__NetBSD__) && !defined(__FreeBSD__) && \
   !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__sun) && !defined(__QNXNTO__)
 #error PTPD hasn't been ported to this OS - should be possible \
 if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.net
 #endif
 
-#ifdef	linux
+#if defined(linux) || defined(__linux__)
 #include<netinet/in.h>
 #include<net/if.h>
 #include<net/if_arp.h>
@@ -32,7 +32,7 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #define IFCONF_LENGTH 10
 
 #define octet ether_addr_octet
-#endif /* linux */
+#endif /* linux || __linux__ */
 
 #if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__APPLE__) || defined(__OpenBSD__) || defined(__sun) || defined(__QNXNTO__)
 # include <sys/types.h>

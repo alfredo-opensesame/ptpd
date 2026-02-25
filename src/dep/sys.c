@@ -2764,7 +2764,7 @@ int setCpuAffinity(int cpu) {
 			      -1, sizeof(mask), &mask));
 #endif /* HAVE_SYS_CPUSET_H */
 
-#if defined(linux) && defined(HAVE_SCHED_H)
+#if (defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H)
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
 	if(cpu >= 0) {
