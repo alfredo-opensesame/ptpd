@@ -113,10 +113,14 @@ set(CMAKE_REQUIRED_INCLUDES ${PCAP_INCLUDE_DIRS})
 check_include_file(pcap/pcap.h HAVE_PCAP_PCAP_H)
 check_include_file(pcap.h HAVE_PCAP_H)
 
-# Make header detection results available globally for config.h
-# check_include_file sets cache variables, but we need to ensure they're propagated
-set(HAVE_PCAP_PCAP_H ${HAVE_PCAP_PCAP_H} CACHE INTERNAL "")
-set(HAVE_PCAP_H ${HAVE_PCAP_H} CACHE INTERNAL "")
+# Export to parent scope for configure_file() to use when generating config.h
+# Note: check_include_file already creates cache variables, we just need to propagate them
+if(HAVE_PCAP_PCAP_H)
+    set(HAVE_PCAP_PCAP_H 1 PARENT_SCOPE)
+endif()
+if(HAVE_PCAP_H)
+    set(HAVE_PCAP_H 1 PARENT_SCOPE)
+endif()
 
 # Determine if PCAP is found
 if(PCAP_LIBRARIES AND (HAVE_PCAP_PCAP_H OR HAVE_PCAP_H))
