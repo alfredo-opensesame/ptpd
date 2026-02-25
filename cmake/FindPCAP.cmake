@@ -136,15 +136,24 @@ set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARIES})
 # Use try_compile approach which is more reliable than check_include_file
 # for system include directories
 include(CheckCSourceCompiles)
+
+# Debug: show what we're using for the tests
+message(STATUS "CMAKE_REQUIRED_INCLUDES: ${CMAKE_REQUIRED_INCLUDES}")
+message(STATUS "CMAKE_REQUIRED_LIBRARIES: ${CMAKE_REQUIRED_LIBRARIES}")
+
 check_c_source_compiles("
     #include <pcap/pcap.h>
     int main() { return 0; }
 " HAVE_PCAP_PCAP_H)
 
+message(STATUS "HAVE_PCAP_PCAP_H result: ${HAVE_PCAP_PCAP_H}")
+
 check_c_source_compiles("
     #include <pcap.h>
     int main() { return 0; }
 " HAVE_PCAP_H)
+
+message(STATUS "HAVE_PCAP_H result: ${HAVE_PCAP_H}")
 
 # Note: check_c_source_compiles creates CACHE variables (HAVE_PCAP_PCAP_H and HAVE_PCAP_H)
 # These cache variables will be available globally for configure_file() to use
