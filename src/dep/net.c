@@ -131,7 +131,7 @@ netShutdownMulticast(NetPath * netPath)
 	/* Close Peer Multicast */
 	netShutdownMulticastIPv4(netPath, netPath->peerMulticastAddr);
 	netPath->peerMulticastAddr = 0;
-	
+
 	return TRUE;
 }
 
@@ -647,7 +647,7 @@ netInitMulticast(NetPath * netPath,  const RunTimeOpts * rtOpts)
 		return FALSE;
 	}
 	/* End of Peer multicast Ip address init */
-	
+
 	return TRUE;
 }
 
@@ -682,7 +682,7 @@ netSetMulticastLoopback(NetPath * netPath, Boolean value) {
 		PERROR("Failed to set multicast loopback");
 		return FALSE;
 	}
-	
+
 	return TRUE;
 }
 
@@ -825,14 +825,14 @@ netInitTimestamping(NetPath * netPath, const RunTimeOpts * rtOpts)
 
 #elif defined(SO_TIMESTAMPNS) /* Linux, Apple */
 	DBG("netInitTimestamping: trying to use SO_TIMESTAMPNS\n");
-	
+
 	if (setsockopt(netPath->eventSock, SOL_SOCKET, SO_TIMESTAMPNS, &val, sizeof(int)) < 0) {
 		PERROR("netInitTimestamping: failed to enable SO_TIMESTAMPNS");
 		result = FALSE;
 	}
 #elif defined(SO_BINTIME) /* FreeBSD */
 	DBG("netInitTimestamping: trying to use SO_BINTIME\n");
-		
+
 	if (setsockopt(netPath->eventSock, SOL_SOCKET, SO_BINTIME, &val, sizeof(int)) < 0) {
 		PERROR("netInitTimestamping: failed to enable SO_BINTIME");
 		result = FALSE;
@@ -840,12 +840,12 @@ netInitTimestamping(NetPath * netPath, const RunTimeOpts * rtOpts)
 #else
 	result = FALSE;
 #endif
-			
+
 /* fallback method */
 #if defined(SO_TIMESTAMP) /* Linux, Apple, FreeBSD */
 	if (!result) {
 		DBG("netInitTimestamping: trying to use SO_TIMESTAMP\n");
-		
+
 		if (setsockopt(netPath->eventSock, SOL_SOCKET, SO_TIMESTAMP, &val, sizeof(int)) < 0) {
 			PERROR("netInitTimestamping: failed to enable SO_TIMESTAMP");
 			result = FALSE;
@@ -1144,7 +1144,7 @@ netInit(NetPath * netPath, RunTimeOpts * rtOpts, PtpClock * ptpClock)
 		     pcap_get_selectable_fd(netPath->pcapEvent)) < 0) {
 			PERROR("failed to get pcap event fd");
 			return FALSE;
-		}		
+		}
 		if ((netPath->pcapGeneral = pcap_open_live(rtOpts->ifaceName,
 							   PACKET_SIZE, promisc,
 							   PCAP_TIMEOUT,
@@ -1297,7 +1297,7 @@ netInit(NetPath * netPath, RunTimeOpts * rtOpts, PtpClock * ptpClock)
 		 * wowczarek: 2.3.1-rc4@jun0215: this breaks the manual packet looping,
 		 * so may only be used for multicast-only
 		 */
-		
+
 		if ( rtOpts->ipMode == IPMODE_MULTICAST ) {
 		    if (setsockopt(netPath->eventSock, SOL_SOCKET, SO_BINDTODEVICE,
 				rtOpts->ifaceName, strlen(rtOpts->ifaceName)) < 0
@@ -1560,7 +1560,7 @@ netRecvEvent(Octet * buf, TimeInternal * time, NetPath * netPath, int flags)
 	struct bintime * bt;
 	struct timespec ts;
 #endif
-	
+
 #if defined(SO_TIMESTAMP)
 	struct timeval * tv;
 #endif
@@ -1683,7 +1683,7 @@ netRecvEvent(Octet * buf, TimeInternal * time, NetPath * netPath, int flags)
 					break;
 				}
 #endif
-			
+
 #if defined(SO_TIMESTAMP)
 				if(cmsg->cmsg_type == SCM_TIMESTAMP) {
 					tv = (struct timeval *)CMSG_DATA(cmsg);
@@ -1719,7 +1719,7 @@ netRecvEvent(Octet * buf, TimeInternal * time, NetPath * netPath, int flags)
 		if (netPath->eventSock >= 0) {
 			recv(netPath->eventSock, buf, PACKET_SIZE, MSG_DONTWAIT);
 		}
-		
+
 		if ((ret = pcap_next_ex(netPath->pcapEvent, &pkt_header,
 					&pkt_data)) < 1) {
 			if (ret < 0)
@@ -1820,7 +1820,7 @@ netRecvGeneral(Octet * buf, NetPath * netPath)
 		if (netPath->generalSock >= 0)
 			recv(netPath->generalSock, buf, PACKET_SIZE, MSG_DONTWAIT);
 
-		
+
 		if (( ret = pcap_next_ex(netPath->pcapGeneral, &pkt_header,
 					 &pkt_data)) < 1) {
 			if (ret < 0)
@@ -1985,7 +1985,7 @@ netSendEvent(Octet * buf, UInteger16 length, NetPath * netPath,
 				if (ret <= 0)
 					DBG("Error looping back unicast event message\n");
 			}
-#endif /* SO_TIMESTAMPING */		
+#endif /* SO_TIMESTAMPING */
 		} else {
 			addr.sin_addr.s_addr = netPath->multicastAddr;
                         /* Is TTL OK? */
@@ -2016,7 +2016,7 @@ netSendEvent(Octet * buf, UInteger16 length, NetPath * netPath,
 					if (tim) {
 						clearTime(tim);
 					}
-					
+
 					netPath->txTimestampFailure = TRUE;
 
 					/* Try re-enabling MULTICAST_LOOP */
@@ -2144,7 +2144,7 @@ netSendPeerGeneral(Octet * buf, UInteger16 length, NetPath * netPath, const RunT
 
 	} else {
 		addr.sin_addr.s_addr = netPath->peerMulticastAddr;
-		
+
 		/* is TTL already 1 ? */
 		if(netPath->ttlGeneral != 1) {
 			/* Try setting TTL to 1 */
@@ -2164,7 +2164,7 @@ netSendPeerGeneral(Octet * buf, UInteger16 length, NetPath * netPath, const RunT
 			netPath->sentPackets++;
 			netPath->sentPacketsTotal++;
 		}
-	
+
 	return ret;
 
 }
@@ -2265,7 +2265,7 @@ netSendPeerEvent(Octet * buf, UInteger16 length, NetPath * netPath, const RunTim
 				if (tim) {
 					clearTime(tim);
 				}
-					
+
 				netPath->txTimestampFailure = TRUE;
 
 				/* Try re-enabling MULTICAST_LOOP */
