@@ -47,6 +47,9 @@ jobs:
     - name: Make build scripts executable
       run: chmod +x scripts/build/*.sh
 
+    - name: Clean build directory
+      run: rm -rf build-cmake
+
     - name: Configure Debug Build
       if: matrix.build_type == 'debug'
       run: ./scripts/build/config-cmake-debug.sh
