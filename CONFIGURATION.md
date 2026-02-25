@@ -6,7 +6,7 @@ Complete technical reference for all PTPd configuration options.
 
 ## Overview
 
-PTPd supports 12 major configuration options that control features, debug output, and build characteristics. This document provides detailed technical information about each option.
+PTPd supports 13 major configuration options that control features, debug output, and build characteristics. This document provides detailed technical information about each option.
 
 ---
 
@@ -368,7 +368,7 @@ debug_level = 3    # Verbose (DBG + DBG2 + DBGV)
 
 ### 7. ENABLE_DAEMON
 
-**Default**: ON
+**Default**: OFF
 
 **CMake**: `-DENABLE_DAEMON=ON` / `-DENABLE_DAEMON=OFF`
 
@@ -377,7 +377,7 @@ Controls whether PTPd can run as a Unix daemon (background process).
 
 #### Technical Details
 
-**When ON** (default):
+**When ON**:
 - **Define**: `PTPD_NO_DAEMON` is NOT set
 - **Capabilities**:
   - `-b` flag allows background mode
@@ -402,12 +402,12 @@ Controls whether PTPd can run as a Unix daemon (background process).
 - Session management
 
 #### When to Use
-- **Enable** (keep default ON):
+- **Enable**:
   - Traditional Unix/Linux deployments
   - System service integration
   - Init scripts, systemd units
   - Production servers
-- **Disable**:
+- **Disable** (default):
   - Docker containers (foreground preferred)
   - Systemd with Type=simple
   - Debugging (easier in foreground)
@@ -424,7 +424,37 @@ ExecStart=/usr/sbin/ptpd2 -c /etc/ptpd2.conf
 
 ---
 
-### 8. ENABLE_SLAVE_ONLY
+### 8. ENABLE_ROOT_CHECK
+
+**Default**: OFF
+
+**CMake**: `-DENABLE_ROOT_CHECK=ON` / `-DENABLE_ROOT_CHECK=OFF`
+
+#### Description
+Controls whether startup enforces root privileges.
+
+#### Technical Details
+
+**When ON**:
+- **Define**: `PTPD_NO_ROOT_CHECK` is NOT set
+- **Behavior**: Startup enforces root-only daemon startup checks
+
+**When OFF** (default):
+- **Define**: `PTPD_NO_ROOT_CHECK` is set
+- **Behavior**: Root-check gate is disabled (useful for development and non-privileged runs)
+
+#### When to Use
+- **Enable**:
+  - Locked-down production environments
+  - Traditional root-managed deployments
+- **Disable** (default):
+  - Local development
+  - Non-privileged test runs
+  - Supervisor-managed foreground processes
+
+---
+
+### 9. ENABLE_SLAVE_ONLY
 
 **Default**: ON (slave-only mode by default)
 
@@ -482,7 +512,7 @@ When slave-only, these are disabled:
 
 ---
 
-### 9. ENABLE_SW_CLOCK
+### 10. ENABLE_SW_CLOCK
 
 **Default**: OFF
 
@@ -538,7 +568,7 @@ Enables software clock simulation for testing without real hardware clock.
 
 ---
 
-### 10. ENABLE_SO_TIMESTAMPING
+### 11. ENABLE_SO_TIMESTAMPING
 
 **Default**: ON (Linux only), N/A (other platforms)
 
@@ -601,7 +631,7 @@ ethtool -T eth0
 
 ---
 
-### 11. MAX_UNICAST_DESTINATIONS
+### 12. MAX_UNICAST_DESTINATIONS
 
 **Default**: 128
 
@@ -662,7 +692,7 @@ endif()
 
 ---
 
-### 12. ENABLE_EXPERIMENTAL
+### 13. ENABLE_EXPERIMENTAL
 
 **Default**: OFF
 
@@ -850,7 +880,8 @@ All configurations tested and validated with CMake build system. See [PLAN.txt](
 | Statistics | ON | `-DENABLE_STATISTICS=ON/OFF` | `PTPD_STATISTICS` | Stats file |
 | Debug Level | Debug:all<br>Release:none | `-DDEBUG_LEVEL=none/basic/medium/all` | `PTPD_DBG*` | Log volume |
 | Runtime Debug | Debug:OFF<br>Release:ON | `-DENABLE_RUNTIME_DEBUG=ON/OFF` | `RUNTIME_DEBUG` | Debug flexibility |
-| Daemon | ON | `-DENABLE_DAEMON=ON/OFF` | `PTPD_NO_DAEMON` | Background mode |
+| Daemon | OFF | `-DENABLE_DAEMON=ON/OFF` | `PTPD_NO_DAEMON` | Background mode |
+| Root Check | OFF | `-DENABLE_ROOT_CHECK=ON/OFF` | `PTPD_NO_ROOT_CHECK` | Startup privilege gate |
 | Slave Only | ON | `-DENABLE_SLAVE_ONLY=ON/OFF` | `PTPD_SLAVE_ONLY` | Role restriction |
 | SW Clock | OFF | `-DENABLE_SW_CLOCK=ON` | `SW_CLOCK_ENABLED` | Testing only |
 | SO_TIMESTAMPING | ON (Linux) | `-DENABLE_SO_TIMESTAMPING=ON/OFF` | `PTPD_DISABLE_*` | HW timestamps |

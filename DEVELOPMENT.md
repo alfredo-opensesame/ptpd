@@ -167,7 +167,7 @@ NOTES FOR CONTRIBUTORS
 
 2. See BUILD.md for CMake build instructions.
 
-3. See CONFIGURATION.md for detailed technical reference on all 12 configuration options.
+3. See CONFIGURATION.md for detailed technical reference on all 13 configuration options.
 
 4. The scripts/ folder contains development tools consolidated from previous
    @build-scripts/ and @test-scripts/ directories.

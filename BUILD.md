@@ -91,7 +91,8 @@ cmake -B build -DENABLE_SNMP=ON -DDEBUG_LEVEL=all
 | `--enable-debug-level=medium` | `DEBUG_LEVEL=medium` | none | Compile-time debug: DBG + DBG2 |
 | `--enable-debug-level=all` | `DEBUG_LEVEL=all` | none | Compile-time debug: DBG + DBG2 + DBGV |
 | `--enable-slave-only` | `ENABLE_SLAVE_ONLY=ON` | OFF | Build slave-only version |
-| `--disable-daemon` | `ENABLE_DAEMON=OFF` | ON | Disable daemon mode |
+| `--disable-daemon` | `ENABLE_DAEMON=OFF` | OFF | Disable daemon mode |
+| N/A | `ENABLE_ROOT_CHECK=ON/OFF` | OFF | Require root privileges at startup |
 | `--with-max-unicast-destinations=N` | `MAX_UNICAST_DESTINATIONS=N` | 128 | Max unicast destinations (16-2048) |
 | `--enable-experimental-options` | `ENABLE_EXPERIMENTAL=ON` | OFF | Enable experimental features |
 | `--enable-sw-clock` | `ENABLE_SW_CLOCK=ON` | OFF | Enable software clock simulation |
@@ -490,7 +491,7 @@ Both build systems will be maintained in parallel for the foreseeable future.
 ## See Also
 
 - [README.md](README.md) - Project overview and quick start
-- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all 12 options
+- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all 13 options
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Developer workflows and VS Code integration
 - [PLAN.txt](PLAN.txt) - CMake migration history
 
