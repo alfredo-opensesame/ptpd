@@ -45,48 +45,48 @@ jobs:
           net-snmp
 
     - name: Make build scripts executable
-      run: chmod +x @build-scripts/*.sh
+      run: chmod +x scripts/build/*.sh
 
     - name: Configure Debug Build
       if: matrix.build_type == 'debug'
-      run: ./@build-scripts/config-debug.sh
+      run: ./scripts/build/config-cmake-debug.sh
 
     - name: Configure Release Build
       if: matrix.build_type == 'release'
-      run: ./@build-scripts/config-release.sh
+      run: ./scripts/build/config-cmake-release.sh
 
     - name: Build Debug
       if: matrix.build_type == 'debug'
       run: |
-        cd build/debug
+        cd build-cmake/debug
         make clean
         make -j$(nproc 2>/dev/null || echo 4)
 
     - name: Build Release
       if: matrix.build_type == 'release'
       run: |
-        cd build/release
+        cd build-cmake/release
         make clean
         make -j$(nproc 2>/dev/null || echo 4)
 
     - name: Test binary (Debug)
       if: matrix.build_type == 'debug'
       run: |
-        build/debug/src/ptpd2 --version
-        build/debug/src/ptpd2 --help
+        build-cmake/debug/src/ptpd2 --version
+        build-cmake/debug/src/ptpd2 --help
 
     - name: Test binary (Release)
       if: matrix.build_type == 'release'
       run: |
-        build/release/src/ptpd2 --version
-        build/release/src/ptpd2 --help
+        build-cmake/release/src/ptpd2 --version
+        build-cmake/release/src/ptpd2 --help
 
     - name: Upload Debug Binary
       if: matrix.build_type == 'debug'
       uses: actions/upload-artifact@v4
       with:
         name: ptpd2-debug-${{ matrix.os }}
-        path: build/debug/src/ptpd2
+        path: build-cmake/debug/src/ptpd2
         retention-days: 30
 
     - name: Upload Release Binary
@@ -94,5 +94,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ptpd2-release-${{ matrix.os }}
-        path: build/release/src/ptpd2
+        path: build-cmake/release/src/ptpd2
         retention-days: 30
