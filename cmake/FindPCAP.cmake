@@ -75,6 +75,19 @@ if(PCAP_CONFIG_EXECUTABLE)
         endforeach()
         set(PCAP_LIBRARIES ${PCAP_LIBRARIES_LIST})
 
+        # If pcap-config didn't provide include directories (common on Ubuntu),
+        # try to find them manually
+        if(NOT PCAP_INCLUDE_DIRS)
+            find_path(PCAP_INCLUDE_DIR
+                NAMES pcap/pcap.h pcap.h
+                PATHS /usr/include /usr/local/include /opt/local/include
+                DOC "PCAP include directory"
+            )
+            if(PCAP_INCLUDE_DIR)
+                set(PCAP_INCLUDE_DIRS ${PCAP_INCLUDE_DIR})
+            endif()
+        endif()
+
         set(PCAP_CONFIG_METHOD "pcap-config")
     else()
         message(WARNING "pcap-config found but failed to execute")
