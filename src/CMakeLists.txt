@@ -108,6 +108,7 @@ endif()
 target_compile_definitions(ptpd2 PRIVATE
     HAVE_CONFIG_H              # Signal that we have config.h
     DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"  # Data directory
+    _GNU_SOURCE                # Enable BSD-style types and extensions on Linux
 )
 
 # Add SwClock compile definition if enabled
@@ -277,6 +278,7 @@ if(BUILD_PTPD_LIBRARY)
             HAVE_CONFIG_H
             DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"
             PTPD_LIBRARY_MODE  # Enable library mode
+            _GNU_SOURCE        # Enable BSD-style types and extensions on Linux
         )
         
         # Add SwClock compile definition if enabled
