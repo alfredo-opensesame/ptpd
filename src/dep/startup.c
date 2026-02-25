@@ -192,6 +192,9 @@ void applyConfig(dictionary *baseConfig, RunTimeOpts *rtOpts, PtpClock *ptpClock
 		    ERROR("Error: Cannot use %s interface as backup\n",tmpOpts.backupIfaceName);
 		}
 	}
+
+	/* If CPU affinity has changed, apply it */
+	if(rtOpts->restartSubsystems & PTPD_CHANGE_CPUAFFINITY) {
 #if (defined(linux) || defined(__linux__)) && defined(HAVE_SCHED_H) || defined(HAVE_SYS_CPUSET_H) || defined(__QNXNTO__)
                 if(setCpuAffinity(tmpOpts.cpuNumber) < 0) {
                         if(tmpOpts.cpuNumber == -1) {
@@ -206,8 +209,8 @@ void applyConfig(dictionary *baseConfig, RunTimeOpts *rtOpts, PtpClock *ptpClock
                         else
                                 INFO("Successfully unbound "PTPD_PROGNAME" from cpu core CPU core %d\n", rtOpts->cpuNumber);
                 }
-         }
 #endif
+         }
 
 	if(!reloadSuccessful) {
 		ERROR("New configuration cannot be applied - aborting reload\n");
