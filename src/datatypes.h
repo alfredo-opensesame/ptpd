@@ -261,9 +261,9 @@ typedef struct {
 	Boolean	noResetClock; // don't step the clock if offset > 1s
 	Boolean stepForce; // force clock step on first sync after startup
 	Boolean stepOnce; // only step clock on first sync after startup
-#ifdef linux
+#ifdef HAVE_LINUX_RTC_H
 	Boolean setRtc;
-#endif /* linux */
+#endif /* HAVE_LINUX_RTC_H */
 
 	Boolean clearCounters;
 
