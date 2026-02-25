@@ -104,6 +104,12 @@ endif()
 option(ENABLE_DAEMON "Enable daemon mode" OFF)
 
 # ===================================================================
+# Option: Root Privilege Check
+# Default: OFF (non-root startup allowed by default)
+# ===================================================================
+option(ENABLE_ROOT_CHECK "Require root privileges at startup" OFF)
+
+# ===================================================================
 # Option: Experimental Options (--enable-experimental-options)
 # Default: OFF
 # ===================================================================
@@ -159,6 +165,7 @@ message(STATUS "  ENABLE_PCAP:             ${ENABLE_PCAP}")
 message(STATUS "  ENABLE_SNMP:             ${ENABLE_SNMP}")
 message(STATUS "  ENABLE_STATISTICS:       ${ENABLE_STATISTICS}")
 message(STATUS "  ENABLE_DAEMON:           ${ENABLE_DAEMON}")
+message(STATUS "  ENABLE_ROOT_CHECK:       ${ENABLE_ROOT_CHECK}")
 message(STATUS "  ENABLE_EXPERIMENTAL:     ${ENABLE_EXPERIMENTAL}")
 message(STATUS "  ENABLE_RUNTIME_DEBUG:    ${ENABLE_RUNTIME_DEBUG}")
 message(STATUS "  DEBUG_LEVEL:             ${DEBUG_LEVEL}")

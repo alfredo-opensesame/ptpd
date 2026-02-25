@@ -215,6 +215,12 @@
     #define PTPD_NO_DAEMON 1
 #endif
 
+/* Root privilege check */
+#cmakedefine ENABLE_ROOT_CHECK 1
+#ifndef ENABLE_ROOT_CHECK
+    #define PTPD_NO_ROOT_CHECK 1
+#endif
+
 /* Experimental options (--enable-experimental-options) */
 #cmakedefine ENABLE_EXPERIMENTAL 1
 #ifdef ENABLE_EXPERIMENTAL

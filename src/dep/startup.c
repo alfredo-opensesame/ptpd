@@ -751,8 +751,8 @@ PtpClock* ptpdStartup(int argc, char **argv, Integer16 * ret, RunTimeOpts * rtOp
 	 * the exception is the lock file, as we get a new pid when we call daemon(),
 	 * so this is checked twice: once to read, second to read/write
 	 */
-#ifndef PTPD_NO_ROOT_CHECK
-	if(geteuid() != 0)
+#if !defined(PTPD_NO_ROOT_CHECK) && !defined(PTPD_NO_DAEMON)
+	if(geteuid() != 0 && !rtOpts->nonDaemon)
 	{
 		printf("Error: "PTPD_PROGNAME" daemon can only be run as root\n");
 		*ret = 1;
