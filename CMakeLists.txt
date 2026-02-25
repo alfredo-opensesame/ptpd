@@ -38,6 +38,18 @@ endif()
 # User can disable with -DENABLE_PCAP=OFF
 find_package(PCAP)
 
+# Ensure PCAP header detection results are available for config.h generation
+# FindPCAP sets these to PARENT_SCOPE, but we need them in current scope for configure_file()
+if(PCAP_FOUND)
+    # Check if cache variables exist and propagate to current scope
+    if(DEFINED CACHE{HAVE_PCAP_PCAP_H})
+        set(HAVE_PCAP_PCAP_H ${HAVE_PCAP_PCAP_H})
+    endif()
+    if(DEFINED CACHE{HAVE_PCAP_H})
+        set(HAVE_PCAP_H ${HAVE_PCAP_H})
+    endif()
+endif()
+
 # Phase 3: Find Net-SNMP library using FindNETSNMP module (net-snmp-config)
 # User can disable with -DENABLE_SNMP=OFF
 find_package(NETSNMP)
