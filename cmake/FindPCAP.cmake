@@ -129,11 +129,12 @@ include(CheckIncludeFile)
 unset(HAVE_PCAP_PCAP_H CACHE)
 unset(HAVE_PCAP_H CACHE)
 
-# Set CMAKE_REQUIRED_INCLUDES for check_include_file
+# Set CMAKE_REQUIRED variables for header checks
 set(CMAKE_REQUIRED_INCLUDES ${PCAP_INCLUDE_DIRS})
+set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARIES})
 
-# Try different approach: use try_compile instead of check_include_file
-# check_include_file may have issues with system include paths
+# Use try_compile approach which is more reliable than check_include_file
+# for system include directories
 include(CheckCSourceCompiles)
 check_c_source_compiles("
     #include <pcap/pcap.h>
