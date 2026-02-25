@@ -129,11 +129,23 @@ include(CheckIncludeFile)
 unset(HAVE_PCAP_PCAP_H CACHE)
 unset(HAVE_PCAP_H CACHE)
 
+# Set CMAKE_REQUIRED_INCLUDES for check_include_file
 set(CMAKE_REQUIRED_INCLUDES ${PCAP_INCLUDE_DIRS})
-check_include_file(pcap/pcap.h HAVE_PCAP_PCAP_H)
-check_include_file(pcap.h HAVE_PCAP_H)
 
-# Note: check_include_file() creates CACHE variables (HAVE_PCAP_PCAP_H and HAVE_PCAP_H)
+# Try different approach: use try_compile instead of check_include_file
+# check_include_file may have issues with system include paths
+include(CheckCSourceCompiles)
+check_c_source_compiles("
+    #include <pcap/pcap.h>
+    int main() { return 0; }
+" HAVE_PCAP_PCAP_H)
+
+check_c_source_compiles("
+    #include <pcap.h>
+    int main() { return 0; }
+" HAVE_PCAP_H)
+
+# Note: check_c_source_compiles creates CACHE variables (HAVE_PCAP_PCAP_H and HAVE_PCAP_H)
 # These cache variables will be available globally for configure_file() to use
 # We don't need to explicitly propagate them - CMake cache is accessible everywhere
 
