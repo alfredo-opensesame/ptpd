@@ -57,43 +57,37 @@
 
 #define ISC_MD5_DIGESTLENGTH 16U
 
-
 typedef struct {
-	uint32_t buf[4];
-	uint32_t bytes[2];
-	uint32_t in[16];
+  uint32_t buf[4];
+  uint32_t bytes[2];
+  uint32_t in[16];
 } isc_md5_t;
 
-void
-isc_md5_init(isc_md5_t *ctx);
+void isc_md5_init(isc_md5_t *ctx);
 
-void
-isc_md5_invalidate(isc_md5_t *ctx);
+void isc_md5_invalidate(isc_md5_t *ctx);
 
-void
-isc_md5_update(isc_md5_t *ctx, const unsigned char *buf, unsigned int len);
+void isc_md5_update(isc_md5_t *ctx, const unsigned char *buf, unsigned int len);
 
-void
-isc_md5_final(isc_md5_t *ctx, unsigned char *digest);
+void isc_md5_final(isc_md5_t *ctx, unsigned char *digest);
 
-  typedef isc_md5_t             MD5_CTX;
-# define MD5Init(c)             isc_md5_init(c)
-# define MD5Update(c, p, s)     isc_md5_update(c, p, s)
-# define MD5Final(d, c)         isc_md5_final((c), (d)) /* swapped */
-  typedef MD5_CTX                       PTPD_EVP_MD_CTX;
-# define EVP_DigestInit(c)              MD5Init(c)
-# define EVP_DigestUpdate(c, p, s)      MD5Update(c, p, s)
-# define EVP_DigestFinal(c, d, pdl)     \
-        do {                            \
-                MD5Final((d), (c));     \
-                *(pdl) = 16;            \
-        } while (0)
+typedef isc_md5_t MD5_CTX;
+#define MD5Init(c) isc_md5_init(c)
+#define MD5Update(c, p, s) isc_md5_update(c, p, s)
+#define MD5Final(d, c) isc_md5_final((c), (d)) /* swapped */
+typedef MD5_CTX PTPD_EVP_MD_CTX;
+#define EVP_DigestInit(c) MD5Init(c)
+#define EVP_DigestUpdate(c, p, s) MD5Update(c, p, s)
+#define EVP_DigestFinal(c, d, pdl)                                             \
+  do {                                                                         \
+    MD5Final((d), (c));                                                        \
+    *(pdl) = 16;                                                               \
+  } while (0)
 
-#define NID_md5  4
+#define NID_md5 4
 #define JAN_1970 2208988800UL
 #define FRAC 4294967296LL
 
-int MD5authencrypt( char *key, uint32_t *pkt, int length, keyid_t keyid );
+int MD5authencrypt(char *key, uint32_t *pkt, int length, keyid_t keyid);
 
 #endif /* ISC_MD5_H */
-
