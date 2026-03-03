@@ -21,21 +21,7 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          libpcap-dev \
-          libsnmp-dev
-
     - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
       run: |
         brew update
         brew install \
