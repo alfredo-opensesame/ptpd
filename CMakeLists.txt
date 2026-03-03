@@ -117,7 +117,7 @@ configure_file(
 add_subdirectory(src)
 
 # SwClock integration option (compile-time backend selection)
-option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend (software clock)" OFF)
+option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend (software clock)" ON)
 if(BUILD_WITH_SWCLOCK)
     # Add swclock as a subdirectory
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/swclock/CMakeLists.txt")

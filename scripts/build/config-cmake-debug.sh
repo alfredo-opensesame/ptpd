@@ -24,7 +24,7 @@ cmake ../.. \
     -DENABLE_SNMP=OFF \
     -DENABLE_STATISTICS=ON \
     -DENABLE_DAEMON=OFF \
-    -DENABLE_SW_CLOCK=ON
+    -DBUILD_WITH_SWCLOCK=ON
 
 echo "=== CMake Debug configuration completed successfully ==="
 

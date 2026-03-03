@@ -389,7 +389,7 @@ File: CMakeLists.txt, src/CMakeLists.txt
 1. ROOT CMAKE (CMakeLists.txt)
    
    # SwClock software clock backend option
-   option(BUILD_WITH_SWCLOCK "Build with SwClock backend (software clock)" OFF)
+   option(BUILD_WITH_SWCLOCK "Build with SwClock backend (software clock)" ON)
    
    if(BUILD_WITH_SWCLOCK)
        message(STATUS "SwClock backend: ENABLED")

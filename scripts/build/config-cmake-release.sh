@@ -21,7 +21,8 @@ cmake ../.. \
     -DENABLE_PCAP=ON \
     -DENABLE_SNMP=OFF \
     -DENABLE_STATISTICS=ON \
-    -DENABLE_DAEMON=ON
+    -DENABLE_DAEMON=ON \
+    -DBUILD_WITH_SWCLOCK=ON
 
 echo "=== CMake Release configuration completed successfully ==="
 
