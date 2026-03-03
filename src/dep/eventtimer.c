@@ -41,93 +41,85 @@
 static EventTimer *_first = NULL;
 static EventTimer *_last = NULL;
 
-EventTimer
-*createEventTimer(const char* id)
-{
+EventTimer *createEventTimer(const char *id) {
 
-	EventTimer *timer;
+  EventTimer *timer;
 
-        if ( !(timer = calloc (1, sizeof(EventTimer))) ) {
-            return NULL;
-        }
+  if (!(timer = calloc(1, sizeof(EventTimer)))) {
+    return NULL;
+  }
 
+  setupEventTimer(timer);
 
-	setupEventTimer(timer);
+  strncpy(timer->id, id, EVENTTIMER_MAX_DESC);
 
-        strncpy(timer->id, id, EVENTTIMER_MAX_DESC);
+  /* maintain the linked list */
 
-	/* maintain the linked list */
+  if (_first == NULL) {
+    _first = timer;
+  }
 
-	if(_first == NULL) {
-		_first = timer;
-	}
+  if (_last != NULL) {
+    timer->_prev = _last;
+    timer->_prev->_next = timer;
+  }
 
-	if(_last != NULL) {
-	    timer->_prev = _last;
-	    timer->_prev->_next = timer;
-	}
+  _last = timer;
 
-	_last = timer;
+  timer->_first = _first;
 
-	timer->_first = _first;
+  DBGV("created itimer eventtimer %s\n", timer->id);
 
-	DBGV("created itimer eventtimer %s\n", timer->id);
-
-        return timer;
+  return timer;
 }
 
-void
-freeEventTimer
-(EventTimer **timer)
-{
-	if(timer == NULL) {
-	    return;
-	}
+void freeEventTimer(EventTimer **timer) {
+  if (timer == NULL) {
+    return;
+  }
 
-	EventTimer *ptimer = *timer;
+  EventTimer *ptimer = *timer;
 
-	if(ptimer == NULL) {
-	    return;
-	}
+  if (ptimer == NULL) {
+    return;
+  }
 
-	ptimer->shutdown(ptimer);
+  ptimer->shutdown(ptimer);
 
-	/* maintain the linked list */
+  /* maintain the linked list */
 
-	if(ptimer->_prev != NULL) {
+  if (ptimer->_prev != NULL) {
 
-		if(ptimer == _last) {
-			_last = ptimer->_prev;
-		}
+    if (ptimer == _last) {
+      _last = ptimer->_prev;
+    }
 
-		if(ptimer->_next != NULL) {
-			ptimer->_prev->_next = ptimer->_next;
-		} else {
-			ptimer->_prev->_next = NULL;
-		}
-	/* last one */
-	} else if (ptimer->_next == NULL) {
-		_first = NULL;
-	}
+    if (ptimer->_next != NULL) {
+      ptimer->_prev->_next = ptimer->_next;
+    } else {
+      ptimer->_prev->_next = NULL;
+    }
+    /* last one */
+  } else if (ptimer->_next == NULL) {
+    _first = NULL;
+  }
 
-	if(ptimer->_next != NULL) {
+  if (ptimer->_next != NULL) {
 
-		if(ptimer == _first) {
-			_first = ptimer->_next;
-		}
+    if (ptimer == _first) {
+      _first = ptimer->_next;
+    }
 
-		if(ptimer->_prev != NULL) {
-			ptimer->_next->_prev = ptimer->_prev;
-		} else {
-			ptimer->_next->_prev = NULL;
-		}
+    if (ptimer->_prev != NULL) {
+      ptimer->_next->_prev = ptimer->_prev;
+    } else {
+      ptimer->_next->_prev = NULL;
+    }
+  }
 
-	}
+  if (*timer != NULL) {
+    free(*timer);
+  }
 
-	if(*timer != NULL) {
-	    free(*timer);
-	}
-
-	*timer = NULL;
-
+  *timer = NULL;
 }

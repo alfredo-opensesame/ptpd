@@ -53,134 +53,113 @@
 
 #include "ptpd.h"
 
-void
-internalTime_to_integer64(TimeInternal internal, Integer64 *bigint)
-{
-	int64_t scaledNanoseconds;
+void internalTime_to_integer64(TimeInternal internal, Integer64 *bigint) {
+  int64_t scaledNanoseconds;
 
-	scaledNanoseconds = internal.seconds;
-	scaledNanoseconds *= 1000000000;
-	scaledNanoseconds += internal.nanoseconds;
-	scaledNanoseconds <<= 16;
+  scaledNanoseconds = internal.seconds;
+  scaledNanoseconds *= 1000000000;
+  scaledNanoseconds += internal.nanoseconds;
+  scaledNanoseconds <<= 16;
 
-	bigint->msb = (scaledNanoseconds >> 32) & 0x00000000ffffffff;
-	bigint->lsb = scaledNanoseconds & 0x00000000ffffffff;
+  bigint->msb = (scaledNanoseconds >> 32) & 0x00000000ffffffff;
+  bigint->lsb = scaledNanoseconds & 0x00000000ffffffff;
 }
 
-void
-integer64_to_internalTime(Integer64 bigint, TimeInternal * internal)
-{
-	int sign;
-	int64_t scaledNanoseconds;
+void integer64_to_internalTime(Integer64 bigint, TimeInternal *internal) {
+  int sign;
+  int64_t scaledNanoseconds;
 
-	scaledNanoseconds = bigint.msb;
-	scaledNanoseconds <<=32;
-	scaledNanoseconds += bigint.lsb;
-	
-	/*determine sign of result big integer number*/
+  scaledNanoseconds = bigint.msb;
+  scaledNanoseconds <<= 32;
+  scaledNanoseconds += bigint.lsb;
 
-	if (scaledNanoseconds < 0) {
-		scaledNanoseconds = -scaledNanoseconds;
-		sign = -1;
-	} else {
-		sign = 1;
-	}
+  /*determine sign of result big integer number*/
 
-	/*fractional nanoseconds are excluded (see 5.3.2)*/
-	scaledNanoseconds >>= 16;
-	internal->seconds = sign * (scaledNanoseconds / 1000000000);
-	internal->nanoseconds = sign * (scaledNanoseconds % 1000000000);
+  if (scaledNanoseconds < 0) {
+    scaledNanoseconds = -scaledNanoseconds;
+    sign = -1;
+  } else {
+    sign = 1;
+  }
+
+  /*fractional nanoseconds are excluded (see 5.3.2)*/
+  scaledNanoseconds >>= 16;
+  internal->seconds = sign * (scaledNanoseconds / 1000000000);
+  internal->nanoseconds = sign * (scaledNanoseconds % 1000000000);
 }
 
+void fromInternalTime(const TimeInternal *internal, Timestamp *external) {
 
-void
-fromInternalTime(const TimeInternal * internal, Timestamp * external)
-{
+  /*
+   * fromInternalTime is only used to convert time given by the system
+   * to a timestamp.  As a consequence, no negative value can normally
+   * be found in (internal)
+   *
+   * Note that offsets are also represented with TimeInternal structure,
+   * and can be negative, but offset are never convert into Timestamp
+   * so there is no problem here.
+   */
 
-	/*
-	 * fromInternalTime is only used to convert time given by the system
-	 * to a timestamp.  As a consequence, no negative value can normally
-	 * be found in (internal)
-	 *
-	 * Note that offsets are also represented with TimeInternal structure,
-	 * and can be negative, but offset are never convert into Timestamp
-	 * so there is no problem here.
-	 */
-
-	if ((internal->seconds & ~INT_MAX) ||
-	    (internal->nanoseconds & ~INT_MAX)) {
-		DBG("Negative value canno't be converted into timestamp \n");
-		return;
-	} else {
-		external->secondsField.lsb = internal->seconds;
-		external->nanosecondsField = internal->nanoseconds;
-		external->secondsField.msb = 0;
-	}
+  if ((internal->seconds & ~INT_MAX) || (internal->nanoseconds & ~INT_MAX)) {
+    DBG("Negative value canno't be converted into timestamp \n");
+    return;
+  } else {
+    external->secondsField.lsb = internal->seconds;
+    external->nanosecondsField = internal->nanoseconds;
+    external->secondsField.msb = 0;
+  }
 }
 
-void
-toInternalTime(TimeInternal * internal, const Timestamp * external)
-{
+void toInternalTime(TimeInternal *internal, const Timestamp *external) {
 
-	/* Program will not run after 2038... */
-	if (external->secondsField.lsb < INT_MAX) {
-		internal->seconds = external->secondsField.lsb;
-		internal->nanoseconds = external->nanosecondsField;
-	} else {
-		DBG("Clock servo canno't be executed : "
-		    "seconds field is higher than signed integer (32bits) \n");
-		return;
-	}
+  /* Program will not run after 2038... */
+  if (external->secondsField.lsb < INT_MAX) {
+    internal->seconds = external->secondsField.lsb;
+    internal->nanoseconds = external->nanosecondsField;
+  } else {
+    DBG("Clock servo canno't be executed : "
+        "seconds field is higher than signed integer (32bits) \n");
+    return;
+  }
 }
 
-void
-ts_to_InternalTime(const struct timespec *a,  TimeInternal * b)
-{
+void ts_to_InternalTime(const struct timespec *a, TimeInternal *b) {
 
-	b->seconds = a->tv_sec;
-	b->nanoseconds = a->tv_nsec;
+  b->seconds = a->tv_sec;
+  b->nanoseconds = a->tv_nsec;
 }
 
-void
-tv_to_InternalTime(const struct timeval *a,  TimeInternal * b)
-{
+void tv_to_InternalTime(const struct timeval *a, TimeInternal *b) {
 
-	b->seconds = a->tv_sec;
-	b->nanoseconds = a->tv_usec * 1000;
+  b->seconds = a->tv_sec;
+  b->nanoseconds = a->tv_usec * 1000;
 }
 
+void normalizeTime(TimeInternal *r) {
+  r->seconds += r->nanoseconds / 1000000000;
+  r->nanoseconds -= (r->nanoseconds / 1000000000) * 1000000000;
 
-void
-normalizeTime(TimeInternal * r)
-{
-	r->seconds += r->nanoseconds / 1000000000;
-	r->nanoseconds -= (r->nanoseconds / 1000000000) * 1000000000;
-
-	if (r->seconds > 0 && r->nanoseconds < 0) {
-		r->seconds -= 1;
-		r->nanoseconds += 1000000000;
-	} else if (r->seconds < 0 && r->nanoseconds > 0) {
-		r->seconds += 1;
-		r->nanoseconds -= 1000000000;
-	}
+  if (r->seconds > 0 && r->nanoseconds < 0) {
+    r->seconds -= 1;
+    r->nanoseconds += 1000000000;
+  } else if (r->seconds < 0 && r->nanoseconds > 0) {
+    r->seconds += 1;
+    r->nanoseconds -= 1000000000;
+  }
 }
 
-void
-addTime(TimeInternal * r, const TimeInternal * x, const TimeInternal * y)
-{
-	r->seconds = x->seconds + y->seconds;
-	r->nanoseconds = x->nanoseconds + y->nanoseconds;
+void addTime(TimeInternal *r, const TimeInternal *x, const TimeInternal *y) {
+  r->seconds = x->seconds + y->seconds;
+  r->nanoseconds = x->nanoseconds + y->nanoseconds;
 
-	normalizeTime(r);
+  normalizeTime(r);
 }
 
-void
-subTime(TimeInternal * r, const TimeInternal * x, const TimeInternal * y)
-{
-	r->seconds = x->seconds - y->seconds;
-	r->nanoseconds = x->nanoseconds - y->nanoseconds;
+void subTime(TimeInternal *r, const TimeInternal *x, const TimeInternal *y) {
+  r->seconds = x->seconds - y->seconds;
+  r->nanoseconds = x->nanoseconds - y->nanoseconds;
 
-	normalizeTime(r);
+  normalizeTime(r);
 }
 
 /// Divide an internal time value
@@ -209,165 +188,128 @@ divTime(TimeInternal *r, int divisor)
 }
 #endif
 
-void
-div2Time(TimeInternal *r)
-{
-	r->nanoseconds += (r->seconds % 2) * 1000000000;
-	r->seconds /= 2;
-	r->nanoseconds /= 2;
+void div2Time(TimeInternal *r) {
+  r->nanoseconds += (r->seconds % 2) * 1000000000;
+  r->seconds /= 2;
+  r->nanoseconds /= 2;
 
-	normalizeTime(r);
+  normalizeTime(r);
 }
-
-
 
 /* clear an internal time value */
-void
-clearTime(TimeInternal *r)
-{
-	r->seconds     = 0;
-	r->nanoseconds = 0;
+void clearTime(TimeInternal *r) {
+  r->seconds = 0;
+  r->nanoseconds = 0;
 }
 
-
 /* sets a time value to a certain nanoseconds */
-void
-nano_to_Time(TimeInternal *x, int nano)
-{
-	x->seconds     = 0;
-	x->nanoseconds = nano;
-	normalizeTime(x);
+void nano_to_Time(TimeInternal *x, int nano) {
+  x->seconds = 0;
+  x->nanoseconds = nano;
+  normalizeTime(x);
 }
 
 /* greater than operation */
-int
-gtTime(const TimeInternal *x, const TimeInternal *y)
-{
-	TimeInternal r;
+int gtTime(const TimeInternal *x, const TimeInternal *y) {
+  TimeInternal r;
 
-	subTime(&r, x, y);
-	return !isTimeInternalNegative(&r);
+  subTime(&r, x, y);
+  return !isTimeInternalNegative(&r);
 }
 
 /* remove sign from variable */
-void
-absTime(TimeInternal *r)
-{
-	/* Make sure signs are the same */
-	normalizeTime(r);
-	r->seconds       = abs(r->seconds);
-	r->nanoseconds   = abs(r->nanoseconds);
+void absTime(TimeInternal *r) {
+  /* Make sure signs are the same */
+  normalizeTime(r);
+  r->seconds = abs(r->seconds);
+  r->nanoseconds = abs(r->nanoseconds);
 }
-
 
 /* if 2 time values are close enough for X nanoseconds */
-int
-is_Time_close(const TimeInternal *x, const TimeInternal *y, int nanos)
-{
-	TimeInternal r1;
-	TimeInternal r2;
+int is_Time_close(const TimeInternal *x, const TimeInternal *y, int nanos) {
+  TimeInternal r1;
+  TimeInternal r2;
 
-	// first, subtract the 2 values. then call abs(),
-	// then call gtTime for requested the number of nanoseconds
-	subTime(&r1, x, y);
-	absTime(&r1);
+  // first, subtract the 2 values. then call abs(),
+  // then call gtTime for requested the number of nanoseconds
+  subTime(&r1, x, y);
+  absTime(&r1);
 
-	nano_to_Time(&r2, nanos);
-	
-	return !gtTime(&r1, &r2);
+  nano_to_Time(&r2, nanos);
+
+  return !gtTime(&r1, &r2);
 }
 
+int check_timestamp_is_fresh2(const TimeInternal *timeA,
+                              const TimeInternal *timeB) {
+  int ret;
 
-int
-check_timestamp_is_fresh2(const TimeInternal * timeA, const TimeInternal * timeB)
-{
-	int ret;
-
-	// maximum 1 millisecond offset	
-	ret = is_Time_close(timeA, timeB, 1000000);
-	DBG2("check_timestamp_is_fresh: %d\n ", ret);
-	return ret;
+  // maximum 1 millisecond offset
+  ret = is_Time_close(timeA, timeB, 1000000);
+  DBG2("check_timestamp_is_fresh: %d\n ", ret);
+  return ret;
 }
 
+int check_timestamp_is_fresh(const TimeInternal *timeA) {
+  TimeInternal timeB;
+  getTime(&timeB);
 
-int
-check_timestamp_is_fresh(const TimeInternal * timeA)
-{
-	TimeInternal timeB;
-	getTime(&timeB);
-
-	return check_timestamp_is_fresh2(timeA, &timeB);
+  return check_timestamp_is_fresh2(timeA, &timeB);
 }
 
-
-int
-isTimeInternalNegative(const TimeInternal * p)
-{
-	return (p->seconds < 0) || (p->nanoseconds < 0);
+int isTimeInternalNegative(const TimeInternal *p) {
+  return (p->seconds < 0) || (p->nanoseconds < 0);
 }
 
-double
-secondsToMidnight(void)
-{
-	TimeInternal now;
-	double stm, ret;
-	getTime(&now);
-	stm = 86400.0 - (now.seconds % 86400);
-	ret =  (stm - now.nanoseconds / 1E9);
-	return ret;
+double secondsToMidnight(void) {
+  TimeInternal now;
+  double stm, ret;
+  getTime(&now);
+  stm = 86400.0 - (now.seconds % 86400);
+  ret = (stm - now.nanoseconds / 1E9);
+  return ret;
 }
 
-double
-getPauseAfterMidnight(Integer8 announceInterval, int pausePeriod)
-{
-	double ai = pow(2,announceInterval);
+double getPauseAfterMidnight(Integer8 announceInterval, int pausePeriod) {
+  double ai = pow(2, announceInterval);
 
-	if (pausePeriod > 2.0 * ai)
-		return (pausePeriod);
-	else
-		return (2.0 * ai);
+  if (pausePeriod > 2.0 * ai)
+    return (pausePeriod);
+  else
+    return (2.0 * ai);
 }
 
-double
-timeInternalToDouble(const TimeInternal * p)
-{
+double timeInternalToDouble(const TimeInternal *p) {
 
-	double sign = (p->seconds < 0 || p->nanoseconds < 0 ) ? -1.0 : 1.0;
-	return (sign * ( abs(p->seconds) + abs(p->nanoseconds) / 1E9 ));
-
+  double sign = (p->seconds < 0 || p->nanoseconds < 0) ? -1.0 : 1.0;
+  return (sign * (abs(p->seconds) + abs(p->nanoseconds) / 1E9));
 }
 
-TimeInternal
-doubleToTimeInternal(const double d)
-{
+TimeInternal doubleToTimeInternal(const double d) {
 
-	TimeInternal t = {0, 0};
+  TimeInternal t = {0, 0};
 
-	t.seconds = trunc(d);
-	t.nanoseconds = (d - (t.seconds + 0.0)) * 1E9;
+  t.seconds = trunc(d);
+  t.nanoseconds = (d - (t.seconds + 0.0)) * 1E9;
 
-	return t;
-
+  return t;
 }
 
 /* FNV-1 hash, 32-bit, optional modulo limiter */
-uint32_t
-fnvHash(void *input, size_t len, int modulo)
-{
+uint32_t fnvHash(void *input, size_t len, int modulo) {
 
-    int i = 0;
+  int i = 0;
 
-    static uint32_t prime = 16777619;
-    static uint32_t basis = 2166136261;
+  static uint32_t prime = 16777619;
+  static uint32_t basis = 2166136261;
 
-    uint32_t hash = basis;
-    uint8_t *buf = (uint8_t*)input;
+  uint32_t hash = basis;
+  uint8_t *buf = (uint8_t *)input;
 
-    for(i = 0; i < len; i++)  {
-        hash *= prime;
-        hash ^= *(buf + i);
-    }
+  for (i = 0; i < len; i++) {
+    hash *= prime;
+    hash ^= *(buf + i);
+  }
 
-    return (modulo > 0 ? hash % modulo : hash);
-
+  return (modulo > 0 ? hash % modulo : hash);
 }

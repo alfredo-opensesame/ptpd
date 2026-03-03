@@ -19,33 +19,32 @@
 #define PTPD_H_
 
 #ifdef HAVE_CONFIG_H
-# include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 /* iOS platform support */
 #ifdef PTPD_IOS
-#define PTPD_NO_ROOT_CHECK     /* Skip privilege checks on iOS */
-#define PTPD_SOCKET_TIMEOUT 1  /* Non-blocking sockets (1 second timeout) */
-#define PTPD_OPENSESAME        /* Use non-privileged ports (10319/10320) */
+#define PTPD_NO_ROOT_CHECK    /* Skip privilege checks on iOS */
+#define PTPD_SOCKET_TIMEOUT 1 /* Non-blocking sockets (1 second timeout) */
+#define PTPD_OPENSESAME       /* Use non-privileged ports (10319/10320) */
 #endif
 
-
 #if defined(linux) || defined(__linux__)
-#	ifndef _GNU_SOURCE
-#		define _GNU_SOURCE
-	#endif /* _GNU_SOURCE */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif /* _GNU_SOURCE */
 #endif
 
 #ifdef __sun
-#	ifndef _XPG6
-#		define _XPG6
-#	endif /* _XPG6 */
-#	ifndef _XOPEN_SOURCE
-#		define _XOPEN_SOURCE 500
-#	endif /* _XOPEN_SOURCE */
-#	ifndef __EXTENSIONS__
-#		define __EXTENSIONS__
-#	endif /* __EXTENSIONS */
+#ifndef _XPG6
+#define _XPG6
+#endif /* _XPG6 */
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif /* _XOPEN_SOURCE */
+#ifndef __EXTENSIONS__
+#define __EXTENSIONS__
+#endif /* __EXTENSIONS */
 #endif /* __sun */
 
 #include <stdlib.h>
@@ -67,7 +66,8 @@
 #include <sys/resource.h>
 #ifdef HAVE_SYS_TIMEX_H
 #ifndef PTPD_USE_SWCLOCK
-/* Skip sys/timex.h when using swclock - it provides its own timex compatibility */
+/* Skip sys/timex.h when using swclock - it provides its own timex compatibility
+ */
 #include <sys/timex.h>
 #endif
 #endif
@@ -124,7 +124,6 @@
 #include <netinet/if_ether.h>
 #endif /* HAVE_NETINET_IF_ETHER_H */
 
-
 #ifdef PTPD_PCAP
 #ifdef HAVE_PCAP_PCAP_H
 #include <pcap/pcap.h>
@@ -149,11 +148,11 @@
 /* Disable SO_TIMESTAMPING if configured to do so */
 #ifdef PTPD_DISABLE_SOTIMESTAMPING
 
-#ifdef 	SO_TIMESTAMPING
+#ifdef SO_TIMESTAMPING
 
-#undef 	SO_TIMESTAMPING
+#undef SO_TIMESTAMPING
 
-#endif 	/* SO_TIMESTAMPING */
+#endif /* SO_TIMESTAMPING */
 
 #endif /* PTPD_DISABLE_SOTIMESTAMPING */
 
@@ -187,71 +186,64 @@
 
 #include "dep/alarms.h"
 
-
-
 /* NOTE: this macro can be refactored into a function */
-#define XMALLOC(ptr,size) \
-	if(!((ptr)=malloc(size))) { \
-		PERROR("failed to allocate memory"); \
-		ptpdShutdown(ptpClock); \
-		exit(1); \
-	}
+#define XMALLOC(ptr, size)                                                     \
+  if (!((ptr) = malloc(size))) {                                               \
+    PERROR("failed to allocate memory");                                       \
+    ptpdShutdown(ptpClock);                                                    \
+    exit(1);                                                                   \
+  }
 
-#define SAFE_FREE(pointer) \
-	if(pointer != NULL) { \
-		free(pointer); \
-		pointer = NULL; \
-	}
+#define SAFE_FREE(pointer)                                                     \
+  if (pointer != NULL) {                                                       \
+    free(pointer);                                                             \
+    pointer = NULL;                                                            \
+  }
 
-#define IS_SET(data, bitpos) \
-	((data & ( 0x1 << bitpos )) == (0x1 << bitpos))
+#define IS_SET(data, bitpos) ((data & (0x1 << bitpos)) == (0x1 << bitpos))
 
-#define SET_FIELD(data, bitpos) \
-	data << bitpos
+#define SET_FIELD(data, bitpos) data << bitpos
 
 #ifndef min
-#define min(a,b)     (((a)<(b))?(a):(b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif /* min */
 
 #ifndef max
-#define max(a,b)     (((a)>(b))?(a):(b))
+#define max(a, b) (((a) > (b)) ? (a) : (b))
 #endif /* max */
 
 #ifdef HAVE_LINUX_RTC_H
 #include <linux/rtc.h>
 #endif /* HAVE_LINUX_RTC_H */
 
-#define SET_ALARM(alarm, val) \
-	setAlarmCondition(&ptpClock->alarms[alarm], val, ptpClock)
+#define SET_ALARM(alarm, val)                                                  \
+  setAlarmCondition(&ptpClock->alarms[alarm], val, ptpClock)
 
 /** \name arith.c
  * -Timing management and arithmetic*/
- /**\{*/
+/**\{*/
 /* arith.c */
 
 /**
  * \brief Convert Integer64 into TimeInternal structure
  */
-void integer64_to_internalTime(Integer64,TimeInternal*);
+void integer64_to_internalTime(Integer64, TimeInternal *);
 /**
  * \brief Convert TimeInternal structure to Integer64
  */
-void internalTime_to_integer64(TimeInternal, Integer64*);
+void internalTime_to_integer64(TimeInternal, Integer64 *);
 /**
  * \brief Convert TimeInternal into Timestamp structure (defined by the spec)
  */
-void fromInternalTime(const TimeInternal*,Timestamp*);
+void fromInternalTime(const TimeInternal *, Timestamp *);
 
 /**
  * \brief Convert Timestamp to TimeInternal structure (defined by the spec)
  */
-void toInternalTime(TimeInternal*, const Timestamp*);
+void toInternalTime(TimeInternal *, const Timestamp *);
 
 void ts_to_InternalTime(const struct timespec *, TimeInternal *);
-void tv_to_InternalTime(const struct timeval  *, TimeInternal *);
-
-
-
+void tv_to_InternalTime(const struct timeval *, TimeInternal *);
 
 /**
  * \brief Use to normalize a TimeInternal structure
@@ -259,17 +251,17 @@ void tv_to_InternalTime(const struct timeval  *, TimeInternal *);
  * The nanosecondsField member must always be less than 10⁹
  * This function is used after adding or subtracting TimeInternal
  */
-void normalizeTime(TimeInternal*);
+void normalizeTime(TimeInternal *);
 
 /**
  * \brief Add two InternalTime structure and normalize
  */
-void addTime(TimeInternal*,const TimeInternal*,const TimeInternal*);
+void addTime(TimeInternal *, const TimeInternal *, const TimeInternal *);
 
 /**
  * \brief Substract two InternalTime structure and normalize
  */
-void subTime(TimeInternal*,const TimeInternal*,const TimeInternal*);
+void subTime(TimeInternal *, const TimeInternal *, const TimeInternal *);
 /** \}*/
 
 /**
@@ -279,14 +271,14 @@ void div2Time(TimeInternal *);
 
 /** \name bmc.c
  * -Best Master Clock Algorithm functions*/
- /**\{*/
+/**\{*/
 /* bmc.c */
 /**
  * \brief Compare data set of foreign masters and local data set
  * \return The recommended state for the port
  */
 
-UInteger8 bmc(ForeignMasterRecord*, const RunTimeOpts*,PtpClock*);
+UInteger8 bmc(ForeignMasterRecord *, const RunTimeOpts *, PtpClock *);
 
 /* compare two portIdentTitties */
 int cmpPortIdentity(const PortIdentity *a, const PortIdentity *b);
@@ -296,34 +288,34 @@ Boolean portIdentityEmpty(PortIdentity *portIdentity);
 Boolean portIdentityAllOnes(PortIdentity *portIdentity);
 
 /**
- * \brief When recommended state is Master, copy local data into parent and grandmaster dataset
+ * \brief When recommended state is Master, copy local data into parent and
+ * grandmaster dataset
  */
-void m1(const RunTimeOpts *, PtpClock*);
+void m1(const RunTimeOpts *, PtpClock *);
 
 /**
- * \brief When recommended state is Slave, copy dataset of master into parent and grandmaster dataset
+ * \brief When recommended state is Slave, copy dataset of master into parent
+ * and grandmaster dataset
  */
-void s1(MsgHeader*,MsgAnnounce*,PtpClock*, const RunTimeOpts *);
-
+void s1(MsgHeader *, MsgAnnounce *, PtpClock *, const RunTimeOpts *);
 
 void p1(PtpClock *ptpClock, const RunTimeOpts *rtOpts);
 
 /**
  * \brief Initialize datas
  */
-void initData(RunTimeOpts*,PtpClock*);
+void initData(RunTimeOpts *, PtpClock *);
 /** \}*/
-
 
 /** \name protocol.c
  * -Execute the protocol engine*/
- /**\{*/
+/**\{*/
 /**
  * \brief Protocol engine
  */
 /* protocol.c */
-void protocol(RunTimeOpts*,PtpClock*);
-void updateDatasets(PtpClock* ptpClock, const RunTimeOpts* rtOpts);
+void protocol(RunTimeOpts *, PtpClock *);
+void updateDatasets(PtpClock *ptpClock, const RunTimeOpts *rtOpts);
 void setPortState(PtpClock *ptpClock, Enumeration8 state);
 
 Boolean acceptPortIdentity(PortIdentity thisPort, PortIdentity targetPort);
@@ -332,176 +324,203 @@ Boolean acceptPortIdentity(PortIdentity thisPort, PortIdentity targetPort);
 
 /** \name management.c
  * -Management message support*/
- /**\{*/
+/**\{*/
 /* management.c */
 /**
  * \brief Management message support
  */
-void handleManagement( MsgHeader   *header,
-		               Boolean     isFromSelf,
-                       Integer32   sourceAddress,
-                       RunTimeOpts *rtOpts,
-                       PtpClock    *ptpClock);
+void handleManagement(MsgHeader *header, Boolean isFromSelf,
+                      Integer32 sourceAddress, RunTimeOpts *rtOpts,
+                      PtpClock *ptpClock);
 
 /** \}*/
 
 /** \name signaling.c
  * -Signaling message support*/
- /**\{*/
+/**\{*/
 /* signaling.c */
 /**
  * \brief Signaling message support
  */
-UnicastGrantTable* findUnicastGrants(const PortIdentity* portIdentity, Integer32 TransportAddress, UnicastGrantTable *grantTable, UnicastGrantIndex *index, int nodeCount, Boolean update);
-void 	initUnicastGrantTable(UnicastGrantTable *grantTable, Enumeration8 delayMechanism, int nodeCount, UnicastDestination *destinations, const RunTimeOpts *rtOpts, PtpClock *ptpClock);
+UnicastGrantTable *findUnicastGrants(const PortIdentity *portIdentity,
+                                     Integer32 TransportAddress,
+                                     UnicastGrantTable *grantTable,
+                                     UnicastGrantIndex *index, int nodeCount,
+                                     Boolean update);
+void initUnicastGrantTable(UnicastGrantTable *grantTable,
+                           Enumeration8 delayMechanism, int nodeCount,
+                           UnicastDestination *destinations,
+                           const RunTimeOpts *rtOpts, PtpClock *ptpClock);
 
-void 	cancelUnicastTransmission(UnicastGrantData*, const RunTimeOpts*, PtpClock*);
-void 	cancelAllGrants(UnicastGrantTable *grantTable, int nodeCount, const RunTimeOpts *rtOpts, PtpClock *ptpClock);
+void cancelUnicastTransmission(UnicastGrantData *, const RunTimeOpts *,
+                               PtpClock *);
+void cancelAllGrants(UnicastGrantTable *grantTable, int nodeCount,
+                     const RunTimeOpts *rtOpts, PtpClock *ptpClock);
 
-void 	handleSignaling(MsgHeader*, Boolean, Integer32, const RunTimeOpts*,PtpClock*);
+void handleSignaling(MsgHeader *, Boolean, Integer32, const RunTimeOpts *,
+                     PtpClock *);
 
-void 	refreshUnicastGrants(UnicastGrantTable *grantTable, int nodeCount, const RunTimeOpts *rtOpts, PtpClock *ptpClock);
-void 	updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount, const RunTimeOpts *rtOpts);
+void refreshUnicastGrants(UnicastGrantTable *grantTable, int nodeCount,
+                          const RunTimeOpts *rtOpts, PtpClock *ptpClock);
+void updateUnicastGrantTable(UnicastGrantTable *grantTable, int nodeCount,
+                             const RunTimeOpts *rtOpts);
 
-
-/* quick shortcut to defining a temporary char array for the purpose of snprintf to it */
-#define tmpsnprintf(var,len, ...) \
-	char var[len+1]; \
-	memset(var, 0, len+1); \
-	snprintf(var, len, __VA_ARGS__);
+/* quick shortcut to defining a temporary char array for the purpose of snprintf
+ * to it */
+#define tmpsnprintf(var, len, ...)                                             \
+  char var[len + 1];                                                           \
+  memset(var, 0, len + 1);                                                     \
+  snprintf(var, len, __VA_ARGS__);
 
 /*
  * \brief Packing and Unpacking macros
  */
-#define DECLARE_PACK( type ) void pack##type( void*, void* );
+#define DECLARE_PACK(type) void pack##type(void *, void *);
 
-DECLARE_PACK( NibbleUpper )
-DECLARE_PACK( Enumeration4Lower )
-DECLARE_PACK( UInteger4Lower )
-DECLARE_PACK( UInteger4Upper )
-DECLARE_PACK( UInteger16 )
-DECLARE_PACK( UInteger8 )
-DECLARE_PACK( Octet )
-DECLARE_PACK( Integer8 )
-DECLARE_PACK( UInteger48 )
-DECLARE_PACK( Integer64 )
+DECLARE_PACK(NibbleUpper)
+DECLARE_PACK(Enumeration4Lower)
+DECLARE_PACK(UInteger4Lower)
+DECLARE_PACK(UInteger4Upper)
+DECLARE_PACK(UInteger16)
+DECLARE_PACK(UInteger8)
+DECLARE_PACK(Octet)
+DECLARE_PACK(Integer8)
+DECLARE_PACK(UInteger48)
+DECLARE_PACK(Integer64)
 
-#define DECLARE_UNPACK( type ) void unpack##type( void*, void*, PtpClock *ptpClock );
+#define DECLARE_UNPACK(type)                                                   \
+  void unpack##type(void *, void *, PtpClock *ptpClock);
 
-DECLARE_UNPACK( Boolean )
-DECLARE_UNPACK( Enumeration4Lower )
-DECLARE_UNPACK( Enumeration4Upper )
-DECLARE_UNPACK( Octet )
-DECLARE_UNPACK( UInteger48 )
-DECLARE_UNPACK( Integer64 )
+DECLARE_UNPACK(Boolean)
+DECLARE_UNPACK(Enumeration4Lower)
+DECLARE_UNPACK(Enumeration4Upper)
+DECLARE_UNPACK(Octet)
+DECLARE_UNPACK(UInteger48)
+DECLARE_UNPACK(Integer64)
 
 /* display.c */
-void displayRunTimeOpts(const RunTimeOpts*);
-void displayDefault (const PtpClock*);
-void displayCurrent (const PtpClock*);
-void displayParent (const PtpClock*);
-void displayGlobal (const PtpClock*);
-void displayPort (const PtpClock*);
-void displayForeignMaster (const PtpClock*);
-void displayOthers (const PtpClock*);
-void displayBuffer (const PtpClock*);
-void displayPtpClock (const PtpClock*);
-void timeInternal_display(const TimeInternal*);
+void displayRunTimeOpts(const RunTimeOpts *);
+void displayDefault(const PtpClock *);
+void displayCurrent(const PtpClock *);
+void displayParent(const PtpClock *);
+void displayGlobal(const PtpClock *);
+void displayPort(const PtpClock *);
+void displayForeignMaster(const PtpClock *);
+void displayOthers(const PtpClock *);
+void displayBuffer(const PtpClock *);
+void displayPtpClock(const PtpClock *);
+void timeInternal_display(const TimeInternal *);
 void clockIdentity_display(const ClockIdentity);
-void netPath_display(const NetPath*);
-void intervalTimer_display(const IntervalTimer*);
-void integer64_display (const Integer64*);
-void timeInterval_display(const TimeInterval*);
-void portIdentity_display(const PortIdentity*);
-void clockQuality_display (const ClockQuality*);
-void PTPText_display(const PTPText*, const PtpClock*);
-void iFaceName_display(const Octet*);
-void unicast_display(const Octet*);
+void netPath_display(const NetPath *);
+void intervalTimer_display(const IntervalTimer *);
+void integer64_display(const Integer64 *);
+void timeInterval_display(const TimeInterval *);
+void portIdentity_display(const PortIdentity *);
+void clockQuality_display(const ClockQuality *);
+void PTPText_display(const PTPText *, const PtpClock *);
+void iFaceName_display(const Octet *);
+void unicast_display(const Octet *);
 const char *portState_getName(Enumeration8 portState);
 const char *getMessageTypeName(Enumeration8 messageType);
-const char* accToString(uint8_t acc);
-const char* delayMechToString(uint8_t mech);
-void timestamp_display(const Timestamp * timestamp);
+const char *accToString(uint8_t acc);
+const char *delayMechToString(uint8_t mech);
+void timestamp_display(const Timestamp *timestamp);
 
-void displayCounters(const PtpClock*);
-void displayStatistics(const PtpClock*);
+void displayCounters(const PtpClock *);
+void displayStatistics(const PtpClock *);
 void clearCounters(PtpClock *);
 
-void msgHeader_display(const MsgHeader*);
-void msgAnnounce_display(const MsgAnnounce*);
+void msgHeader_display(const MsgHeader *);
+void msgAnnounce_display(const MsgAnnounce *);
 void msgSync_display(const MsgSync *sync);
-void msgFollowUp_display(const MsgFollowUp*);
-void msgPdelayReq_display(const MsgPdelayReq*);
-void msgDelayReq_display(const MsgDelayReq * req);
-void msgDelayResp_display(const MsgDelayResp * resp);
-void msgPdelayResp_display(const MsgPdelayResp * presp);
-void msgPdelayRespFollowUp_display(const MsgPdelayRespFollowUp * prespfollow);
-void msgManagement_display(const MsgManagement * manage);
-void msgSignaling_display(const MsgSignaling * signaling);
+void msgFollowUp_display(const MsgFollowUp *);
+void msgPdelayReq_display(const MsgPdelayReq *);
+void msgDelayReq_display(const MsgDelayReq *req);
+void msgDelayResp_display(const MsgDelayResp *resp);
+void msgPdelayResp_display(const MsgPdelayResp *presp);
+void msgPdelayRespFollowUp_display(const MsgPdelayRespFollowUp *prespfollow);
+void msgManagement_display(const MsgManagement *manage);
+void msgSignaling_display(const MsgSignaling *signaling);
 
-void mMSlaveOnly_display(const MMSlaveOnly*, const PtpClock*);
-void mMClockDescription_display(const MMClockDescription*, const PtpClock*);
-void mMUserDescription_display(const MMUserDescription*, const PtpClock*);
-void mMInitialize_display(const MMInitialize*, const PtpClock*);
-void mMDefaultDataSet_display(const MMDefaultDataSet*, const PtpClock*);
-void mMCurrentDataSet_display(const MMCurrentDataSet*, const PtpClock*);
-void mMParentDataSet_display(const MMParentDataSet*, const PtpClock*);
-void mMTimePropertiesDataSet_display(const MMTimePropertiesDataSet*, const PtpClock*);
-void mMPortDataSet_display(const MMPortDataSet*, const PtpClock*);
-void mMPriority1_display(const MMPriority1*, const PtpClock*);
-void mMPriority2_display(const MMPriority2*, const PtpClock*);
-void mMDomain_display(const MMDomain*, const PtpClock*);
-void mMLogAnnounceInterval_display(const MMLogAnnounceInterval*, const PtpClock*);
-void mMAnnounceReceiptTimeout_display(const MMAnnounceReceiptTimeout*, const PtpClock*);
-void mMLogSyncInterval_display(const MMLogSyncInterval*, const PtpClock*);
-void mMVersionNumber_display(const MMVersionNumber*, const PtpClock*);
-void mMTime_display(const MMTime*, const PtpClock*);
-void mMClockAccuracy_display(const MMClockAccuracy*, const PtpClock*);
-void mMUtcProperties_display(const MMUtcProperties*, const PtpClock*);
-void mMTraceabilityProperties_display(const MMTraceabilityProperties*, const PtpClock*);
-void mMTimescaleProperties_display(const MMTimescaleProperties*, const PtpClock*);
-void mMUnicastNegotiationEnable_display(const MMUnicastNegotiationEnable*, const PtpClock*);
-void mMDelayMechanism_display(const MMDelayMechanism*, const PtpClock*);
-void mMLogMinPdelayReqInterval_display(const MMLogMinPdelayReqInterval*, const PtpClock*);
-void mMErrorStatus_display(const MMErrorStatus*, const PtpClock*);
+void mMSlaveOnly_display(const MMSlaveOnly *, const PtpClock *);
+void mMClockDescription_display(const MMClockDescription *, const PtpClock *);
+void mMUserDescription_display(const MMUserDescription *, const PtpClock *);
+void mMInitialize_display(const MMInitialize *, const PtpClock *);
+void mMDefaultDataSet_display(const MMDefaultDataSet *, const PtpClock *);
+void mMCurrentDataSet_display(const MMCurrentDataSet *, const PtpClock *);
+void mMParentDataSet_display(const MMParentDataSet *, const PtpClock *);
+void mMTimePropertiesDataSet_display(const MMTimePropertiesDataSet *,
+                                     const PtpClock *);
+void mMPortDataSet_display(const MMPortDataSet *, const PtpClock *);
+void mMPriority1_display(const MMPriority1 *, const PtpClock *);
+void mMPriority2_display(const MMPriority2 *, const PtpClock *);
+void mMDomain_display(const MMDomain *, const PtpClock *);
+void mMLogAnnounceInterval_display(const MMLogAnnounceInterval *,
+                                   const PtpClock *);
+void mMAnnounceReceiptTimeout_display(const MMAnnounceReceiptTimeout *,
+                                      const PtpClock *);
+void mMLogSyncInterval_display(const MMLogSyncInterval *, const PtpClock *);
+void mMVersionNumber_display(const MMVersionNumber *, const PtpClock *);
+void mMTime_display(const MMTime *, const PtpClock *);
+void mMClockAccuracy_display(const MMClockAccuracy *, const PtpClock *);
+void mMUtcProperties_display(const MMUtcProperties *, const PtpClock *);
+void mMTraceabilityProperties_display(const MMTraceabilityProperties *,
+                                      const PtpClock *);
+void mMTimescaleProperties_display(const MMTimescaleProperties *,
+                                   const PtpClock *);
+void mMUnicastNegotiationEnable_display(const MMUnicastNegotiationEnable *,
+                                        const PtpClock *);
+void mMDelayMechanism_display(const MMDelayMechanism *, const PtpClock *);
+void mMLogMinPdelayReqInterval_display(const MMLogMinPdelayReqInterval *,
+                                       const PtpClock *);
+void mMErrorStatus_display(const MMErrorStatus *, const PtpClock *);
 
-void sMRequestUnicastTransmission_display(const SMRequestUnicastTransmission*, const PtpClock*);
-void sMGrantUnicastTransmission_display(const SMGrantUnicastTransmission*, const PtpClock*);
-void sMCancelUnicastTransmission_display(const SMCancelUnicastTransmission*, const PtpClock*);
-void sMAcknowledgeCancelUnicastTransmission_display(const SMAcknowledgeCancelUnicastTransmission*, const PtpClock*);
+void sMRequestUnicastTransmission_display(const SMRequestUnicastTransmission *,
+                                          const PtpClock *);
+void sMGrantUnicastTransmission_display(const SMGrantUnicastTransmission *,
+                                        const PtpClock *);
+void sMCancelUnicastTransmission_display(const SMCancelUnicastTransmission *,
+                                         const PtpClock *);
+void sMAcknowledgeCancelUnicastTransmission_display(
+    const SMAcknowledgeCancelUnicastTransmission *, const PtpClock *);
 
 void clearTime(TimeInternal *time);
 
-char* dump_TimeInternal(const TimeInternal * p);
-char* dump_TimeInternal2(const char *st1, const TimeInternal * p1, const char *st2, const TimeInternal * p2);
-const char* getTimeSourceName(Enumeration8 timeSource);
+char *dump_TimeInternal(const TimeInternal *p);
+char *dump_TimeInternal2(const char *st1, const TimeInternal *p1,
+                         const char *st2, const TimeInternal *p2);
+const char *getTimeSourceName(Enumeration8 timeSource);
 
-int snprint_TimeInternal(char *s, int max_len, const TimeInternal * p);
+int snprint_TimeInternal(char *s, int max_len, const TimeInternal *p);
 
 void nano_to_Time(TimeInternal *time, int nano);
 int gtTime(const TimeInternal *x, const TimeInternal *b);
 void absTime(TimeInternal *time);
 int is_Time_close(const TimeInternal *x, const TimeInternal *b, int nanos);
-int isTimeInternalNegative(const TimeInternal * p);
-double timeInternalToDouble(const TimeInternal * p);
+int isTimeInternalNegative(const TimeInternal *p);
+double timeInternalToDouble(const TimeInternal *p);
 TimeInternal doubleToTimeInternal(const double d);
 
 uint32_t fnvHash(void *input, size_t len, int modulo);
 
-int check_timestamp_is_fresh2(const TimeInternal * timeA, const TimeInternal * timeB);
-int check_timestamp_is_fresh(const TimeInternal * timeA);
+int check_timestamp_is_fresh2(const TimeInternal *timeA,
+                              const TimeInternal *timeB);
+int check_timestamp_is_fresh(const TimeInternal *timeA);
 
-
-void toState(UInteger8,const RunTimeOpts*,PtpClock*);
+void toState(UInteger8, const RunTimeOpts *, PtpClock *);
 
 /* helper functions for leap second handling */
 double secondsToMidnight(void);
 double getPauseAfterMidnight(Integer8 announceInterval, int pausePeriod);
 
-Boolean respectUtcOffset(const RunTimeOpts * rtOpts, PtpClock * ptpClock);
+Boolean respectUtcOffset(const RunTimeOpts *rtOpts, PtpClock *ptpClock);
 
 /* alarms.c - this will be moved */
-void capturePtpEventData(PtpEventData *data, PtpClock *ptpClock, RunTimeOpts *rtOpts); 	/* capture data from an alarm event */
-void setAlarmCondition(AlarmEntry *alarm, Boolean condition, PtpClock *ptpClock); /* set alarm condition and capture data */
+void capturePtpEventData(
+    PtpEventData *data, PtpClock *ptpClock,
+    RunTimeOpts *rtOpts); /* capture data from an alarm event */
+void setAlarmCondition(
+    AlarmEntry *alarm, Boolean condition,
+    PtpClock *ptpClock); /* set alarm condition and capture data */
 
 #endif /*PTPD_H_*/

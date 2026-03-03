@@ -57,183 +57,157 @@ static Boolean eventTimerIsRunning_posix(EventTimer *timer);
 static Boolean eventTimerIsExpired_posix(EventTimer *timer);
 static void timerSignalHandler(int sig, siginfo_t *info, void *usercontext);
 
-void
-setupEventTimer(EventTimer *timer)
-{
+void setupEventTimer(EventTimer *timer) {
 
-	struct sigevent sev;
+  struct sigevent sev;
 
-	if(timer == NULL) {
-	    return;
-	}
+  if (timer == NULL) {
+    return;
+  }
 
-	memset(&sev, 0, sizeof(sev));
-	memset(timer, 0, sizeof(EventTimer));
+  memset(&sev, 0, sizeof(sev));
+  memset(timer, 0, sizeof(EventTimer));
 
-	timer->start = eventTimerStart_posix;
-	timer->stop = eventTimerStop_posix;
-	timer->reset = eventTimerReset_posix;
-	timer->shutdown = eventTimerShutdown_posix;
-	timer->isExpired = eventTimerIsExpired_posix;
-	timer->isRunning = eventTimerIsRunning_posix;
+  timer->start = eventTimerStart_posix;
+  timer->stop = eventTimerStop_posix;
+  timer->reset = eventTimerReset_posix;
+  timer->shutdown = eventTimerShutdown_posix;
+  timer->isExpired = eventTimerIsExpired_posix;
+  timer->isRunning = eventTimerIsRunning_posix;
 
-	sev.sigev_notify = SIGEV_SIGNAL;
-	sev.sigev_signo = TIMER_SIGNAL;
-	sev.sigev_value.sival_ptr = timer;
+  sev.sigev_notify = SIGEV_SIGNAL;
+  sev.sigev_signo = TIMER_SIGNAL;
+  sev.sigev_value.sival_ptr = timer;
 
-	if(timer_create(CLK_TYPE, &sev, &timer->timerId) == -1) {
-	    PERROR("Could not create posix timer %s", timer->id);
-	} else {
-	    DBGV("Created posix timer %s ",timer->id);
-	}
+  if (timer_create(CLK_TYPE, &sev, &timer->timerId) == -1) {
+    PERROR("Could not create posix timer %s", timer->id);
+  } else {
+    DBGV("Created posix timer %s ", timer->id);
+  }
 }
 
-static void
-eventTimerStart_posix(EventTimer *timer, double interval)
-{
+static void eventTimerStart_posix(EventTimer *timer, double interval) {
 
-	struct timespec ts;
-	struct itimerspec its;
-   
-	memset(&its, 0, sizeof(its));
+  struct timespec ts;
+  struct itimerspec its;
 
-	ts.tv_sec = interval;
-	ts.tv_nsec = (interval - ts.tv_sec) * 1E9;
+  memset(&its, 0, sizeof(its));
 
-	if(!ts.tv_sec && ts.tv_nsec < EVENTTIMER_MIN_INTERVAL_US * 1000) {
-	    ts.tv_nsec = EVENTTIMER_MIN_INTERVAL_US * 1000;
-	}
+  ts.tv_sec = interval;
+  ts.tv_nsec = (interval - ts.tv_sec) * 1E9;
 
-	DBGV("Timer %s start requested at %d.%4d sec interval\n", timer->id, ts.tv_sec, ts.tv_nsec);
+  if (!ts.tv_sec && ts.tv_nsec < EVENTTIMER_MIN_INTERVAL_US * 1000) {
+    ts.tv_nsec = EVENTTIMER_MIN_INTERVAL_US * 1000;
+  }
 
-	its.it_interval = ts;
-	its.it_value = ts;
+  DBGV("Timer %s start requested at %d.%4d sec interval\n", timer->id,
+       ts.tv_sec, ts.tv_nsec);
 
-	if (timer_settime(timer->timerId, 0, &its, NULL) < 0) {
-		PERROR("could not arm posix timer %s", timer->id);
-		return;
-	}
+  its.it_interval = ts;
+  its.it_value = ts;
 
-	DBG2("timerStart:     Set timer %s to %f\n", timer->id, interval);
+  if (timer_settime(timer->timerId, 0, &its, NULL) < 0) {
+    PERROR("could not arm posix timer %s", timer->id);
+    return;
+  }
 
-	timer->expired = FALSE;
-	timer->running = TRUE;
+  DBG2("timerStart:     Set timer %s to %f\n", timer->id, interval);
 
+  timer->expired = FALSE;
+  timer->running = TRUE;
 }
 
-static void
-eventTimerStop_posix(EventTimer *timer)
-{
+static void eventTimerStop_posix(EventTimer *timer) {
 
-	struct itimerspec its;
+  struct itimerspec its;
 
-	DBGV("Timer %s stop requested\n", timer->id);
+  DBGV("Timer %s stop requested\n", timer->id);
 
-	memset(&its, 0, sizeof(its));
+  memset(&its, 0, sizeof(its));
 
-	if (timer_settime(timer->timerId, 0, &its, NULL) < 0) {
-		PERROR("could not stop posix timer %s", timer->id);
-		return;
-	}
+  if (timer_settime(timer->timerId, 0, &its, NULL) < 0) {
+    PERROR("could not stop posix timer %s", timer->id);
+    return;
+  }
 
-	timer->running = FALSE;
+  timer->running = FALSE;
 
-	DBG2("timerStop: stopped timer %s\n", timer->id);
-
+  DBG2("timerStop: stopped timer %s\n", timer->id);
 }
 
-static void
-eventTimerReset_posix(EventTimer *timer)
-{
+static void eventTimerReset_posix(EventTimer *timer) {}
+
+static void eventTimerShutdown_posix(EventTimer *timer) {
+  if (timer_delete(timer->timerId) == -1) {
+    PERROR("Could not delete timer %s!", timer->id);
+  }
 }
 
-static void
-eventTimerShutdown_posix(EventTimer *timer)
-{
-	if(timer_delete(timer->timerId) == -1) {
-	    PERROR("Could not delete timer %s!", timer->id);
-	}
+static Boolean eventTimerIsRunning_posix(EventTimer *timer) {
 
+  DBG2("timerIsRunning:   Timer %s %s running\n", timer->id,
+       timer->running ? "is" : "is not");
+
+  return timer->running;
 }
 
-static Boolean
-eventTimerIsRunning_posix(EventTimer *timer)
-{
+static Boolean eventTimerIsExpired_posix(EventTimer *timer) {
 
-	DBG2("timerIsRunning:   Timer %s %s running\n", timer->id,
-		timer->running ? "is" : "is not");
+  Boolean ret;
 
-	return timer->running;
+  ret = timer->expired;
+
+  // DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
+  //	timer->expired ? "is" : "is not");
+
+  /* the five monkeys experiment */
+  if (ret) {
+    timer->expired = FALSE;
+  }
+
+  return ret;
 }
 
-static Boolean
-eventTimerIsExpired_posix(EventTimer *timer)
-{
+void startEventTimers(void) {
+  struct sigaction sa;
 
-	Boolean ret;
-
-	ret = timer->expired;
-
-	//DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
-	//	timer->expired ? "is" : "is not");
-
-	/* the five monkeys experiment */
-	if(ret) {
-	    timer->expired = FALSE;
-	}
-
-	return ret;
-
-}
-
-void
-startEventTimers(void)
-{
-	struct sigaction sa;
-
-	DBG("initTimer\n");
+  DBG("initTimer\n");
 
 #ifdef __sun
-	sigset(SIGALRM, SIG_IGN);
+  sigset(SIGALRM, SIG_IGN);
 #else
-	signal(SIGALRM, SIG_IGN);
+  signal(SIGALRM, SIG_IGN);
 #endif /* __sun */
 
-	sa.sa_flags = SA_SIGINFO;
-	sa.sa_sigaction = timerSignalHandler;
-	sigemptyset(&sa.sa_mask);
-	if(sigaction(TIMER_SIGNAL, &sa, NULL) == -1) {
-	    PERROR("Could not initialise timer handler");
-	}
-
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = timerSignalHandler;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(TIMER_SIGNAL, &sa, NULL) == -1) {
+    PERROR("Could not initialise timer handler");
+  }
 }
 
-void
-shutdownEventTimers(void)
-{
+void shutdownEventTimers(void) {
 
 #ifdef __sun
-	sigset(SIGALRM, SIG_IGN);
+  sigset(SIGALRM, SIG_IGN);
 #else
-	signal(SIGALRM, SIG_IGN);
+  signal(SIGALRM, SIG_IGN);
 #endif /* __sun */
 }
 
 /* this only ever gets called when a timer expires */
-static void
-timerSignalHandler(int sig, siginfo_t *info, void *usercontext)
-{
+static void timerSignalHandler(int sig, siginfo_t *info, void *usercontext) {
 
-	/* retrieve the user data structure */
-	EventTimer * timer = (EventTimer*)info->si_value.sival_ptr;
+  /* retrieve the user data structure */
+  EventTimer *timer = (EventTimer *)info->si_value.sival_ptr;
 
-	/* Ignore if the signal wasn't sent by a timer */
-	if(info->si_code != SI_TIMER)
-		return;
+  /* Ignore if the signal wasn't sent by a timer */
+  if (info->si_code != SI_TIMER)
+    return;
 
-	/* Hopkirk (deceased) */
-	if(timer != NULL) {
-	    timer->expired = TRUE;
-	}
-
+  /* Hopkirk (deceased) */
+  if (timer != NULL) {
+    timer->expired = TRUE;
+  }
 }

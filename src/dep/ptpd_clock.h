@@ -38,8 +38,8 @@
 
 #include <time.h>
 
-/* 
- * Global PtpClock instance - defined in ptpd.c 
+/*
+ * Global PtpClock instance - defined in ptpd.c
  * PtpClock typedef is in datatypes.h - must be includded before this header
  */
 #ifndef PTPD_H_
@@ -54,10 +54,10 @@ extern PtpClock *G_ptpClock;
 
 /* Add missing STA_* constants not defined by swclock */
 #ifndef STA_INS
-#define STA_INS         0x0010  /* insert (add) leap second */
+#define STA_INS 0x0010 /* insert (add) leap second */
 #endif
 #ifndef STA_DEL
-#define STA_DEL         0x0020  /* delete (remove) leap second */
+#define STA_DEL 0x0020 /* delete (remove) leap second */
 #endif
 
 /**
@@ -66,8 +66,8 @@ extern PtpClock *G_ptpClock;
  * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, etc.)
  * @param tp Timespec to receive time
  */
-#define ptpd_clock_gettime(ptpClock, clk_id, tp) \
-    swclock_gettime((ptpClock)->swclock, (clk_id), (tp))
+#define ptpd_clock_gettime(ptpClock, clk_id, tp)                               \
+  swclock_gettime((ptpClock)->swclock, (clk_id), (tp))
 
 /**
  * Set time on swclock instance
@@ -75,26 +75,26 @@ extern PtpClock *G_ptpClock;
  * @param clk_id Clock ID
  * @param tp Timespec with new time
  */
-#define ptpd_clock_settime(ptpClock, clk_id, tp) \
-    swclock_settime((ptpClock)->swclock, (clk_id), (tp))
+#define ptpd_clock_settime(ptpClock, clk_id, tp)                               \
+  swclock_settime((ptpClock)->swclock, (clk_id), (tp))
 
 /**
  * Adjust swclock via timex structure
  * @param ptpClock PtpClock instance containing swclock
  * @param tx Timex structure with adjustment parameters
  */
-#define ptpd_clock_adjtime(ptpClock, tx) \
-    swclock_adjtime((ptpClock)->swclock, (tx))
+#define ptpd_clock_adjtime(ptpClock, tx)                                       \
+  swclock_adjtime((ptpClock)->swclock, (tx))
 
 /**
  * Standalone adjtime for leap second management (without PtpClock context)
  * Used by functions like unsetTimexFlags, getTimexFlags, etc.
  * Routes to swclock or system based on G_ptpClock availability
  */
-#define ptpd_adjtime(tx) \
-    ((G_ptpClock && G_ptpClock->swclock) ? \
-     swclock_adjtime((SwClock*)G_ptpClock->swclock, (tx)) : \
-     -1)
+#define ptpd_adjtime(tx)                                                       \
+  ((G_ptpClock && G_ptpClock->swclock)                                         \
+       ? swclock_adjtime((SwClock *)G_ptpClock->swclock, (tx))                 \
+       : -1)
 
 /* Replace all adjtimex/ntp_adjtime calls to use swclock */
 #ifdef adjtimex
@@ -108,19 +108,19 @@ extern PtpClock *G_ptpClock;
 
 /* Additional timex constants not defined by swclock but needed by ptpd */
 #ifndef TIME_INS
-#define TIME_INS    1    /* insert leap second */
+#define TIME_INS 1 /* insert leap second */
 #endif
 #ifndef TIME_DEL
-#define TIME_DEL    2    /* delete leap second */
+#define TIME_DEL 2 /* delete leap second */
 #endif
 #ifndef TIME_OOP
-#define TIME_OOP    3    /* leap second in progress */
+#define TIME_OOP 3 /* leap second in progress */
 #endif
 #ifndef TIME_WAIT
-#define TIME_WAIT   4    /* leap second has occurred */
+#define TIME_WAIT 4 /* leap second has occurred */
 #endif
 #ifndef MOD_STATUS
-#define MOD_STATUS  0x0010
+#define MOD_STATUS 0x0010
 #endif
 #ifndef MOD_FREQUENCY
 #define MOD_FREQUENCY 0x0002
@@ -132,7 +132,7 @@ extern PtpClock *G_ptpClock;
 #define MOD_ESTERROR 0x0008
 #endif
 #ifndef STA_RONLY
-#define STA_RONLY 0xff00  /* read-only bits */
+#define STA_RONLY 0xff00 /* read-only bits */
 #endif
 #ifndef STA_FREQHOLD
 #define STA_FREQHOLD 0x0080
@@ -147,8 +147,7 @@ extern PtpClock *G_ptpClock;
  * @param clk_id Clock ID
  * @param tp Timespec to receive time
  */
-#define ptpd_clock_gettime(ptpClock, clk_id, tp) \
-    clock_gettime((clk_id), (tp))
+#define ptpd_clock_gettime(ptpClock, clk_id, tp) clock_gettime((clk_id), (tp))
 
 /**
  * Set time on system clock
@@ -156,8 +155,7 @@ extern PtpClock *G_ptpClock;
  * @param clk_id Clock ID
  * @param tp Timespec with new time
  */
-#define ptpd_clock_settime(ptpClock, clk_id, tp) \
-    clock_settime((clk_id), (tp))
+#define ptpd_clock_settime(ptpClock, clk_id, tp) clock_settime((clk_id), (tp))
 
 /**
  * Adjust system clock via adjtimex/ntp_adjtime
@@ -166,8 +164,8 @@ extern PtpClock *G_ptpClock;
  * @param ptpClock PtpClock instance (unused)
  * @param tx Timex structure (unused for system - use adjfreq instead)
  */
-#define ptpd_clock_adjtime(ptpClock, tx) \
-    (-1) /* Not directly supported - use adjFreq_wrapper() */
+#define ptpd_clock_adjtime(ptpClock, tx)                                       \
+  (-1) /* Not directly supported - use adjFreq_wrapper() */
 
 /* For system clock, use native adjtimex/ntp_adjtime - no redefinition */
 

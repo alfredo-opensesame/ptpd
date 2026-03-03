@@ -67,173 +67,146 @@ static Boolean eventTimerIsExpired_itimer(EventTimer *timer);
 static void itimerUpdate(EventTimer *et);
 static void timerSignalHandler(int sig);
 
-void
-setupEventTimer(EventTimer *timer)
-{
+void setupEventTimer(EventTimer *timer) {
 
-	if(timer == NULL) {
-	    return;
-	}
+  if (timer == NULL) {
+    return;
+  }
 
-	memset(timer, 0, sizeof(EventTimer));
+  memset(timer, 0, sizeof(EventTimer));
 
-	timer->start = eventTimerStart_itimer;
-	timer->stop = eventTimerStop_itimer;
-	timer->reset = eventTimerReset_itimer;
-	timer->shutdown = eventTimerShutdown_itimer;
-	timer->isExpired = eventTimerIsExpired_itimer;
-	timer->isRunning = eventTimerIsRunning_itimer;
+  timer->start = eventTimerStart_itimer;
+  timer->stop = eventTimerStop_itimer;
+  timer->reset = eventTimerReset_itimer;
+  timer->shutdown = eventTimerShutdown_itimer;
+  timer->isExpired = eventTimerIsExpired_itimer;
+  timer->isRunning = eventTimerIsRunning_itimer;
 }
 
-static void
-eventTimerStart_itimer(EventTimer *timer, double interval)
-{
+static void eventTimerStart_itimer(EventTimer *timer, double interval) {
 
-	timer->expired = FALSE;
-	timer->running = TRUE;
+  timer->expired = FALSE;
+  timer->running = TRUE;
 
-	/*
-	 *  US_TIMER_INTERVAL defines the minimum interval between sigalarms.
-	 *  timerStart has a float parameter for the interval, which is casted to integer.
-	 *  very small amounts are forced to expire ASAP by setting the interval to 1
-	 */
-	timer->itimerLeft = (interval * 1E6) / US_TIMER_INTERVAL;
-	if(timer->itimerLeft == 0){
-		/*
-		 * the interval is too small, raise it to 1 to make sure it expires ASAP
-		 */
-		timer->itimerLeft = 1;
-	}
-	
-	timer->itimerInterval = timer->itimerLeft;
+  /*
+   *  US_TIMER_INTERVAL defines the minimum interval between sigalarms.
+   *  timerStart has a float parameter for the interval, which is casted to
+   * integer. very small amounts are forced to expire ASAP by setting the
+   * interval to 1
+   */
+  timer->itimerLeft = (interval * 1E6) / US_TIMER_INTERVAL;
+  if (timer->itimerLeft == 0) {
+    /*
+     * the interval is too small, raise it to 1 to make sure it expires ASAP
+     */
+    timer->itimerLeft = 1;
+  }
 
-	DBG2("timerStart:     Set timer %s to %f  New interval: %d; new left: %d\n", timer->id, interval, timer->itimerLeft , timer->itimerInterval);
+  timer->itimerInterval = timer->itimerLeft;
+
+  DBG2("timerStart:     Set timer %s to %f  New interval: %d; new left: %d\n",
+       timer->id, interval, timer->itimerLeft, timer->itimerInterval);
 }
 
-static void
-eventTimerStop_itimer(EventTimer *timer)
-{
+static void eventTimerStop_itimer(EventTimer *timer) {
 
-	timer->itimerInterval = 0;
-	timer->running = FALSE;
-	DBG2("timerStop:      Stopping timer %s\n", timer->id);
-
+  timer->itimerInterval = 0;
+  timer->running = FALSE;
+  DBG2("timerStop:      Stopping timer %s\n", timer->id);
 }
 
-static void
-itimerUpdate(EventTimer *et)
-{
+static void itimerUpdate(EventTimer *et) {
 
-	EventTimer *timer = NULL;
+  EventTimer *timer = NULL;
 
-	if (elapsed <= 0)
-		return;
+  if (elapsed <= 0)
+    return;
 
-	/*
-	 * if time actually passed, then decrease every timer left
-	 * the one(s) that went to zero or negative are:
-	 *  a) rearmed at the original time (ignoring the time that may have passed ahead)
-	 *  b) have their expiration latched until timerExpired() is called
-	 */
+  /*
+   * if time actually passed, then decrease every timer left
+   * the one(s) that went to zero or negative are:
+   *  a) rearmed at the original time (ignoring the time that may have passed
+   * ahead) b) have their expiration latched until timerExpired() is called
+   */
 
-	for(timer = et->_first; timer != NULL; timer = timer->_next) {
-	    if ( (timer->itimerInterval > 0) && ((timer->itimerLeft -= elapsed) <= 0)) {
-			timer->itimerLeft = timer->itimerInterval;
-			timer->expired = TRUE;
-		DBG("TimerUpdate:    Timer %s has now expired.  Re-armed with interval %d\n", timer->id, timer->itimerInterval);
-	    }
-	}
+  for (timer = et->_first; timer != NULL; timer = timer->_next) {
+    if ((timer->itimerInterval > 0) && ((timer->itimerLeft -= elapsed) <= 0)) {
+      timer->itimerLeft = timer->itimerInterval;
+      timer->expired = TRUE;
+      DBG("TimerUpdate:    Timer %s has now expired.  Re-armed with interval "
+          "%d\n",
+          timer->id, timer->itimerInterval);
+    }
+  }
 
-	elapsed = 0;
-
+  elapsed = 0;
 }
 
+static void eventTimerReset_itimer(EventTimer *timer) {}
 
+static void eventTimerShutdown_itimer(EventTimer *timer) {}
 
-static void
-eventTimerReset_itimer(EventTimer *timer)
-{
+static Boolean eventTimerIsRunning_itimer(EventTimer *timer) {
+
+  itimerUpdate(timer);
+
+  DBG2("timerIsRunning:   Timer %s %s running\n", timer->id,
+       timer->running ? "is" : "is not");
+
+  return timer->running;
 }
 
-static void
-eventTimerShutdown_itimer(EventTimer *timer)
-{
+static Boolean eventTimerIsExpired_itimer(EventTimer *timer) {
+
+  Boolean ret;
+
+  itimerUpdate(timer);
+
+  ret = timer->expired;
+
+  // DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
+  //	timer->expired ? "is" : "is not");
+
+  if (ret) {
+    timer->expired = FALSE;
+  }
+
+  return ret;
 }
 
+void startEventTimers(void) {
+  struct itimerval itimer;
 
-static Boolean
-eventTimerIsRunning_itimer(EventTimer *timer)
-{
-
-	itimerUpdate(timer);
-
-	DBG2("timerIsRunning:   Timer %s %s running\n", timer->id,
-		timer->running ? "is" : "is not");
-
-	return timer->running;
-}
-
-static Boolean
-eventTimerIsExpired_itimer(EventTimer *timer)
-{
-
-	Boolean ret;
-
-	itimerUpdate(timer);
-
-	ret = timer->expired;
-
-	//DBG2("timerIsExpired:   Timer %s %s expired\n", timer->id,
-	//	timer->expired ? "is" : "is not");
-
-	if(ret) {
-	    timer->expired = FALSE;
-	}
-
-	return ret;
-
-}
-
-void
-startEventTimers(void)
-{
-	struct itimerval itimer;
-
-	DBG("initTimer\n");
+  DBG("initTimer\n");
 
 #ifdef __sun
-	sigset(SIGALRM, SIG_IGN);
+  sigset(SIGALRM, SIG_IGN);
 #else
-	signal(SIGALRM, SIG_IGN);
+  signal(SIGALRM, SIG_IGN);
 #endif /* __sun */
 
-	elapsed = 0;
-	itimer.it_value.tv_sec = itimer.it_interval.tv_sec = 0;
-	itimer.it_value.tv_usec = itimer.it_interval.tv_usec =
-	    US_TIMER_INTERVAL;
+  elapsed = 0;
+  itimer.it_value.tv_sec = itimer.it_interval.tv_sec = 0;
+  itimer.it_value.tv_usec = itimer.it_interval.tv_usec = US_TIMER_INTERVAL;
 
 #ifdef __sun
-	sigset(SIGALRM, timerSignalHandler);
-#else	
-	signal(SIGALRM, timerSignalHandler);
-#endif /* __sun */
-	setitimer(ITIMER_REAL, &itimer, 0);
-}
-
-void
-shutdownEventTimers(void)
-{
-
-#ifdef __sun
-	sigset(SIGALRM, SIG_IGN);
+  sigset(SIGALRM, timerSignalHandler);
 #else
-	signal(SIGALRM, SIG_IGN);
+  signal(SIGALRM, timerSignalHandler);
+#endif /* __sun */
+  setitimer(ITIMER_REAL, &itimer, 0);
+}
+
+void shutdownEventTimers(void) {
+
+#ifdef __sun
+  sigset(SIGALRM, SIG_IGN);
+#else
+  signal(SIGALRM, SIG_IGN);
 #endif /* __sun */
 }
 
-static void
-timerSignalHandler(int sig)
-{
-	elapsed++;
-	/* be sure to NOT call DBG in asynchronous handlers! */
+static void timerSignalHandler(int sig) {
+  elapsed++;
+  /* be sure to NOT call DBG in asynchronous handlers! */
 }

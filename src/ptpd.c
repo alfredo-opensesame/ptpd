@@ -67,7 +67,7 @@
 #include <pthread.h>
 #endif
 
-RunTimeOpts rtOpts;	/* statically allocated run-time configuration data */
+RunTimeOpts rtOpts; /* statically allocated run-time configuration data */
 
 Boolean startupInProgress;
 
@@ -90,84 +90,82 @@ static PtpClock *library_ptpClock = NULL;
 #endif
 
 /* Common initialization function used by both main() and library API */
-static PtpClock* ptpd_common_init(int argc, char **argv, Integer16 *ret)
-{
-	PtpClock       *ptpClock;
-	TimingService  *ts;
+static PtpClock *ptpd_common_init(int argc, char **argv, Integer16 *ret) {
+  PtpClock *ptpClock;
+  TimingService *ts;
 
-	startupInProgress = TRUE;
+  startupInProgress = TRUE;
 
-	memset(&timingDomain, 0, sizeof(timingDomain));
-	timingDomainSetup(&timingDomain);
+  memset(&timingDomain, 0, sizeof(timingDomain));
+  timingDomainSetup(&timingDomain);
 
-	timingDomain.electionLeft = 10;
+  timingDomain.electionLeft = 10;
 
-	/* Initialize run time options with command line arguments */
-	if (!(ptpClock = ptpdStartup(argc, argv, ret, &rtOpts))) {
-		if (*ret != 0 && !rtOpts.checkConfigOnly)
-			ERROR(USER_DESCRIPTION" startup failed\n");
-		return NULL;
-	}
+  /* Initialize run time options with command line arguments */
+  if (!(ptpClock = ptpdStartup(argc, argv, ret, &rtOpts))) {
+    if (*ret != 0 && !rtOpts.checkConfigOnly)
+      ERROR(USER_DESCRIPTION " startup failed\n");
+    return NULL;
+  }
 
 #ifdef PTPD_USE_SWCLOCK
-	/* Create software clock instance */
-	ptpClock->swclock = swclock_create();
-	if (!ptpClock->swclock) {
-		ERROR("Failed to create software clock\n");
-		/* Continue with system clock fallback - ptpd_clock.h macros will handle */
-	}
+  /* Create software clock instance */
+  ptpClock->swclock = swclock_create();
+  if (!ptpClock->swclock) {
+    ERROR("Failed to create software clock\n");
+    /* Continue with system clock fallback - ptpd_clock.h macros will handle */
+  }
 #endif
 
 #ifdef PTPD_IOS
-	/* Initialize iOS exit flag */
-	ptpClock->ios_should_exit = FALSE;
+  /* Initialize iOS exit flag */
+  ptpClock->ios_should_exit = FALSE;
 #endif
 
-	timingDomain.electionDelay = rtOpts.electionDelay;
+  timingDomain.electionDelay = rtOpts.electionDelay;
 
-	/* configure PTP TimeService */
-	timingDomain.services[0] = &ptpClock->timingService;
-	ts = timingDomain.services[0];
-	strncpy(ts->id, "PTP0", TIMINGSERVICE_MAX_DESC);
-	ts->dataSet.priority1	  = rtOpts.preferNTP;
-	ts->dataSet.type	      = TIMINGSERVICE_PTP;
-	ts->config		          = &rtOpts;
-	ts->controller		      = ptpClock;
-	ts->timeout		          = rtOpts.idleTimeout;
-	ts->updateInterval	      = 1;
-	ts->holdTime		      = rtOpts.ntpOptions.failoverTimeout;
-	timingDomain.serviceCount = 1;
+  /* configure PTP TimeService */
+  timingDomain.services[0] = &ptpClock->timingService;
+  ts = timingDomain.services[0];
+  strncpy(ts->id, "PTP0", TIMINGSERVICE_MAX_DESC);
+  ts->dataSet.priority1 = rtOpts.preferNTP;
+  ts->dataSet.type = TIMINGSERVICE_PTP;
+  ts->config = &rtOpts;
+  ts->controller = ptpClock;
+  ts->timeout = rtOpts.idleTimeout;
+  ts->updateInterval = 1;
+  ts->holdTime = rtOpts.ntpOptions.failoverTimeout;
+  timingDomain.serviceCount = 1;
 
-	if (rtOpts.ntpOptions.enableEngine) {
-		ntpSetup(&rtOpts, ptpClock);
-	} else {
-	    timingDomain.serviceCount = 1;
-	    timingDomain.services[1]  = NULL;
-	}
+  if (rtOpts.ntpOptions.enableEngine) {
+    ntpSetup(&rtOpts, ptpClock);
+  } else {
+    timingDomain.serviceCount = 1;
+    timingDomain.services[1] = NULL;
+  }
 
-	timingDomain.init(&timingDomain);
-	timingDomain.updateInterval = 1;
+  timingDomain.init(&timingDomain);
+  timingDomain.updateInterval = 1;
 
-	startupInProgress = FALSE;
+  startupInProgress = FALSE;
 
-	return ptpClock;
+  return ptpClock;
 }
 
 /* Common cleanup function */
-static void ptpd_common_cleanup(void)
-{
+static void ptpd_common_cleanup(void) {
 #ifdef PTPD_USE_SWCLOCK
-	/* Destroy software clock instance if it was created */
-	if (G_ptpClock && G_ptpClock->swclock) {
-		swclock_destroy((SwClock*)G_ptpClock->swclock);
-		G_ptpClock->swclock = NULL;
-	}
+  /* Destroy software clock instance if it was created */
+  if (G_ptpClock && G_ptpClock->swclock) {
+    swclock_destroy((SwClock *)G_ptpClock->swclock);
+    G_ptpClock->swclock = NULL;
+  }
 #endif
 
-	/* this also calls ptpd shutdown */
-	timingDomain.shutdown(&timingDomain);
+  /* this also calls ptpd shutdown */
+  timingDomain.shutdown(&timingDomain);
 
-	NOTIFY("Self shutdown\n");
+  NOTIFY("Self shutdown\n");
 }
 
 #ifdef PTPD_LIBRARY_MODE
@@ -179,33 +177,31 @@ static void ptpd_common_cleanup(void)
  * @param ret Return code pointer
  * @return Initialized PtpClock pointer or NULL on failure
  */
-PtpClock* ptpd_init(int argc, char **argv, Integer16 *ret)
-{
-	PtpClock *ptpClock;
+PtpClock *ptpd_init(int argc, char **argv, Integer16 *ret) {
+  PtpClock *ptpClock;
 
-	ptpClock = ptpd_common_init(argc, argv, ret);
-	if (ptpClock) {
-		library_ptpClock = ptpClock;
-	}
+  ptpClock = ptpd_common_init(argc, argv, ret);
+  if (ptpClock) {
+    library_ptpClock = ptpClock;
+  }
 
-	return ptpClock;
+  return ptpClock;
 }
 
 /**
  * @brief Thread function that runs the protocol engine
  */
-static void* ptpd_protocol_thread(void *arg)
-{
-	PtpClock *ptpClock = (PtpClock *)arg;
+static void *ptpd_protocol_thread(void *arg) {
+  PtpClock *ptpClock = (PtpClock *)arg;
 
-	/* global variable for message(), please see comment on top of this file */
-	G_ptpClock = ptpClock;
+  /* global variable for message(), please see comment on top of this file */
+  G_ptpClock = ptpClock;
 
-	/* do the protocol engine - this is a forever loop */
-	protocol(&rtOpts, ptpClock);
+  /* do the protocol engine - this is a forever loop */
+  protocol(&rtOpts, ptpClock);
 
-	thread_running = FALSE;
-	return NULL;
+  thread_running = FALSE;
+  return NULL;
 }
 
 /**
@@ -213,30 +209,29 @@ static void* ptpd_protocol_thread(void *arg)
  * @param ptpClock Initialized PTP clock
  * @return 0 on success, -1 on failure
  */
-int ptpd_start(PtpClock *ptpClock)
-{
-	int ret;
+int ptpd_start(PtpClock *ptpClock) {
+  int ret;
 
-	if (!ptpClock) {
-		ERROR("ptpd_start: NULL PtpClock pointer\n");
-		return -1;
-	}
+  if (!ptpClock) {
+    ERROR("ptpd_start: NULL PtpClock pointer\n");
+    return -1;
+  }
 
-	if (thread_running) {
-		ERROR("ptpd_start: Protocol thread already running\n");
-		return -1;
-	}
+  if (thread_running) {
+    ERROR("ptpd_start: Protocol thread already running\n");
+    return -1;
+  }
 
-	thread_running = TRUE;
+  thread_running = TRUE;
 
-	ret = pthread_create(&protocol_thread, NULL, ptpd_protocol_thread, ptpClock);
-	if (ret != 0) {
-		ERROR("ptpd_start: Failed to create protocol thread: %s\n", strerror(ret));
-		thread_running = FALSE;
-		return -1;
-	}
+  ret = pthread_create(&protocol_thread, NULL, ptpd_protocol_thread, ptpClock);
+  if (ret != 0) {
+    ERROR("ptpd_start: Failed to create protocol thread: %s\n", strerror(ret));
+    thread_running = FALSE;
+    return -1;
+  }
 
-	return 0;
+  return 0;
 }
 
 /**
@@ -244,36 +239,34 @@ int ptpd_start(PtpClock *ptpClock)
  * @param ptpClock PTP clock instance
  * @return 1 if running, 0 if stopped
  */
-int ptpd_is_running(PtpClock *ptpClock)
-{
-	(void)ptpClock;  /* unused */
-	return thread_running ? 1 : 0;
+int ptpd_is_running(PtpClock *ptpClock) {
+  (void)ptpClock; /* unused */
+  return thread_running ? 1 : 0;
 }
 
 /**
  * @brief Shutdown PTP daemon and cleanup resources
  * @param ptpClock PTP clock to shutdown
  */
-void ptpd_shutdown(PtpClock *ptpClock)
-{
-	if (!ptpClock) {
-		return;
-	}
+void ptpd_shutdown(PtpClock *ptpClock) {
+  if (!ptpClock) {
+    return;
+  }
 
-	if (thread_running) {
-		/* Signal the protocol to stop */
-		/* The protocol() function will check for shutdown conditions */
-		/* and exit its loop, which will terminate the thread */
-		
-		/* Wait for thread to finish */
-		pthread_join(protocol_thread, NULL);
-		thread_running = FALSE;
-	}
+  if (thread_running) {
+    /* Signal the protocol to stop */
+    /* The protocol() function will check for shutdown conditions */
+    /* and exit its loop, which will terminate the thread */
 
-	/* cleanup */
-	ptpd_common_cleanup();
+    /* Wait for thread to finish */
+    pthread_join(protocol_thread, NULL);
+    thread_running = FALSE;
+  }
 
-	library_ptpClock = NULL;
+  /* cleanup */
+  ptpd_common_cleanup();
+
+  library_ptpClock = NULL;
 }
 
 /**
@@ -283,49 +276,47 @@ void ptpd_shutdown(PtpClock *ptpClock)
  * @param tp Timespec structure to receive the time
  * @return 0 on success, -1 on error
  */
-int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp)
-{
-	if (!ptpClock || !tp) {
-		return -1;
-	}
+int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp) {
+  if (!ptpClock || !tp) {
+    return -1;
+  }
 
 #ifdef PTPD_USE_SWCLOCK
-	/* Get time from swclock if available */
-	if (ptpClock->swclock) {
-		return swclock_gettime((SwClock*)ptpClock->swclock, clk_id, tp);
-	}
+  /* Get time from swclock if available */
+  if (ptpClock->swclock) {
+    return swclock_gettime((SwClock *)ptpClock->swclock, clk_id, tp);
+  }
 #endif
 
-	/* Fall back to system clock */
-	return clock_gettime(clk_id, tp);
+  /* Fall back to system clock */
+  return clock_gettime(clk_id, tp);
 }
 
 #endif /* PTPD_LIBRARY_MODE */
 
 #ifndef PTPD_LIBRARY_MODE
 
-int main(int argc, char **argv)
-{
-	PtpClock       *ptpClock;
-	Integer16      ret;
+int main(int argc, char **argv) {
+  PtpClock *ptpClock;
+  Integer16 ret;
 
-	/* Use common initialization */
-	ptpClock = ptpd_common_init(argc, argv, &ret);
-	if (!ptpClock) {
-		return ret;
-	}
+  /* Use common initialization */
+  ptpClock = ptpd_common_init(argc, argv, &ret);
+  if (!ptpClock) {
+    return ret;
+  }
 
-	/* global variable for message(), please see comment on top of this file */
-	G_ptpClock = ptpClock;
+  /* global variable for message(), please see comment on top of this file */
+  G_ptpClock = ptpClock;
 
-	/* do the protocol engine */
-	protocol(&rtOpts, ptpClock);
-	/* forever loop.. */
+  /* do the protocol engine */
+  protocol(&rtOpts, ptpClock);
+  /* forever loop.. */
 
-	/* cleanup */
-	ptpd_common_cleanup();
+  /* cleanup */
+  ptpd_common_cleanup();
 
-	return 1;
+  return 1;
 }
 
 #endif /* !PTPD_LIBRARY_MODE */

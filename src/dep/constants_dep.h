@@ -5,18 +5,19 @@
 #define CONSTANTS_DEP_H
 
 /**
-*\file
-* \brief Plateform-dependent constants definition
-*
-* This header defines all includes and constants which are plateform-dependent
-*
-* ptpdv2 is only implemented for linux, NetBSD and FreeBSD
+ *\file
+ * \brief Plateform-dependent constants definition
+ *
+ * This header defines all includes and constants which are plateform-dependent
+ *
+ * ptpdv2 is only implemented for linux, NetBSD and FreeBSD
  */
 
 /* platform dependent */
 
-#if !defined(linux) && !defined(__linux__) && !defined(__NetBSD__) && !defined(__FreeBSD__) && \
-  !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__sun) && !defined(__QNXNTO__)
+#if !defined(linux) && !defined(__linux__) && !defined(__NetBSD__) &&          \
+    !defined(__FreeBSD__) && !defined(__APPLE__) && !defined(__OpenBSD__) &&   \
+    !defined(__sun) && !defined(__QNXNTO__)
 #error PTPD hasn't been ported to this OS - should be possible \
 if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.net
 #endif
@@ -24,40 +25,41 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #if defined(linux) || defined(__linux__)
 #include <sys/types.h>
 #include <sys/socket.h>
-#include<netinet/in.h>
-#include<net/if.h>
-#include<net/if_arp.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include <ifaddrs.h>
-#define IFACE_NAME_LENGTH         IF_NAMESIZE
-#define NET_ADDRESS_LENGTH        INET_ADDRSTRLEN
+#define IFACE_NAME_LENGTH IF_NAMESIZE
+#define NET_ADDRESS_LENGTH INET_ADDRSTRLEN
 
 #define IFCONF_LENGTH 10
 
 #define octet ether_addr_octet
 #endif /* linux || __linux__ */
 
-#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__APPLE__) || defined(__OpenBSD__) || defined(__sun) || defined(__QNXNTO__)
-# include <sys/types.h>
-# include <sys/socket.h>
+#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__APPLE__) ||       \
+    defined(__OpenBSD__) || defined(__sun) || defined(__QNXNTO__)
+#include <sys/types.h>
+#include <sys/socket.h>
 #ifdef HAVE_SYS_SOCKIO_H
 #include <sys/sockio.h>
 #endif /* HAVE_SYS_SOCKIO_H */
-# include <netinet/in.h>
-# include <net/if.h>
-# include <net/if_dl.h>
-# include <net/if_types.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <net/if_types.h>
 #ifdef HAVE_NET_IF_ETHER_H
-#  include <net/if_ether.h>
+#include <net/if_ether.h>
 #endif
 #ifdef HAVE_SYS_UIO_H
-#  include <sys/uio.h>
+#include <sys/uio.h>
 #endif
 #ifdef HAVE_NET_ETHERNET_H
-#  include <net/ethernet.h>
+#include <net/ethernet.h>
 #endif
 #include <ifaddrs.h>
-# define IFACE_NAME_LENGTH         IF_NAMESIZE
-# define NET_ADDRESS_LENGTH        INET_ADDRSTRLEN
+#define IFACE_NAME_LENGTH IF_NAMESIZE
+#define NET_ADDRESS_LENGTH INET_ADDRSTRLEN
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -69,40 +71,39 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #define BSD_INTERFACE_FUNCTIONS
 #endif /* __QNXNTO __ */
 
-
 #if !defined(ETHER_ADDR_LEN) && defined(ETHERADDRL)
-#	define ETHER_ADDR_LEN ETHERADDRL
+#define ETHER_ADDR_LEN ETHERADDRL
 #endif /* ETHER_ADDR_LEN && ETHERADDRL */
 
 #ifndef ETHER_HDR_LEN
-#	define ETHER_HDR_LEN sizeof (struct ether_header)
+#define ETHER_HDR_LEN sizeof(struct ether_header)
 #endif /* ETHER_ADDR_LEN && ETHERADDRL */
 
+#define IFCONF_LENGTH 10
 
-# define IFCONF_LENGTH 10
-
-# define adjtimex ntp_adjtime
-
+#define adjtimex ntp_adjtime
 
 #endif
 
 #ifdef HAVE_MACHINE_ENDIAN_H
-#	include <machine/endian.h>
+#include <machine/endian.h>
 #endif /* HAVE_MACHINE_ENDIAN_H */
 
 #ifdef HAVE_ENDIAN_H
-#	include <endian.h>
+#include <endian.h>
 #endif /* HAVE_ENDIAN_H */
 
 #ifdef HAVE_SYS_ISA_DEFS_H
-#	include <sys/isa_defs.h>
+#include <sys/isa_defs.h>
 #endif /* HAVE_SYS_ISA_DEFS_H */
 
-# if BYTE_ORDER == LITTLE_ENDIAN || defined(_LITTLE_ENDIAN) || (defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN)
-#   define PTPD_LSBF
-# elif BYTE_ORDER == BIG_ENDIAN || defined(_BIG_ENDIAN) || (defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN)
-#   define PTPD_MSBF
-# endif
+#if BYTE_ORDER == LITTLE_ENDIAN || defined(_LITTLE_ENDIAN) ||                  \
+    (defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN)
+#define PTPD_LSBF
+#elif BYTE_ORDER == BIG_ENDIAN || defined(_BIG_ENDIAN) ||                      \
+    (defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN)
+#define PTPD_MSBF
+#endif
 
 #define CLOCK_IDENTITY_LENGTH 8
 #define ADJ_FREQ_MAX 500000
@@ -112,32 +113,33 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #define INADDR_LOOPBACK 0x7f000001UL
 #endif
 
-#define SUBDOMAIN_ADDRESS_LENGTH  4
-#define PORT_ADDRESS_LENGTH       2
-#define PTP_UUID_LENGTH           6
-#define CLOCK_IDENTITY_LENGTH	  8
-#define FLAG_FIELD_LENGTH         2
+#define SUBDOMAIN_ADDRESS_LENGTH 4
+#define PORT_ADDRESS_LENGTH 2
+#define PTP_UUID_LENGTH 6
+#define CLOCK_IDENTITY_LENGTH 8
+#define FLAG_FIELD_LENGTH 2
 
-#define PACKET_SIZE  300
-#define PACKET_BEGIN_UDP (ETHER_HDR_LEN + sizeof(struct ip) + \
-	    sizeof(struct udphdr))
+#define PACKET_SIZE 300
+#define PACKET_BEGIN_UDP                                                       \
+  (ETHER_HDR_LEN + sizeof(struct ip) + sizeof(struct udphdr))
 #define PACKET_BEGIN_ETHER (ETHER_HDR_LEN)
 
 /* PTP UDP Port Configuration
  * Standard ports (319/320) require root/privileged access on Unix systems.
- * Define PTPD_OPENSESAME to use non-standard ports (10319/10320) that don't require root.
- * Note: ALL nodes in the PTP network (master and slaves) must use the same port numbers.
+ * Define PTPD_OPENSESAME to use non-standard ports (10319/10320) that don't
+ * require root. Note: ALL nodes in the PTP network (master and slaves) must use
+ * the same port numbers.
  */
 #ifdef PTPD_OPENSESAME
-  #define PTP_EVENT_PORT    10319  /* Unprivileged port for event messages */
-  #define PTP_GENERAL_PORT  10320  /* Unprivileged port for general messages */
+#define PTP_EVENT_PORT 10319   /* Unprivileged port for event messages */
+#define PTP_GENERAL_PORT 10320 /* Unprivileged port for general messages */
 #else
-  #define PTP_EVENT_PORT    319    /* Standard IEEE 1588 event message port */
-  #define PTP_GENERAL_PORT  320    /* Standard IEEE 1588 general message port */
+#define PTP_EVENT_PORT 319   /* Standard IEEE 1588 event message port */
+#define PTP_GENERAL_PORT 320 /* Standard IEEE 1588 general message port */
 #endif
 
-#define DEFAULT_PTP_DOMAIN_ADDRESS     "224.0.1.129"
-#define PEER_PTP_DOMAIN_ADDRESS        "224.0.0.107"
+#define DEFAULT_PTP_DOMAIN_ADDRESS "224.0.1.129"
+#define PEER_PTP_DOMAIN_ADDRESS "224.0.0.107"
 
 /* 802.3 Support */
 
@@ -156,15 +158,15 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 /* default lock file location and mode */
 #define DEFAULT_LOCKMODE F_WRLCK
 #define DEFAULT_LOCKDIR "/var/run"
-#define DEFAULT_LOCKFILE_NAME PTPD_PROGNAME".lock"
-//define DEFAULT_LOCKFILE_PATH  DEFAULT_LOCKDIR"/"DEFAULT_LOCKFILE_NAME
-#define DEFAULT_FILE_PERMS (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)
+#define DEFAULT_LOCKFILE_NAME PTPD_PROGNAME ".lock"
+// define DEFAULT_LOCKFILE_PATH  DEFAULT_LOCKDIR"/"DEFAULT_LOCKFILE_NAME
+#define DEFAULT_FILE_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
 /* default drift file location */
-#define DEFAULT_DRIFTFILE "/etc/"PTPD_PROGNAME"_"DEFAULT_CLOCKDRIVER".drift"
+#define DEFAULT_DRIFTFILE "/etc/" PTPD_PROGNAME "_" DEFAULT_CLOCKDRIVER ".drift"
 
 /* default status file location */
-#define DEFAULT_STATUSFILE DEFAULT_LOCKDIR"/"PTPD_PROGNAME".status"
+#define DEFAULT_STATUSFILE DEFAULT_LOCKDIR "/" PTPD_PROGNAME ".status"
 
 /* Highest log level (default) catches all */
 #define LOG_ALL LOG_DEBUGV
@@ -176,80 +178,63 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #define LATE_TXTIMESTAMP_US 10000
 
 /* drift recovery metod for use with -F */
-enum {
-	DRIFT_RESET = 0,
-	DRIFT_KERNEL,
-	DRIFT_FILE
-};
+enum { DRIFT_RESET = 0, DRIFT_KERNEL, DRIFT_FILE };
 /* IP transmission mode */
 enum {
-	IPMODE_MULTICAST = 0,
-	IPMODE_UNICAST,
-	IPMODE_HYBRID,
+  IPMODE_MULTICAST = 0,
+  IPMODE_UNICAST,
+  IPMODE_HYBRID,
 #if 0
 	IPMODE_UNICAST_SIGNALING
 #endif
 };
 
 /* log timestamp mode */
-enum {
-	TIMESTAMP_DATETIME,
-	TIMESTAMP_UNIX,
-	TIMESTAMP_BOTH
-};
+enum { TIMESTAMP_DATETIME, TIMESTAMP_UNIX, TIMESTAMP_BOTH };
 
 /* servo dT calculation mode */
-enum {
-	DT_NONE,
-	DT_CONSTANT,
-	DT_MEASURED
-};
+enum { DT_NONE, DT_CONSTANT, DT_MEASURED };
 
 /* StatFilter op type */
 enum {
-	FILTER_NONE,
-	FILTER_MEAN,
-	FILTER_MIN,
-	FILTER_MAX,
-	FILTER_ABSMIN,
-	FILTER_ABSMAX,
-	FILTER_MEDIAN,
-	FILTER_MAXVALUE
+  FILTER_NONE,
+  FILTER_MEAN,
+  FILTER_MIN,
+  FILTER_MAX,
+  FILTER_ABSMIN,
+  FILTER_ABSMAX,
+  FILTER_MEDIAN,
+  FILTER_MAXVALUE
 };
 
 /* StatFilter window type */
 enum {
-	WINDOW_INTERVAL,
-	WINDOW_SLIDING,
-//	WINDOW_OVERLAPPING
+  WINDOW_INTERVAL,
+  WINDOW_SLIDING,
+  //	WINDOW_OVERLAPPING
 };
 
 /* Leap second handling */
-enum {
-	LEAP_ACCEPT,
-	LEAP_IGNORE,
-	LEAP_STEP,
-	LEAP_SMEAR
-};
+enum { LEAP_ACCEPT, LEAP_IGNORE, LEAP_STEP, LEAP_SMEAR };
 
 /* Alarm codes */
 enum {
-	ALARM_PORTSTATE,
-	ALARM_OFFSET_THRESHOLD,
-	ALARM_CLOCK_STEP,
-	ALARM_OFFSET_1SEC
+  ALARM_PORTSTATE,
+  ALARM_OFFSET_THRESHOLD,
+  ALARM_CLOCK_STEP,
+  ALARM_OFFSET_1SEC
 };
 
-#define MM_STARTING_BOUNDARY_HOPS  0x7fff
+#define MM_STARTING_BOUNDARY_HOPS 0x7fff
 
 /* others */
 
 /* bigger screen size constants */
-#define SCREEN_BUFSZ  228
-#define SCREEN_MAXSZ  180
+#define SCREEN_BUFSZ 228
+#define SCREEN_MAXSZ 180
 
 /* default size for string buffers */
-#define BUF_SIZE  1000
+#define BUF_SIZE 1000
 
 #define NANOSECONDS_MAX 999999999
 

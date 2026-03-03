@@ -30,39 +30,38 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define EVENTTIMER_MAX_DESC		20
-#define EVENTTIMER_MIN_INTERVAL_US	250 /* 4000/sec */
+#define EVENTTIMER_MAX_DESC 20
+#define EVENTTIMER_MIN_INTERVAL_US 250 /* 4000/sec */
 
 typedef struct EventTimer EventTimer;
 
 struct EventTimer {
 
-	/* data */
-	char id[EVENTTIMER_MAX_DESC + 1];
-	Boolean expired;
-	Boolean running;
+  /* data */
+  char id[EVENTTIMER_MAX_DESC + 1];
+  Boolean expired;
+  Boolean running;
 
-	/* "methods" */
-	void (*start) (EventTimer* timer, double interval);
-	void (*stop) (EventTimer* timer);
-	void (*reset) (EventTimer* timer);
-	void (*shutdown) (EventTimer* timer);
-	Boolean (*isExpired) (EventTimer* timer);
-	Boolean (*isRunning) (EventTimer* timer);	
+  /* "methods" */
+  void (*start)(EventTimer *timer, double interval);
+  void (*stop)(EventTimer *timer);
+  void (*reset)(EventTimer *timer);
+  void (*shutdown)(EventTimer *timer);
+  Boolean (*isExpired)(EventTimer *timer);
+  Boolean (*isRunning)(EventTimer *timer);
 
-	/* implementation data */
+  /* implementation data */
 #ifdef PTPD_PTIMERS
-	timer_t timerId;
+  timer_t timerId;
 #else
-	int32_t itimerInterval;
-	int32_t itimerLeft;
+  int32_t itimerInterval;
+  int32_t itimerLeft;
 #endif /* PTPD_PTIMERS */
 
-	/* linked list */
-	EventTimer *_first;
-	EventTimer *_next;
-	EventTimer *_prev;
-
+  /* linked list */
+  EventTimer *_first;
+  EventTimer *_next;
+  EventTimer *_prev;
 };
 
 EventTimer *createEventTimer(const char *id);
@@ -72,6 +71,4 @@ void setupEventTimer(EventTimer *timer);
 void startEventTimers();
 void shutdownEventTimers();
 
-
 #endif /* EVENTTIMER_H_ */
-

@@ -30,7 +30,6 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifdef PTPD_PTIMERS
 #define LOG_MIN_INTERVAL -7
 #else
@@ -42,14 +41,14 @@
 #define PTPTIMER_MAX_INTERVAL 604800
 
 /**
-* \brief Structure used as a timer
+ * \brief Structure used as a timer
  */
 typedef struct {
-	double interval;
-	Boolean expired;
-	Boolean running;
-	/* hook for a generic timer object that can be assigned */
-	void *data;
+  double interval;
+  Boolean expired;
+  Boolean running;
+  /* hook for a generic timer object that can be assigned */
+  void *data;
 } IntervalTimer;
 
 /* WARNING: when updating these timers,
@@ -59,23 +58,28 @@ typedef struct {
  */
 
 enum {
-  PDELAYREQ_INTERVAL_TIMER=0,/**<\brief Timer handling the PdelayReq Interval*/
-  DELAYREQ_INTERVAL_TIMER,/**<\brief Timer handling the delayReq Interva*/
-  SYNC_INTERVAL_TIMER,/**<\brief Timer handling Interval between master sends two Syncs messages */
-  ANNOUNCE_RECEIPT_TIMER,/**<\brief Timer handling announce receipt timeout*/
-  ANNOUNCE_INTERVAL_TIMER, /**<\brief Timer handling interval before master sends two announce messages*/
+  PDELAYREQ_INTERVAL_TIMER =
+      0,                   /**<\brief Timer handling the PdelayReq Interval*/
+  DELAYREQ_INTERVAL_TIMER, /**<\brief Timer handling the delayReq Interva*/
+  SYNC_INTERVAL_TIMER, /**<\brief Timer handling Interval between master sends
+                          two Syncs messages */
+  ANNOUNCE_RECEIPT_TIMER,  /**<\brief Timer handling announce receipt timeout*/
+  ANNOUNCE_INTERVAL_TIMER, /**<\brief Timer handling interval before master
+                              sends two announce messages*/
   /* non-spec timers */
   SYNC_RECEIPT_TIMER,
   DELAY_RECEIPT_TIMER,
-  UNICAST_GRANT_TIMER, /* used to age out unicast grants (sent, received) */
-  OPERATOR_MESSAGES_TIMER,  /* used to limit the operator messages */
-  LEAP_SECOND_PAUSE_TIMER, /* timer used for pausing updates when leap second is imminent */
+  UNICAST_GRANT_TIMER,     /* used to age out unicast grants (sent, received) */
+  OPERATOR_MESSAGES_TIMER, /* used to limit the operator messages */
+  LEAP_SECOND_PAUSE_TIMER, /* timer used for pausing updates when leap second is
+                              imminent */
   STATUSFILE_UPDATE_TIMER, /* timer used for refreshing the status file */
-  PANIC_MODE_TIMER,	   /* timer used for the duration of "panic mode" */
-  PERIODIC_INFO_TIMER,	   /* timer used for dumping periodic status updates */
+  PANIC_MODE_TIMER,        /* timer used for the duration of "panic mode" */
+  PERIODIC_INFO_TIMER,     /* timer used for dumping periodic status updates */
 #ifdef PTPD_STATISTICS
-  STATISTICS_UPDATE_TIMER, /* online mean / std dev updare interval (non-moving statistics) */
-#endif /* PTPD_STATISTICS */
+  STATISTICS_UPDATE_TIMER, /* online mean / std dev updare interval (non-moving
+                              statistics) */
+#endif                     /* PTPD_STATISTICS */
   ALARM_UPDATE_TIMER,
   MASTER_NETREFRESH_TIMER,
   CALIBRATION_DELAY_TIMER,
@@ -86,9 +90,9 @@ enum {
 
 /* functions used by 1588 only */
 void timerStop(IntervalTimer *itimer);
-void timerStart(IntervalTimer * itimer, double interval);
-Boolean timerExpired(IntervalTimer * itimer);
-Boolean timerRunning(IntervalTimer * itimer);
+void timerStart(IntervalTimer *itimer, double interval);
+Boolean timerExpired(IntervalTimer *itimer);
+Boolean timerRunning(IntervalTimer *itimer);
 Boolean timerSetup(IntervalTimer *itimers);
 void timerShutdown(IntervalTimer *itimers);
 

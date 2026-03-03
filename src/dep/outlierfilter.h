@@ -42,43 +42,44 @@
 
 typedef struct {
 
-    Boolean enabled;
-    Boolean discard;
-    Boolean autoTune;
-    Boolean stepDelay;
+  Boolean enabled;
+  Boolean discard;
+  Boolean autoTune;
+  Boolean stepDelay;
 
-    /* the user may have some conditions under which we should not filter.
-       this is to hint them that we would like to always filter.
-    */
-    Boolean alwaysFilter;
+  /* the user may have some conditions under which we should not filter.
+     this is to hint them that we would like to always filter.
+  */
+  Boolean alwaysFilter;
 
-    int capacity;
-    double threshold;
-    double weight;
+  int capacity;
+  double threshold;
+  double weight;
 
-    int minPercent;
-    int maxPercent;
-    double thresholdStep;
+  int minPercent;
+  int maxPercent;
+  double thresholdStep;
 
-    double minThreshold;
-    double maxThreshold;
+  double minThreshold;
+  double maxThreshold;
 
-    /* if absolute value outside this threshold, do not filter. negative = disabled */
-    double maxAcceptable;
+  /* if absolute value outside this threshold, do not filter. negative =
+   * disabled */
+  double maxAcceptable;
 
-    /* accepted sample threshold at which step detection is active */
-    int32_t stepThreshold;
-    /* value which is considered a step */
-    int32_t stepLevel;
+  /* accepted sample threshold at which step detection is active */
+  int32_t stepThreshold;
+  /* value which is considered a step */
+  int32_t stepLevel;
 
-    /* delay credit - gets used for waiting when step detected */
-    int delayCredit;
+  /* delay credit - gets used for waiting when step detected */
+  int delayCredit;
 
-    /* credit replenishment unit */
-    int creditIncrement;
+  /* credit replenishment unit */
+  int creditIncrement;
 
-    /* safeguard - maximum credit */
-    int maxDelay;
+  /* safeguard - maximum credit */
+  int maxDelay;
 
 } OutlierFilterConfig;
 
@@ -86,40 +87,39 @@ typedef struct OutlierFilter OutlierFilter;
 
 struct OutlierFilter {
 
-    char id [OUTLIERFILTER_MAX_DESC + 1];
-    OutlierFilterConfig config;
+  char id[OUTLIERFILTER_MAX_DESC + 1];
+  OutlierFilterConfig config;
 
-    DoubleMovingStdDev* rawStats;
-    DoubleMovingMean* filteredStats;
-    DoublePermanentMean outlierStats;
-    DoublePermanentMean acceptedStats;
-    Boolean lastOutlier;
-    double threshold;
-    double output;
-    int autoTuneSamples;
-    int autoTuneOutliers;
-    int autoTuneScore;
-    int consecutiveOutliers;
-    int delay;
-    int totalDelay;
-    int delayCredit;
-    Boolean blocking;
+  DoubleMovingStdDev *rawStats;
+  DoubleMovingMean *filteredStats;
+  DoublePermanentMean outlierStats;
+  DoublePermanentMean acceptedStats;
+  Boolean lastOutlier;
+  double threshold;
+  double output;
+  int autoTuneSamples;
+  int autoTuneOutliers;
+  int autoTuneScore;
+  int consecutiveOutliers;
+  int delay;
+  int totalDelay;
+  int delayCredit;
+  Boolean blocking;
 
-    /* 'methods' */
+  /* 'methods' */
 
-    int (*init)		(OutlierFilter *filter, OutlierFilterConfig *config, const char *id);
-    int (*shutdown)	(OutlierFilter *filter);
-    int (*reset)	(OutlierFilter *filter);
-    Boolean (*filter)	(OutlierFilter *filter, double sample);
-    Boolean (*configure) (OutlierFilter *filter, OutlierFilterConfig *config);
-    int (*display)	(OutlierFilter *filter);
-    void (*update)	(OutlierFilter *filter);
-
+  int (*init)(OutlierFilter *filter, OutlierFilterConfig *config,
+              const char *id);
+  int (*shutdown)(OutlierFilter *filter);
+  int (*reset)(OutlierFilter *filter);
+  Boolean (*filter)(OutlierFilter *filter, double sample);
+  Boolean (*configure)(OutlierFilter *filter, OutlierFilterConfig *config);
+  int (*display)(OutlierFilter *filter);
+  void (*update)(OutlierFilter *filter);
 };
 
-
-
-/* OutlierFilter *oFilterCreate(OutlierFilterConfig *options, const char *id); */
+/* OutlierFilter *oFilterCreate(OutlierFilterConfig *options, const char *id);
+ */
 int outlierFilterSetup(OutlierFilter *filter);
 
 #endif /*OUTLIERFILTER_H_*/
