@@ -1,0 +1,267 @@
+CHANGELOG
+=========
+Generated: 2026-03-04
+Period: Last 3 days (2026-03-02 – 2026-03-04)
+
+Repositories covered:
+  [ptpd]   /Users/alfredo/Workspace/PTP-Implementation/ptpd  (branch: cmake-port)
+  [swclock] libraries/swclock  (submodule)
+
+================================================================================
+2026-03-04
+================================================================================
+
+[ptpd] 2026-03-04 03:26:04  d4ebcbe  Alfredo Franco
+  chore(submodule): bump swclock to PI servo anti-windup fix
+
+  Advances the swclock submodule pointer to commit 0ecc502, which contains
+  the PI servo integrator anti-windup fix (see swclock entry below).
+
+--------------------------------------------------------------------------------
+
+[swclock] 2026-03-04 03:14:55  0ecc502  Alfredo Franco
+  fix(pi-servo): add integrator anti-windup
+
+  The integrator was accumulating unconditionally before the output clamp,
+  causing classic anti-windup failure: when the phase error reached zero the
+  inflated integral drove the output hard in the opposite direction, producing
+  a continuously growing frequency correction oscillation.
+
+  Fix details:
+  - Compute the full PI output first, then decide whether to update the
+    integrator.
+  - Integrator is only updated when the output is NOT saturated, OR when the
+    error is actively driving it away from the clamped limit (back-calculation
+    anti-windup pattern).
+  - Capture the pre-clamp PI value for accurate frequency-clamp event logging.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-04 03:24:34  468880c  Alfredo Franco
+  chore(ci): add run_sanitizers.sh script
+
+  New CI script (scripts/testing/run_sanitizers.sh) that runs a full suite of
+  static and dynamic analysis checks against the ptpd source:
+  - AddressSanitizer (ASAN) build and run
+  - ThreadSanitizer (TSAN) build and run
+  - UndefinedBehaviorSanitizer (UBSAN) build and run
+  - clang-tidy static analysis (scoped to src/ only)
+  - clang-format style check (scoped to src/ only)
+
+  Notable implementation details:
+  - Bash 3.2 compatible (macOS default shell).
+  - OS detection sets correct sanitizer flags (e.g. detect_leaks=0 on macOS
+    since LeakSanitizer is not supported on the Darwin kernel).
+  - Passes macOS SDK sysroot to clang-tidy to resolve system header paths.
+  - All checks are scoped to src/ only (excludes dep/iniparser and other
+    third-party code).
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-04 03:23:31  984a53e  Alfredo Franco
+  style: apply LLVM C formatting to src/ via clang-format
+
+  Added .clang-format configuration file at repository root:
+  - Style:         LLVM
+  - Language:      C
+  - SortIncludes:  Never  (preserves required header dependency ordering)
+
+  Reformatted all .c and .h files under src/ (excluding dep/iniparser which
+  is third-party code). Include order is intentionally preserved because ptpd
+  has headers that must be included in a specific sequence for correct
+  compilation.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-04 03:22:38  c8758c1  Alfredo Franco
+  fix(build): guard keyid_t typedef for macOS compatibility
+
+  macOS system headers do not define keyid_t (an NTP internal type). Two
+  headers were affected:
+  - src/dep/ntp_isc_md5.h
+  - src/dep/ntpdcontrol.h
+
+  Added preprocessor guards around the typedef so the definition appears
+  exactly once regardless of include order, fixing "unknown type name
+  'keyid_t'" clang errors on macOS builds.
+
+================================================================================
+2026-03-03
+================================================================================
+
+[ptpd] 2026-03-03 22:03:30  2f6a7b5  Alfredo Franco
+  docs: add USAGE.md with library integration guide and test runner docs
+
+  New USAGE.md document covering:
+  - Library integration via CMake: add_subdirectory and pre-built library
+    linking patterns, relevant CMake options.
+  - Public API reference: ptpd_init(), ptpd_start(), ptpd_shutdown(),
+    ptpd_gettime().
+  - Full PTP configuration reference tables for sections: ptpengine, clock,
+    servo, global, ntpengine.
+  - Common configuration presets:
+      * Slave-only multicast
+      * Slave-only unicast
+      * Master-only
+      * Master-slave (auto)
+  - Lock file behaviour and ignore_lock guidance.
+  - macOS privilege notes: PTPD_NO_ROOT_CHECK, PTPD_OPENSESAME, required
+    sysctl knobs.
+  - PTPD_IOS flag explanation and when it applies on macOS.
+  - swclock backend overview.
+  - Redistribution guidance: BSD 2-Clause compliance, pkg installer and
+    LaunchDaemon packaging.
+  - ptp-app-run.sh test runner: step-by-step operational description.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 17:11:50  3ec89d2  Alfredo Franco
+  ci: remove dead Ubuntu install step and redundant os condition
+
+  Cleaned up .github/workflows/ci.yml: removed an install step that was
+  no longer reachable and an os condition check that had become redundant
+  after Ubuntu was dropped from the build matrix.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 17:08:27  445db53  Alfredo Franco
+  ci: remove ubuntu-latest from build matrix
+
+  Ubuntu builds were consistently failing due to Linux platform differences
+  not yet addressed in this branch. Removed ubuntu-latest from the CI matrix
+  to keep the pipeline green while Linux support is worked on separately.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 17:04:28  78bc9d5  Alfredo Franco
+  submodule: swclock Linux build fix
+
+  Advances the swclock submodule pointer to commit 7c5d93e, which contains
+  the Linux build portability fixes (see swclock entry below).
+
+--------------------------------------------------------------------------------
+
+[swclock] 2026-03-03 17:04:26  7c5d93e  Alfredo Franco
+  fix: Linux build errors - add _GNU_SOURCE and fix tm_zone portability
+
+  Two portability fixes for Linux/glibc builds:
+
+  1. CMakeLists.txt: add _GNU_SOURCE definition for non-Apple builds.
+     Required to make clockid_t, pthread_rwlock_t, CLOCK_REALTIME and
+     CLOCK_MONOTONIC visible from glibc headers.
+
+  2. sw_clock_utilities.c: tm_zone is a BSD/macOS extension absent from
+     Linux's struct tm. Replaced direct tm_zone access with strftime %Z
+     for portable timezone abbreviation retrieval.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 16:59:30  18ad175  Alfredo Franco
+  ci: add submodules: recursive to checkout step
+
+  BUILD_WITH_SWCLOCK=ON is now the default (see commit aa3c23c). The swclock
+  submodule must therefore be initialised during CI checkout or the build
+  will fail. Added `submodules: recursive` to the actions/checkout step in
+  .github/workflows/ci.yml.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 16:51:02  b251c64  Alfredo Franco
+  submodule: update swclock to cleanup commit (f8c4ca4)
+
+  Advances the swclock submodule pointer to the cleanup commit that removes
+  v1 backup files (see swclock entry below).
+
+--------------------------------------------------------------------------------
+
+[swclock] 2026-03-03 16:50:41  f8c4ca4  Alfredo Franco
+  cleanup: remove v1 backups and redundant v2 snapshot files
+
+  sw_clock.c and sw_clock_constants.h already contain the complete v2
+  implementation. The following files were removed as dead code:
+  - sw_clock_v2.c
+  - sw_clock_constants_v2.h
+  - sw_clock.c.bak
+  - sw_clock.c.bak2
+  - sw_clock.c.bak3
+  - swclock_jsonld.c.backup
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 16:47:53  aa3c23c  Alfredo Franco
+  cmake: enable BUILD_WITH_SWCLOCK=ON by default
+
+  SwClock v2 is now the recommended and default clock backend for ptpd.
+  Changes:
+  - CMakeLists.txt: option(BUILD_WITH_SWCLOCK) default changed OFF -> ON.
+  - scripts/build/config-cmake-debug.sh: corrected flag name from
+    ENABLE_SW_CLOCK (old/wrong) to BUILD_WITH_SWCLOCK.
+  - scripts/build/config-cmake-release.sh: added explicit
+    -DBUILD_WITH_SWCLOCK=ON.
+  - docs/SWCLOCK_INTEGRATION.txt: updated example CMake invocation snippet
+    to reflect the new default and correct flag name.
+
+--------------------------------------------------------------------------------
+
+[ptpd] 2026-03-03 16:45:18  494957f  Alfredo Franco
+  submodule: update swclock to v2 improvements (033bef5)
+
+  Advances the swclock submodule pointer to commit 033bef5, which contains
+  the SwClock v2 performance improvements (see swclock entry below).
+
+--------------------------------------------------------------------------------
+
+[swclock] 2026-03-03 16:44:49  033bef5  Alfredo Franco
+  perf: SwClock v2 improvements and performance documentation
+
+  Five targeted improvements to the PI servo and clock discipline algorithm:
+
+  1. Remove MIN_SLEW_PPM floor (was 100 ppm): the artificial floor caused a
+     persistent +600 µs offset bias in steady-state tracking.
+
+  2. Preserve integrator (pi_int_error_s) across ADJ_OFFSET calls: previously
+     the integrator was reset on every offset adjustment, preventing steady-
+     state error elimination.
+
+  3. Fix gettime race condition: sample CLOCK_MONOTONIC_RAW before acquiring
+     the rwlock to eliminate the time consumed waiting for the lock from the
+     interpolated timestamp.
+
+  4. Two-stage PI gains:
+     - Pull-in mode  (|error| > 100 µs): Kp=200, Ki=8  — fast convergence.
+     - Tracking mode (|error| ≤ 100 µs): Kp=20,  Ki=1  — low steady-state
+       overshoot.
+
+  5. Persist learned frequency offset to /tmp/swclock.freq_state across
+     restarts, avoiding the initial frequency ramp-up on every invocation.
+
+  Measured results (5-minute live PTP sessions, interface en5, 1000BASE-T):
+    SwClock v2 vs v1:  offset bias -35%, RMS -31%, peak-to-peak -9%
+    SwClock v2 vs sys: 100% sub-1ms samples (vs 57.9%), bias -79%, RMS -77%
+
+  Adds docs/PERFORMANCE.md with full measurement methodology and result tables.
+
+================================================================================
+2026-03-01
+================================================================================
+
+[ptpd] 2026-03-01 22:52:07  8d88273  Alfredo Franco
+  Add ptp-app-run.sh and fix ptpd-daemon.conf for multicast slave sync
+
+  resources/ptpd-daemon.conf:
+  - Set ip_mode=multicast and transport=ipv4.
+  - Replaced invalid step_threshold option with step_startup and
+    step_startup_force (correct option names for this ptpd version).
+  - Added drift_handling=reset.
+  - Set interface=en5.
+
+  scripts/testing/ptp-app-run.sh:
+  - New script: copy of ptpd-run.sh specialised for the ptpd-app binary.
+  - Fixed PTP_PAT regex to match ptpd-app process name (dash vs underscore
+    in the binary name caused the stale-process kill logic to fail).
+  - Added port-based force-kill fallback: if the pattern match fails,
+    detect and kill any process still holding UDP ports 319/320.
+
+================================================================================
+END OF CHANGELOG
+================================================================================

@@ -1,0 +1,175 @@
+PTPd Performance Improvement Options
+=====================================
+Date: 2026-03-04
+Baseline session: scripts/ptpd_logs/20260304_133848/
+Interface: en5 (USB Ethernet, 4c:ea:41:60:89:2b)
+Master clock: 2ccf67fffe64d7ce (multicast, domain 0)
+Duration: 5 minutes (300 s)
+
+BASELINE MEASUREMENTS
+---------------------
+  Offset mean (steady-state)  : -622 µs
+  Offset σ                    :  126 µs
+  Offset trend                : diverging (-432 → -767 µs over 5 min)
+  Path delay mean             :  396 µs
+  Path delay σ                :   28 µs
+  SM delay                    : +1036 µs (avg)
+  MS delay                    :  -230 µs (avg)  ← likely software-timestamp artefact
+  Path asymmetry (SM-MS)      : 1266 µs         ← large, explains -622 µs offset bias
+  Samples sub-1ms             : 99.8%
+
+ROOT CAUSE SUMMARY
+------------------
+1. Two cascaded PI loops: ptpd servo (kp=0.01, ki=0.0001) drives swclock via
+   ADJ_OFFSET, then swclock's internal PI servo also runs on remaining_phase_ns.
+   With gains this low the ptpd servo never corrects — offset drifts over the
+   whole run.
+
+2. ptpd servo gains far too small: kp=0.01 produces ~6 ppb/µs correction.
+   At 396 µs path delay variance × 1 Hz update rate, the servo cannot follow.
+
+3. Path delay of 396 µs is dominated by software-timestamping latency (recv
+   userspace delay + scheduler). True LAN wire delay is ~5 ns.
+
+4. en5 is a USB 3.0 Ethernet adapter (OUI 4c:ea:41). USB 125 µs isochronous
+   quantisation sets a hard noise floor of ~125 µs regardless of software gains.
+
+5. 1 Hz sync rate: only one measurement per second, maximally noisy input.
+
+6. No outlier filter: single delayed packets (USB + scheduler spikes) cause
+   large unwanted servo corrections.
+
+================================================================================
+OPTION 1 — Resolve cascaded PI loop conflict  [HIGH IMPACT]
+================================================================================
+Two sub-options evaluated by three-way comparison run:
+
+  Option A: ptpd as proportional feedthrough, swclock owns all dynamics
+  -----------------------------------------------------------------------
+  Config:
+    servo:kp=1.0
+    servo:ki=0.0
+
+  How it works: ptpd's servo multiplies the raw offset by kp=1 and passes it
+  unchanged as ADJ_OFFSET to swclock. ki=0 means no ptpd-level integration.
+  swclock's internal PI servo (Kp=200, Ki=8) then disciplines the clock.
+  Only one integrator accumulates error.
+
+  Expected gain: eliminates servo saturation / wind-up conflict. Convergence
+  time limited by swclock slew rate (200 ppm max → 1 ms correction ≈ 5 s).
+
+  Option B: ptpd owns full servo, swclock as frequency actuator
+  --------------------------------------------------------------
+  Config:
+    servo:kp=0.7
+    servo:ki=0.3
+
+  How it works: ptpd PI servo with proper gains computes a meaningful frequency
+  correction. swclock acts as the clock hardware, applying the requested
+  ADJ_OFFSET/ADJ_FREQUENCY; its internal PI servo slews residuals. The higher
+  ptpd gains mean ptpd drives most of the correction at the measurement rate (1 Hz)
+  while swclock's higher-rate servo handles intra-second interpolation.
+
+  Expected gain: faster convergence than Option A (fewer servo stages to saturate),
+  but more sensitive to measurement noise at 1 Hz.
+
+  Current (baseline):
+  -------------------
+    servo:kp=0.01
+    servo:ki=0.0001
+  Effectively disabling ptpd's servo, leaving only swclock's servo to act —
+  but swclock's servo gets only the residual that ptpd's near-zero-gain correction
+  leaks through, resulting in virtually no correction.
+
+================================================================================
+OPTION 2 — Socket-level kernel timestamping (SO_TIMESTAMPNS)  [HIGH IMPACT]
+================================================================================
+  Current path delay σ: ~28 µs (software userspace timestamp)
+  Expected path delay σ: < 1 µs (kernel network stack timestamp)
+
+  Enable SO_TIMESTAMPNS or SO_TIMESTAMPING on the PTP event sockets so that
+  packets are timestamped at kernel network stack entry, before scheduler delay.
+  This reduces measurement noise by ~28× and gives the servo a much cleaner
+  input signal.
+
+  Implementation: ptpd source dep/net.c, setsockopt() in initNet().
+  Config: no config file change, code change in net.c required.
+
+================================================================================
+OPTION 3 — Replace USB NIC with native Ethernet  [HIGH IMPACT - HARDWARE]
+================================================================================
+  en5 (USB 3.0 dongle) has a 125 µs isochronous frame boundary that directly
+  quantises every packet TX/RX timestamp to the nearest 125 µs slot.
+
+  This creates an irreducible noise floor of ~125 µs regardless of software.
+
+  Recommended: Thunderbolt-to-Ethernet adapter (Apple TB3 or Belkin) has
+  <1 µs jitter. PCIe NIC is even better.
+
+  Measured impact: offset σ would drop from ~126 µs to <10 µs.
+
+================================================================================
+OPTION 4 — Increase sync rate to 8 Hz  [LOW EFFORT]
+================================================================================
+  Config change:
+    ptpengine:log_sync_interval=-3     ; 2^-3 = 8 Hz
+    ptpengine:log_delayreq_interval=-3
+
+  Effect: 8× more servo updates per second. Measurement noise reduced by √8 ≈ 2.8×.
+  Offset σ reduction (software timestamp): 126 µs → ~45 µs.
+  Master must support log_sync_interval=-3.
+
+================================================================================
+OPTION 5 — Enable outlier filter  [LOW EFFORT]
+================================================================================
+  Config change:
+    servo:outlier_filter=on
+
+  Effect: Rejects delay-req/resp pairs with path delay > 3σ from the running
+  mean. Prevents individual USB or scheduler spikes from corrupting servo input.
+  Estimated improvement: 5–15% reduction in max offset excursion.
+
+================================================================================
+OPTION 6 — Increase sync rate to 8 Hz  [LOW EFFORT]
+================================================================================
+  Config change:
+    ptpengine:log_announce_interval=0  ; keep at 1/s
+    ptpengine:log_sync_interval=-3
+    ptpengine:log_delayreq_interval=-3
+
+================================================================================
+OPTION 7 — Enable drift recovery  [LOW EFFORT]
+================================================================================
+  Config change:
+    clock:drift_handling=file
+    clock:drift_file=/tmp/ptpd.drift
+
+  Effect: Persists the measured oscillator drift (ppb) across restarts so the
+  servo starts with a good frequency estimate instead of zero. Reduces startup
+  transient from ~30 s to ~3 s.
+
+================================================================================
+OPTION 8 — Tune step_startup behaviour  [LOW EFFORT]
+================================================================================
+  Current config uses step_startup_force=y which does an immediate large step
+  at startup (36 ms observed), then the servo slowly grinds down the residual.
+  Removing step_startup_force lets the servo slew from the start for smaller
+  initial offsets, avoiding the large transient.
+
+  Config change:
+    clock:step_startup=y
+    ; remove: clock:step_startup_force=y
+
+================================================================================
+COMPARISON RUN PLAN
+================================================================================
+Three 5-minute runs, identical conditions, varying only servo gains:
+
+  Run         | kp   | ki     | Expected outcome
+  ------------|------|--------|--------------------------------------------
+  baseline    | 0.01 | 0.0001 | Offset diverges, mean ~-600 µs
+  option-a    | 1.0  | 0.0    | Single-loop PI via swclock, converges <200 µs
+  option-b    | 0.7  | 0.3    | Dual-loop with meaningful ptpd gains, faster convergence
+
+Results stored in: scripts/ptpd_logs/comparison_*/
+Analysis:  scripts/ptpd_logs/comparison_summary.txt
