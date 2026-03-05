@@ -136,6 +136,23 @@ if(BUILD_PTPD_LIBRARY)
     add_subdirectory(src-app)
 endif()
 
+# GoogleTest unit/integration tests for ptpd-app and swclock integration.
+# Requires BUILD_PTPD_LIBRARY=ON (for ptpd-shared target) and GTest.
+option(BUILD_PTPD_TESTS "Build GoogleTest unit/integration tests" OFF)
+if(BUILD_PTPD_TESTS)
+    if(NOT BUILD_PTPD_LIBRARY)
+        message(FATAL_ERROR
+            "BUILD_PTPD_TESTS=ON requires BUILD_PTPD_LIBRARY=ON")
+    endif()
+    # Test sources are C++ — enable the language now (project() only declared C)
+    enable_language(CXX)
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    include(CTest)
+    enable_testing()
+    add_subdirectory(src-gtests)
+endif()
+
 # Phase 6: Install targets
 # Install man pages (generated from .in templates)
 install(FILES ${PROJECT_BINARY_DIR}/ptpd2.8
