@@ -762,6 +762,11 @@ typedef struct {
   volatile Boolean ios_should_exit;
 #endif
 
+#ifdef PTPD_LIBRARY_MODE
+  /* Library mode: clean exit flag set by ptpd_shutdown() */
+  volatile Boolean library_should_exit;
+#endif
+
 } PtpClock;
 
 #endif /*DATATYPES_H_*/

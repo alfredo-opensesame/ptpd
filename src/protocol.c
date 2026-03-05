@@ -270,12 +270,20 @@ void protocol(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
     writeStatusFile(ptpClock, rtOpts, TRUE);
 
   for (;;) {
+#if defined(PTPD_IOS) || defined(PTPD_LIBRARY_MODE)
+    /* iOS / library mode: Check for clean exit request */
 #ifdef PTPD_IOS
-    /* iOS: Check for clean exit request */
     if (ptpClock->ios_should_exit) {
       INFO("iOS exit requested, shutting down cleanly\n");
       break;
     }
+#endif
+#ifdef PTPD_LIBRARY_MODE
+    if (ptpClock->library_should_exit) {
+      INFO("Library shutdown requested, exiting protocol loop\n");
+      break;
+    }
+#endif
 #endif
     /* 20110701: this main loop was rewritten to be more clear */
     if (ptpClock->disabled && ptpClock->portDS.portState != PTP_DISABLED) {

@@ -254,9 +254,8 @@ void ptpd_shutdown(PtpClock *ptpClock) {
   }
 
   if (thread_running) {
-    /* Signal the protocol to stop */
-    /* The protocol() function will check for shutdown conditions */
-    /* and exit its loop, which will terminate the thread */
+    /* Signal the protocol loop to exit cleanly via the exit flag */
+    ptpClock->library_should_exit = TRUE;
 
     /* Wait for thread to finish */
     pthread_join(protocol_thread, NULL);
