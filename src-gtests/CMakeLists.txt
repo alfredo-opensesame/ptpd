@@ -50,4 +50,25 @@ ptpd_gtest(test_swclock_rwlock    test_swclock_rwlock.cpp)
 # swclock API integration (no full ptpd daemon)
 ptpd_gtest(test_swclock_integration test_swclock_integration.cpp)
 
-message(STATUS "ptpd src-gtests: 6 test targets configured")
+# Label all six targets as "unit" for selective ctest runs
+set_tests_properties(
+    test_strip_arg test_monitor_csv test_monotonic_sleep
+    test_network test_swclock_rwlock test_swclock_integration
+    PROPERTIES LABELS "unit")
+
+# -----------------------------------------------------------------------
+# System integration test — calls ptpd_init/start/shutdown directly;
+# requires root + live GM on IFACE.  Labelled "integration" so unit-only
+# runs can exclude it:  ctest -L unit   vs   ctest (all)
+# -----------------------------------------------------------------------
+ptpd_gtest(test_system_integration test_system_integration.cpp)
+target_link_libraries(test_system_integration PRIVATE ptpd-shared)
+target_include_directories(test_system_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/src)
+set_tests_properties(test_system_integration PROPERTIES
+    TIMEOUT 300
+    LABELS  "integration"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    ENVIRONMENT "PTPD_TEST_CONFIG=${CMAKE_SOURCE_DIR}/resources/ptpd-daemon-current.conf")
+
+message(STATUS "ptpd src-gtests: 7 test targets configured (6 unit + 1 integration)")
