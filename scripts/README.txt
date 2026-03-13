@@ -2,76 +2,107 @@
                             PTPd Scripts Directory
 ================================================================================
 
-This directory contains build, test, analysis, and utility scripts for the
-PTPd project. All scripts support the CMake build system (autotools removed).
+This directory contains testing, analysis, and utility scripts for the PTPd
+project. All scripts support the CMake preset-based build system.
 
-================================================================================
-                        BUILD & CONFIGURATION SCRIPTS
-================================================================================
-
-All build scripts are located in scripts/build/
-
-config-cmake-debug.sh
-  Purpose:  Configure CMake build in Debug mode
-  Usage:    ./scripts/build/config-cmake-debug.sh
-  Output:   build-cmake/debug/ directory with Makefiles
-  Options:  Debug build with all debugging enabled, runtime checks, PCAP,
-            statistics, daemon mode OFF, software clock ON
-  Notes:    - Creates compile_commands.json for IDE IntelliSense
-            - After running, use: cd build-cmake/debug && make -j4
-
-config-cmake-release.sh
-  Purpose:  Configure CMake build in Release mode
-  Usage:    ./scripts/build/config-cmake-release.sh
-  Output:   build-cmake/release/ directory with Makefiles
-  Options:  Release build with optimizations, PCAP, statistics, daemon ON
-  Notes:    - Creates compile_commands.json for IDE IntelliSense
-            - After running, use: cd build-cmake/release && make -j4
-            - To install: cmake --install build-cmake/release --prefix /usr/local
-
-test-config.sh
-  Purpose:  Test a specific PTPd configuration build
-  Usage:    ./scripts/build/test-config.sh <config_name>
-  Configs:  1|default, 2|minimal, 3|sw-clock, 4|slave-only, 5|no-posix-timers,
-            6|no-pcap, 7|no-snmp, 8|no-statistics, 9|debug-basic,
-            10|debug-medium, 11|debug-all, 12|runtime-debug, 13|experimental,
-            14|no-daemon, 15|high-unicast, 16|combined
-  Output:   Builds with CMake, compares binary size and symbol counts
-  Example:  ./scripts/build/test-config.sh minimal
-  Notes:    - Originally used for autotools-vs-CMake migration validation
-            - Now validates CMake build configurations only
-
-test-all-configs.sh
-  Purpose:  Run comprehensive tests on all 16 configurations
-  Usage:    ./scripts/build/test-all-configs.sh
-  Output:   test-results/test-report-<timestamp>.txt
-  Example:  ./scripts/build/test-all-configs.sh
-  Notes:    - Tests all configurations from CONFIGURATION-MATRIX.txt
-            - Generates summary report with pass/fail counts
-            - Cleans up test directories automatically
 ================================================================================
                          RUNTIME TESTING SCRIPTS
 ================================================================================
 
 All runtime testing scripts are located in scripts/testing/
 
+ptp-app-run.sh
+  Purpose:  Test runner for the macOS ptpd-app binary with full logging,
+            packet capture, and post-run analysis
+  Usage:    sudo ./scripts/testing/ptp-app-run.sh <interface> <config_file> [options]
+  Options:  -b, --binary NAME   Binary name to use (default: ptpd-app)
+            -d, --duration N    Run duration in seconds (default: 60)
+            -v, --verbose       Enable verbose output
+  Features: - Pre-flight config validation (-k check mode)
+            - Kills any competing ptpd process before starting
+            - Copies config file and appends runtime overrides
+              (interface, log_file, statistics_file, lock_directory)
+            - tcpdump packet capture on the specified interface
+            - Timestamped output directory under scripts/ptpd_logs/
+            - Post-run offset/drift statistics summary
+  Example:  sudo ./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf
+            sudo ./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf -d 120
+  Notes:    - Default binary resolved from build-cmake/macos-ptpd-app-debug/
+            - Requires root privileges (network timestamping, PCAP)
+
+ptp-ios-run.sh
+  Purpose:  Test runner for PTPMonitor on the iOS simulator — installs the
+            app, launches it with auto-start launch arguments, collects logs
+            and a host-side packet capture, and monitors PTP state live
+  Usage:    ./scripts/testing/ptp-ios-run.sh <interface> <master_ip> [options]
+  Options:  -u, --udid UDID     Simulator device UDID
+                                (default: C3F3DBCE-2497-4117-94C7-5A2BCB89F1A9)
+            -d, --duration N    Run duration in seconds (default: 60)
+            -b, --build         Rebuild PTPMonitor.app before launching
+            -v, --verbose       Verbose output
+  Features: - Boots simulator if not already running
+            - Installs PTPMonitor.app from iossim-ptpd-app-debug preset dir
+            - Launches with -PTPAutoStart -PTPMasterIP -PTPInterface args
+            - Tails simulator log for PTP state machine events
+            - tcpdump capture on the host interface
+            - Prints PTP_SLAVE lock time and offset summary
+  Example:  ./scripts/testing/ptp-ios-run.sh en5 192.168.68.114
+            ./scripts/testing/ptp-ios-run.sh en5 192.168.68.114 -d 120 --build
+  Notes:    - Requires Xcode + Simulator runtime installed
+            - App must be built first (cmake --build --preset iossim-ptpd-app-debug)
+
 ptpd-run.sh
-  Purpose:  Comprehensive PTPd daemon test runner with logging and analysis
-  Usage:    ./scripts/testing/ptpd-run.sh <interface> <config_file> [options]
-  Options:  -d, --duration N  Run duration in seconds (default: 60)
-            -v, --verbose     Enable verbose output
-            -h, --help        Show help message
-  Features: - Configuration validation using PTPd binary
-            - Comprehensive PTP traffic analysis
-            - Statistical analysis and plotting
-            - Packet capture (tcpdump) and protocol analysis
-            - Automatic cleanup and resource management
-            - Live master detection and synchronization monitoring
-  Example:  sudo ./scripts/testing/ptpd-run.sh en0 resources/ptpd-daemon.conf -d 120
-  Notes:    - Requires root privileges (uses sudo automatically)
-            - Creates timestamped log directories in scripts/ptpd_logs/
-            - Generates CSV statistics files
-            - Size: 950 lines (comprehensive logging & validation)
+  Purpose:  General-purpose ptpd2 daemon test runner with logging and analysis
+  Usage:    sudo ./scripts/testing/ptpd-run.sh <interface> <config_file> [options]
+  Options:  -d, --duration N    Run duration in seconds (default: 60)
+            -v, --verbose       Enable verbose output
+  Features: - Configuration validation, packet capture, statistical analysis
+            - Timestamped log directories in scripts/ptpd_logs/
+  Example:  sudo ./scripts/testing/ptpd-run.sh en5 resources/ptpd-daemon.conf -d 120
+  Notes:    - Searches build-cmake/macos-debug/ and build-cmake/macos-release/
+              for the ptpd2 binary
+
+run_sanitizers.sh
+  Purpose:  Build and run ptpd under ASAN, TSAN, UBSAN, clang-tidy static
+            analysis, and clang-format style check
+  Usage:    ./scripts/testing/run_sanitizers.sh [options]
+  Options:  -c, --config FILE   Config file for a live run (-k check if omitted)
+            -i, --iface IFACE   Network interface (required for live run)
+            -d, --duration N    Run duration in seconds (default: 10)
+            -s, --sanitizer S   Run only one check:
+                                  asan | tsan | ubsan | clang-tidy | clang-format
+                                (default: all)
+            -B, --no-build      Skip configure/build step
+  Features: - macOS-aware (sets detect_leaks=0, passes SDK sysroot to clang-tidy)
+            - Scoped to src/ only (excludes third-party dep/iniparser)
+            - clang-format runs in check-only mode (does not modify files)
+            - Reports written to logs/sanitizers/
+  Example:  ./scripts/testing/run_sanitizers.sh
+            ./scripts/testing/run_sanitizers.sh -s asan -c resources/ptpd-daemon.conf -i en5
+  Notes:    - ASAN / TSAN / UBSAN must each be built in a separate binary
+            - Live runs require root; config-check mode does not
+
+compare-servo-options.sh
+  Purpose:  Run ptpd-app three times back-to-back with different PI servo
+            gains and collect timestamped CSV output for offline comparison
+  Usage:    sudo ./scripts/testing/compare-servo-options.sh [duration_seconds]
+  Configs:  current  : kp=0.01,  ki=0.0001   (baseline)
+            option-a : kp=0.1,   ki=0.000001 (10x proportional, near-zero integral)
+            option-b : kp=0.1,   ki=0.001    (10x proportional, 10x integral)
+  Output:   scripts/ptpd_logs/comparison_<timestamp>/
+  Example:  sudo ./scripts/testing/compare-servo-options.sh 300
+  Notes:    - Uses caffeinate to prevent Mac sleep during the run
+            - Binary: build-cmake/debug/src-app/ptpd-app
+
+summarize-comparison.py
+  Purpose:  Parse per-run servo CSV logs from a compare-servo-options.sh
+            output directory and print a side-by-side statistics table
+  Usage:    python3 scripts/testing/summarize-comparison.py <comparison_dir>
+  Input:    Directory produced by compare-servo-options.sh
+  Output:   Per-config offset/drift statistics (min, max, mean, std, RMS)
+  Example:  python3 scripts/testing/summarize-comparison.py \
+              scripts/ptpd_logs/comparison_20260312_220035/
+  Requires: Python 3
 
 ================================================================================
                             ANALYSIS SCRIPTS
@@ -80,38 +111,31 @@ ptpd-run.sh
 All analysis scripts are located in scripts/analysis/
 
 analyze_ptp.py
-  Purpose:  Comprehensive PTP statistics analysis from CSV log files
+  Purpose:  Statistical analysis of PTP offset/drift from CSV log files
   Usage:    python3 scripts/analysis/analyze_ptp.py <csv_file>
-  Input:    CSV file with PTP statistics (from ptpd-run.sh or ptpd2 logs)
-  Output:   Detailed statistical analysis including:
-            - All data statistics (min, max, mean, median, std dev, RMS)
-            - Offset distribution by magnitude (<1ms, <10ms, <100ms)
-            - Well-synchronized period analysis (|offset| < 1ms)
+  Input:    CSV statistics file produced by ptpd2 or ptp-app-run.sh
+  Output:   - All data statistics (min, max, mean, median, std dev, RMS)
+            - Offset distribution by magnitude (<1 ms, <10 ms, <100 ms)
+            - Well-synchronized period analysis (|offset| < 1 ms)
             - Jitter analysis for synchronized data
             - Path delay statistics
-  Example:  python3 scripts/analysis/analyze_ptp.py ptpd_logs/DATE/ptpd_daemon_en0.csv
+  Example:  python3 scripts/analysis/analyze_ptp.py \
+              scripts/ptpd_logs/20260312_220035/ptpd_daemon_en5.csv
   Requires: Python 3, numpy
-  Notes:    - Analyzes all data including large offsets during sync acquisition
-            - Shows synchronization quality distribution
-            - Converts values to microseconds for readability
-            - Only analyzes slave state data
 
 analyze_pcap.sh
-  Purpose:  Comprehensive PTP packet capture analysis
+  Purpose:  PTP packet capture protocol analysis
   Usage:    scripts/analysis/analyze_pcap.sh <pcap_file>
-  Input:    PCAP file with PTP traffic (from ptpd-run.sh)
-  Output:   Detailed protocol analysis including:
-            - Capture summary (packet count, duration)
+  Input:    PCAP file produced by ptp-app-run.sh or ptpd-run.sh
+  Output:   - Capture summary (packet count, duration)
             - PTP message type distribution
-            - Master and slave clock identities and IP addresses
+            - Master/slave clock identities and IP addresses
             - Grandmaster clock properties (class, accuracy, priority)
             - Transport configuration and multicast addressing
             - Timing intervals and message sequencing
-  Example:  scripts/analysis/analyze_pcap.sh ptpd_logs/DATE/ptp_en0.pcap
+  Example:  scripts/analysis/analyze_pcap.sh \
+              scripts/ptpd_logs/20260312_220035/ptp_en5.pcap
   Requires: tcpdump
-  Notes:    - Validates PTP protocol operation
-            - Identifies timing irregularities
-            - Useful for network troubleshooting
 
 ================================================================================
                           DEVELOPMENT TOOLS
@@ -119,146 +143,110 @@ analyze_pcap.sh
 
 All development tools are located in scripts/tools/
 
+gen-leap-header.py
+  Purpose:  Build-time code generator — parses resources/leap-seconds.list
+            and emits src/def/leap_seconds_builtin.h (compiled into libptpd2)
+  Usage:    Invoked automatically by the leap_header CMake custom target;
+            not normally run directly
+  Output:   src/def/leap_seconds_builtin.h  (gitignored)
+  Notes:    - Called by CMake via find_package(Python3 REQUIRED)
+            - Generated header is a dependency of ptpd2, ptpd-static,
+              ptpd-shared, and all test_leap_builtin GTest targets
+
 compare-binaries.sh
   Purpose:  Compare two PTPd binaries for equivalence
   Usage:    ./scripts/tools/compare-binaries.sh <binary1> <binary2>
-  Output:   Detailed comparison report including:
-            - File size and size difference percentage
-            - File type information
-            - Symbol count and symbol difference
-            - Symbol diff (identical/missing/added symbols)
-  Example:  ./scripts/tools/compare-binaries.sh build-old/src/ptpd2 build-new/src/ptpd2
-  Notes:    - Used during CMake migration to verify binary equivalence
-            - Checks if size difference is within 5% tolerance
-            - Compares exported symbols
+  Output:   File size diff, symbol count diff, symbol diff report
+  Example:  ./scripts/tools/compare-binaries.sh \
+              build-cmake/macos-debug/src/ptpd2 \
+              build-cmake/macos-release/src/ptpd2
+  Notes:    - Uses nm for symbol extraction
+            - Flags size differences outside 5% tolerance
 
 extract-symbols.sh
   Purpose:  Extract and analyze symbols from a binary
   Usage:    ./scripts/tools/extract-symbols.sh <binary> [output_file]
-  Output:   Symbol analysis report including:
-            - Global symbols (exported)
-            - Symbol count by type (T, D, B, etc.)
-            - Undefined symbols (external dependencies)
-            - Text symbols (functions, top 50)
-            - Data symbols (top 30)
-            - Statistics summary
-  Example:  ./scripts/tools/extract-symbols.sh build-cmake/debug/src/ptpd2 symbols.txt
-  Notes:    - Uses 'nm' command for symbol extraction
-            - Outputs to stdout or specified file
-            - Useful for debugging linking issues
+  Output:   Global symbols, symbol counts by type, undefined symbols,
+            top-50 text symbols, top-30 data symbols
+  Example:  ./scripts/tools/extract-symbols.sh \
+              build-cmake/macos-debug/src/ptpd2 symbols.txt
 
 clean-ptpd.sh
-  Purpose:  Clean CMake build artifacts and temporary files
+  Purpose:  Remove CMake build artifacts and temporary files
   Usage:    ./scripts/tools/clean-ptpd.sh [options]
-  Options:  -L    Also remove ./ptp_test and ./ptp_logs directories
+  Options:  -L    Also remove ptp_test/ and ptp_logs/ directories
             -n    Dry run (show what would be removed, don't delete)
-  Cleans:   - CMake build directories (build-cmake/, build/ninja-*)
-            - Compiled objects (.o, .lo, .la, .a files)
-            - macOS junk (.DS_Store files)
-            - compile_commands.json symlink
-            - Optional: test artifacts and log directories
+  Cleans:   - build-cmake/ directories
+            - Compiled objects (.o, .lo, .la, .a)
+            - compile_commands.json
+            - macOS .DS_Store files
   Example:  ./scripts/tools/clean-ptpd.sh        # Clean build artifacts
             ./scripts/tools/clean-ptpd.sh -L     # Clean everything including logs
-            ./scripts/tools/clean-ptpd.sh -n     # Preview what will be deleted
-  Notes:    - Safe to run anytime (includes dry-run mode)
-            - Runs 'make clean' or 'ninja clean' before removing directories
-            - Respects .git directory (never touches it)
+            ./scripts/tools/clean-ptpd.sh -n     # Preview
 
 ================================================================================
                             REQUIREMENTS
 ================================================================================
 
-Common Requirements:
-  - CMake 3.15 or higher
-  - Make or Ninja build system
-  - C compiler (clang or gcc)
-  - Bash shell
+Common:
+  - CMake 3.25 or higher
+  - C compiler (clang recommended on macOS)
+  - Bash 3.2+ (macOS default)
+  - Python 3 (for gen-leap-header.py, analyze_ptp.py, summarize-comparison.py)
 
-For ptpd-run.sh:
-  - Root/sudo privileges (for network operations)
-  - tcpdump (for packet capture)
-  - Network interface with PTP support
+For ptp-app-run.sh / ptpd-run.sh:
+  - Root/sudo privileges
+  - tcpdump
 
-For analyze_ptp.py:
-  - Python 3
-  - numpy library (pip3 install numpy)
+For ptp-ios-run.sh:
+  - Xcode with iOS Simulator runtime
+  - xcrun / simctl
 
-For binary analysis:
-  - nm (part of binutils, usually pre-installed)
-  - file command
-  - Standard Unix tools (awk, sed, grep)
+For run_sanitizers.sh:
+  - clang with ASAN/TSAN/UBSAN support
+  - clang-tidy and clang-format (brew install llvm)
+
+For analyze_ptp.py / summarize-comparison.py:
+  - numpy  (pip3 install numpy)
+
+For binary analysis tools:
+  - nm, file (pre-installed on macOS)
 
 ================================================================================
                             USAGE EXAMPLES
 ================================================================================
 
-Quick Start - Build & Run:
-  # Configure and build debug version
-  ./scripts/config-cmake-debug.sh
-  cd build-cmake/debug && make -j4
+Build and run macOS test:
+  cmake --preset macos-ptpd-app-debug
+  cmake --build --preset macos-ptpd-app-debug
+  sudo ./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf -d 120
 
-  # Run PTPd daemon with config file (requires sudo)
-  sudo ./build-cmake/debug/src/ptpd2 -f resources/ptpd-daemon.conf -m
+Build and run iOS simulator test:
+  cmake --preset iossim-ptpd-app-debug
+  cmake --build --preset iossim-ptpd-app-debug
+  ./scripts/testing/ptp-ios-run.sh en5 192.168.68.114 -d 60
 
-Full Test Workflow:
-  # Clean previous builds
-  ./scripts/clean-ptpd.sh -L
+Run sanitizer checks:
+  ./scripts/testing/run_sanitizers.sh
+  ./scripts/testing/run_sanitizers.sh -s clang-tidy
 
-  # Configure and test debug build
-  ./scripts/test-config.sh default
+Servo gain comparison (5 minutes per config, 15 minutes total):
+  sudo ./scripts/testing/compare-servo-options.sh 300
+  python3 scripts/testing/summarize-comparison.py \
+      scripts/ptpd_logs/comparison_<timestamp>/
 
-  # Run comprehensive daemon test
-  sudo ./scripts/ptpd-run.sh en0 resources/ptpd-daemon.conf -d 120
-
-  # Analyze results
-  python3 scripts/analyze_ptp.py ptp_logs/*/stats.csv
-
-Migration Validation:
-  # Test all configurations (CMake validation)
-  ./scripts/test-all-configs.sh
-
-  # Compare binaries
-  ./scripts/compare-binaries.sh old-binary new-binary
-
-  # Extract symbols for analysis
-  ./scripts/extract-symbols.sh build-cmake/debug/src/ptpd2 symbols-debug.txt
-  ./scripts/extract-symbols.sh build-cmake/release/src/ptpd2 symbols-release.txt
-
-Development Workflow:
-  # Configure debug build with IntelliSense support
-  ./scripts/config-cmake-debug.sh
-
-  # Build (VS Code task or manual)
-  cd build-cmake/debug && make -j4
-
-  # Clean and rebuild
-  ./scripts/clean-ptpd.sh
-  ./scripts/config-cmake-debug.sh
-  cd build-cmake/debug && make -j4
-
-================================================================================
-                            HISTORICAL NOTES
-================================================================================
-
-These scripts were created during the CMake migration project (Phase 0-12).
-Some scripts (test-config.sh, compare-binaries.sh) originally compared
-autotools vs CMake builds. The migration is complete, and autotools has been
-removed. These scripts now validate CMake configurations only.
-
-Original autotools scripts (removed):
-  - @build-scripts/config-debug.sh (autotools configure wrapper)
-  - @build-scripts/config-release.sh (autotools configure wrapper)
-  - macos/ptpd-run-macos.sh (macOS-specific runner, superseded by ptpd-run.sh)
-
-The scripts in this directory are maintained and support CMake-only builds.
+Analyze results:
+  python3 scripts/analysis/analyze_ptp.py \
+      scripts/ptpd_logs/<timestamp>/ptpd_daemon_en5.csv
+  scripts/analysis/analyze_pcap.sh \
+      scripts/ptpd_logs/<timestamp>/ptp_en5.pcap
 
 ================================================================================
                             RELATED DOCUMENTATION
 ================================================================================
 
 For complete build instructions: See BUILD.md
-For development workflows:      See DEVELOPMENT.md
-For CMake configuration:        See cmake/README.md
-For configuration options:      See CONFIGURATION.md
+For CMake presets and options:   See cmake/README.md
+For configuration options:       See CONFIGURATION.md
 
 ================================================================================
