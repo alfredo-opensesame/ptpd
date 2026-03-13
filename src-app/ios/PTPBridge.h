@@ -18,12 +18,24 @@ typedef struct {
 
 @interface PTPBridge : NSObject
 
-- (instancetype)initWithMasterIP:(NSString *)masterIP;
+typedef NS_ENUM(NSInteger, PTPMode) {
+    PTPModeMulticast = 0,
+    PTPModeUnicast   = 1,
+};
+
+- (instancetype)initWithMasterIP:(NSString *)masterIP
+                       interface:(NSString *)interface
+                            mode:(PTPMode)mode;
 - (void)run;
 - (void)stop;
 - (PTPStatus)getStatus;
 
 + (void)setLogCallback:(void (^)(NSString *message, int level))callback;
+
+/// Returns an array of dicts with keys "name" (e.g. "en5") and
+/// "label" (e.g. "en5: Ethernet") for every up, non-loopback
+/// IPv4 interface currently available on the device.
++ (NSArray<NSDictionary<NSString *, NSString *> *> *)availableInterfaces;
 
 @end
 

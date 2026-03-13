@@ -2,30 +2,70 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var ptpManager: PTPManager
-    @State private var masterIP = "192.168.1.100"
-    
+    @State private var masterIP = "192.168.68.114"
+    @State private var selectedInterface = ""
+    @State private var unicastMode = true
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
                 // Connection Settings
                 GroupBox(label: Label("PTP Master", systemImage: "network")) {
-                    HStack {
-                        TextField("Master IP", text: $masterIP)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                        
+                    VStack(spacing: 8) {
+                        // Interface picker
+                        HStack {
+                            Text("Interface")
+                                .fontWeight(.medium)
+                                .frame(width: 80, alignment: .leading)
+                            Picker("", selection: $selectedInterface) {
+                                ForEach(ptpManager.availableInterfaces, id: \.name) { iface in
+                                    Text(iface.label).tag(iface.name)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        // Mode toggle
+                        Toggle(isOn: $unicastMode) {
+                            Text(unicastMode ? "Unicast" : "Multicast")
+                                .fontWeight(.medium)
+                        }
+                        .disabled(ptpManager.isRunning)
+
+                        // Master IP (only shown in unicast mode)
+                        if unicastMode {
+                            HStack {
+                                TextField("Master IP", text: $masterIP)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .autocapitalization(.none)
+                                    .disableAutocorrection(true)
+                                    .keyboardType(.numbersAndPunctuation)
+                            }
+                        }
+
+                        // Start / Stop
                         Button(ptpManager.isRunning ? "Stop" : "Start") {
                             if ptpManager.isRunning {
                                 ptpManager.stop()
                             } else {
-                                ptpManager.start(masterIP: masterIP)
+                                ptpManager.start(masterIP: masterIP,
+                                                 interface: selectedInterface,
+                                                 unicast: unicastMode)
                             }
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(ptpManager.isRunning ? .red : .green)
+                        .disabled(selectedInterface.isEmpty)
+                        .frame(maxWidth: .infinity)
                     }
                     .padding()
+                }
+                .onAppear {
+                    ptpManager.refreshInterfaces()
+                    if selectedInterface.isEmpty {
+                        selectedInterface = ptpManager.availableInterfaces.first?.name ?? ""
+                    }
                 }
                 
                 // Status Display
@@ -51,6 +91,15 @@ struct ContentView: View {
                             .font(.caption)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(ptpManager.logs.isEmpty)
+                    Button(action: {
+                        ptpManager.logs.removeAll()
+                    }) {
+                        Label("Clear", systemImage: "trash")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
                     .disabled(ptpManager.logs.isEmpty)
                 }) {
                     ScrollViewReader { proxy in

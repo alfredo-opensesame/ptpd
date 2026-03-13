@@ -31,29 +31,38 @@ class PTPManager: ObservableObject {
         }
     }
     
-    func start(masterIP: String) {
+    @Published var availableInterfaces: [(name: String, label: String)] = []
+
+    func refreshInterfaces() {
+        let raw = PTPBridge.availableInterfaces() as? [[String: String]] ?? []
+        availableInterfaces = raw.compactMap { dict in
+            guard let name = dict["name"], let label = dict["label"] else { return nil }
+            return (name: name, label: label)
+        }
+    }
+
+    func start(masterIP: String, interface iface: String, unicast: Bool) {
         guard !isRunning else { return }
-        
-        // Wait for previous thread to finish if it's still running
+
         if let oldThread = ptpThread, !oldThread.isFinished {
             logs.append(LogEntry(message: "Waiting for previous session to finish...", level: 1))
-            // Give it a moment to finish
             DispatchQueue.global().async {
                 while !oldThread.isFinished && !oldThread.isCancelled {
                     Thread.sleep(forTimeInterval: 0.1)
                 }
                 DispatchQueue.main.async {
-                    self.actuallyStart(masterIP: masterIP)
+                    self.actuallyStart(masterIP: masterIP, interface: iface, unicast: unicast)
                 }
             }
             return
         }
-        
-        actuallyStart(masterIP: masterIP)
+
+        actuallyStart(masterIP: masterIP, interface: iface, unicast: unicast)
     }
-    
-    private func actuallyStart(masterIP: String) {
-        ptpBridge = PTPBridge(masterIP: masterIP)
+
+    private func actuallyStart(masterIP: String, interface iface: String, unicast: Bool) {
+        let mode: PTPMode = unicast ? .unicast : .multicast
+        ptpBridge = PTPBridge(masterIP: masterIP, interface: iface, mode: mode)
         
         ptpThread = Thread { [weak self] in
             guard let bridge = self?.ptpBridge else { return }
@@ -91,11 +100,17 @@ class PTPManager: ObservableObject {
     
     func stop() {
         guard isRunning else { return }
-        
+
+        // Update UI immediately so the button responds right away.
+        isRunning = false
+        state = "STOPPING"
         logs.append(LogEntry(message: "Stopping PTP client...", level: 1))
-        
-        // Signal the bridge to stop (thread will clean up and set isRunning = false)
-        ptpBridge?.stop()
+
+        // Signal the bridge to stop on a background queue so ptpd_shutdown's
+        // pthread_join doesn't block the main thread.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.ptpBridge?.stop()
+        }
     }
     
     private func updateStatus() {
