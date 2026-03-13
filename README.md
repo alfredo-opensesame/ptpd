@@ -87,7 +87,7 @@ Documentation
 
 - **[BUILD.md](BUILD.md)** - Comprehensive build guide with all options
 - **[CONFIGURATION.md](CONFIGURATION.md)** - Technical reference for all configuration options
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Developer workflows and project structure
+- **[BUILD.md](BUILD.md)** - Build guide, project structure, VS Code workflow, and option reference
 - **[USAGE.md](USAGE.md)** - Library integration guide and API reference
 
 Legal notice

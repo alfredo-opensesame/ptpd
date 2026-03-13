@@ -918,7 +918,7 @@ All configurations tested and validated with CMake build system (all 12 presets)
 
 - [BUILD.md](BUILD.md) - CMake build instructions
 - [cmake/README.md](cmake/README.md) - CMake module documentation
-- [DEVELOPMENT.md](DEVELOPMENT.md) - Development workflows
+- [BUILD.md](BUILD.md) - CMake build instructions and developer workflows
 - Configuration file format: `man ptpd2.conf` or see `resources/ptpd2.conf.default-full`
 
 ---
