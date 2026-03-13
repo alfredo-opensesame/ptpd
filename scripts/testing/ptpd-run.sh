@@ -15,7 +15,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Default to original ptpd2 binary
 BINARY_NAME="ptpd2"
-BINARY="$PROJECT_DIR/build-cmake/debug/src/$BINARY_NAME"
+BINARY="$PROJECT_DIR/build-cmake/macos-debug/src/$BINARY_NAME"
 
 # Colors for output
 RED='\033[0;31m'
@@ -84,7 +84,7 @@ show_usage() {
     echo ""
     echo "Binary Options:"
     echo "  ptpd2     - Original PTPd executable (default)"
-    echo "  ptpd-app  - Library-based example application (requires -DBUILD_PTPD_LIBRARY=ON)"
+    echo "  ptpd-app  - Library-based example application (built via: cmake --preset macos-ptpd-app-debug)"
     echo ""
     echo "Configuration Requirements:"
     echo "  - All PTPd settings must be in the configuration file"
@@ -276,17 +276,23 @@ parse_arguments() {
                     exit 1
                 fi
                 # Update BINARY path based on binary name
-                for BUILD_DIR in "build-cmake/debug" "build-cmake/release"; do
-                    if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
+                if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
+                    for BUILD_DIR in "build-cmake/macos-ptpd-app-debug" "build-cmake/macos-ptpd-app-release"; do
                         CANDIDATE="$PROJECT_DIR/$BUILD_DIR/src-app/$BINARY_NAME"
-                    else
+                        if [ -x "$CANDIDATE" ]; then
+                            BINARY="$CANDIDATE"
+                            break
+                        fi
+                    done
+                else
+                    for BUILD_DIR in "build-cmake/macos-debug" "build-cmake/macos-release"; do
                         CANDIDATE="$PROJECT_DIR/$BUILD_DIR/src/$BINARY_NAME"
-                    fi
-                    if [ -x "$CANDIDATE" ]; then
-                        BINARY="$CANDIDATE"
-                        break
-                    fi
-                done
+                        if [ -x "$CANDIDATE" ]; then
+                            BINARY="$CANDIDATE"
+                            break
+                        fi
+                    done
+                fi
                 shift 2
                 ;;
             -d|--duration)
@@ -340,7 +346,7 @@ parse_arguments() {
     if [ ! -x "$BINARY" ]; then
         print_error "Binary not found or not executable: $BINARY"
         if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
-            print_error "Make sure you built with: cmake -B build-cmake/debug -DBUILD_PTPD_LIBRARY=ON"
+            print_error "Make sure you built with: cmake --preset macos-ptpd-app-debug"
         fi
         exit 1
     fi
@@ -888,7 +894,7 @@ analyze_results() {
 
     # Run analysis scripts
     local analysis_dir="$(dirname "$SCRIPT_DIR")/analysis"
-    
+
     # Analyze CSV statistics
     if [ -f "$STATS_FILE" ] && command -v python3 >/dev/null 2>&1; then
         if [ -f "$analysis_dir/analyze_ptp.py" ]; then
@@ -897,7 +903,7 @@ analyze_results() {
             echo ""
         fi
     fi
-    
+
     # Analyze packet capture
     if [ -f "$PCAP_FILE" ] && command -v tcpdump >/dev/null 2>&1; then
         if [ -f "$analysis_dir/analyze_pcap.sh" ]; then

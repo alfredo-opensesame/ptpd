@@ -6,7 +6,7 @@ Complete technical reference for all PTPd configuration options.
 
 ## Overview
 
-PTPd supports 13 major configuration options that control features, debug output, and build characteristics. This document provides detailed technical information about each option.
+PTPd supports 14 major configuration options that control features, debug output, and build characteristics. This document provides detailed technical information about each option.
 
 ---
 
@@ -51,7 +51,7 @@ If all three are present, `POSIX_TIMERS_SUPPORTED` is set to TRUE.
 
 #### Platform Behavior
 - **Linux**: Usually ON by default
-- **macOS**: Usually ON (POSIX timers supported)
+- **macOS**: **OFF** — detection checks for `POSIX_TIMERS_SUPPORTED` as a symbol in `unistd.h`, which macOS does not define, so auto-detection returns OFF
 - **FreeBSD**: Usually ON
 - **Embedded**: May need OFF
 
@@ -249,8 +249,10 @@ When enabled:
 Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 
 **Build-Type Defaults**:
-- Debug builds (`CMAKE_BUILD_TYPE=Debug`): `all` (all debug compiled in)
+- Debug builds (`CMAKE_BUILD_TYPE=Debug`): `all` (all debug compiled in) — **unless `ENABLE_RUNTIME_DEBUG=ON` is also set, in which case it is silently forced to `none`**
 - Release builds (`CMAKE_BUILD_TYPE=Release`): `none` (no debug overhead)
+
+> **Warning**: The project's `scripts/build/config-cmake-debug.sh` explicitly sets both `-DENABLE_RUNTIME_DEBUG=ON` and `-DDEBUG_LEVEL=all`. The mutual exclusivity rule in `Options.cmake` means `ENABLE_RUNTIME_DEBUG` wins and `DEBUG_LEVEL` is silently reset to `none`. The effective debug build configuration therefore has `ENABLE_RUNTIME_DEBUG=ON` and `DEBUG_LEVEL=none`.
 
 #### Technical Details
 
@@ -321,9 +323,11 @@ Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 #### Description
 Enables runtime control of debug output levels. Mutually exclusive with DEBUG_LEVEL.
 
-**Build-Type Defaults**:
+**Build-Type Defaults** (CMake logic):
 - Debug builds (`CMAKE_BUILD_TYPE=Debug`): `OFF` (use compile-time DEBUG_LEVEL=all)
 - Release builds (`CMAKE_BUILD_TYPE=Release`): `ON` (enable runtime control)
+
+> **Note**: `scripts/build/config-cmake-debug.sh` explicitly overrides this to `ON` for the project's Debug build, which also overrides `DEBUG_LEVEL` to `none` via the mutual exclusivity rule. The actual macOS debug build runs with `ENABLE_RUNTIME_DEBUG=ON`.
 
 #### Technical Details
 
@@ -512,59 +516,39 @@ When slave-only, these are disabled:
 
 ---
 
-### 10. ENABLE_SW_CLOCK
+### 10. BUILD_WITH_SWCLOCK
 
-**Default**: OFF
+**Default**: ON
 
-**CMake**: `-DENABLE_SW_CLOCK=ON` / `-DENABLE_SW_CLOCK=OFF`
+**CMake**: `-DBUILD_WITH_SWCLOCK=ON` / `-DBUILD_WITH_SWCLOCK=OFF`
 
 #### Description
-Enables software clock simulation for testing without real hardware clock.
+Builds ptpd with the swclock software clock backend. The swclock library lives in `libraries/swclock/` as a git submodule. When enabled, ptpd uses swclock for clock management instead of calling system clock APIs directly.
+
+> **Note**: `ENABLE_SW_CLOCK` is referenced in `cmake/README.md` examples but is **not** a real CMake option. The actual option is `BUILD_WITH_SWCLOCK`.
 
 #### Technical Details
 
-**When ON**:
-- **Define**: `SW_CLOCK_ENABLED` is set
-- **Sources**: All files in `src/dep/sw_clock/` are compiled:
-  - `sw_clock.c` - Core software clock
-  - `sw_clock_adj.c` - Clock adjustment simulation
-  - `sw_clock_freq.c` - Frequency adjustment
-  - `sw_clock_phase.c` - Phase adjustment
-  - `sw_clock_sync.c` - Synchronization logic
-  - `sw_clock_utils.c` - Utilities
-- **Behavior**: Uses simulated clock instead of system clock
-- **Purpose**: Testing, development, simulation
+**When ON** (default):
+- **Define**: `PTPD_USE_SWCLOCK` is set
+- **Sources**: `libraries/swclock/` submodule is compiled and linked
+- **Behavior**: Clock get/set/adj operations routed through swclock
+- **Requirement**: `libraries/swclock/` git submodule must be initialized
 
 **When OFF**:
-- **Define**: `SW_CLOCK_ENABLED` is NOT set
-- **Sources**: sw_clock/* files are NOT compiled
-- **Behavior**: Uses real system clock (clock_gettime, etc.)
-
-#### Software Clock Features
-- Independent time base
-- Controllable drift
-- Simulated adjustments
-- No system clock impact
-- Repeatable testing
+- **Define**: `PTPD_USE_SWCLOCK` is NOT set
+- **Sources**: swclock library is NOT compiled
+- **Behavior**: Uses system clock APIs directly (clock_gettime, adjtime, etc.)
 
 #### When to Use
-- **Enable**:
-  - Testing PTP without hardware
-  - Development and debugging
-  - Simulation environments
-  - CI/CD testing
-  - Algorithm validation
-  - Education/training
-- **Disable**:
-  - Production deployments
-  - Real time synchronization
-  - Hardware testing
-  - All normal use cases
+- **Enable** (default): Normal builds — swclock provides a portable clock abstraction layer
+- **Disable**: If the swclock submodule is not available or not desired
 
-#### Warnings
-- **NOT for production**: Software clock is for testing only
-- **No real sync**: Does not actually synchronize system time
-- **Testing only**: Results are simulated, not real-world
+#### Submodule Requirement
+```bash
+git submodule update --init libraries/swclock
+```
+If `BUILD_WITH_SWCLOCK=ON` and the submodule is missing, CMake will halt with a fatal error.
 
 ---
 
@@ -692,7 +676,47 @@ endif()
 
 ---
 
-### 13. ENABLE_EXPERIMENTAL
+### 13. BUILD_PTPD_LIBRARY
+
+**Default**: OFF
+
+**CMake**: `-DBUILD_PTPD_LIBRARY=ON` / `-DBUILD_PTPD_LIBRARY=OFF`
+
+#### Description
+Builds ptpd as a library (in addition to the executable), exposing a C API (`ptpd_init`, `ptpd_start`, `ptpd_shutdown`, etc.) for embedding ptpd into host applications. Required for running the GTest suite and for iOS/macOS app integration.
+
+#### Technical Details
+
+**When ON**:
+- **Define**: `PTPD_LIBRARY_MODE` is set (via `CMAKE_C_FLAGS`)
+- **Output**: `libptpd2.a` (static) alongside the `ptpd2` executable
+- **API**: `ptpd_init()`, `ptpd_start()`, `ptpd_shutdown()`, `ptpd_gettime()` are compiled in
+- **`main()`**: Excluded from the library via `#ifndef PTPD_LIBRARY_MODE`
+- **Threading**: Library starts the protocol loop in a background pthread
+- **Required for**: `BUILD_PTPD_TESTS=ON` (GTest suite)
+
+**When OFF** (default):
+- **Define**: `PTPD_LIBRARY_MODE` is NOT set
+- **Output**: `ptpd2` executable only
+- **API**: Library entry points not compiled in
+
+#### When to Use
+- **Enable**:
+  - Embedding ptpd in another application (iOS app, macOS app, daemon wrapper)
+  - Running the GTest integration tests
+  - Any use of the C library API
+- **Disable** (default):
+  - Standalone daemon deployments
+  - Minimal builds
+
+#### Notes
+- `PTPD_LIBRARY_MODE` must be set for **both** iOS and macOS builds that use the library API. It is not iOS-specific.
+- The iOS simulator build passes this via `CMAKE_C_FLAGS=-DPTPD_IOS=1 -DPTPD_LIBRARY_MODE=1`.
+- The macOS debug build enables it via `BUILD_PTPD_LIBRARY=ON` in CMakeCache.
+
+---
+
+### 14. ENABLE_EXPERIMENTAL
 
 **Default**: OFF
 
@@ -777,7 +801,9 @@ Features: Smallest binary, basic functionality only
 cmake -B build -DCMAKE_BUILD_TYPE=Debug \
   -DENABLE_STATISTICS=ON
 ```
-Features: All debug messages compiled in (DEBUG_LEVEL=all by default), full symbols, statistics
+Features: `DEBUG_LEVEL=all` by default (all debug macros compiled in), full symbols, statistics.
+
+> **Note**: The project's `scripts/build/config-cmake-debug.sh` also passes `-DENABLE_RUNTIME_DEBUG=ON`, which silently overrides `DEBUG_LEVEL` to `none`. If you want compile-time `DEBUG_LEVEL=all`, do not pass `-DENABLE_RUNTIME_DEBUG=ON` alongside it.
 
 #### Dedicated Slave Device
 ```bash
@@ -883,9 +909,10 @@ All configurations tested and validated with CMake build system. See [PLAN.txt](
 | Daemon | OFF | `-DENABLE_DAEMON=ON/OFF` | `PTPD_NO_DAEMON` | Background mode |
 | Root Check | OFF | `-DENABLE_ROOT_CHECK=ON/OFF` | `PTPD_NO_ROOT_CHECK` | Startup privilege gate |
 | Slave Only | ON | `-DENABLE_SLAVE_ONLY=ON/OFF` | `PTPD_SLAVE_ONLY` | Role restriction |
-| SW Clock | OFF | `-DENABLE_SW_CLOCK=ON` | `SW_CLOCK_ENABLED` | Testing only |
+| SW Clock | ON | `-DBUILD_WITH_SWCLOCK=ON/OFF` | `PTPD_USE_SWCLOCK` | swclock backend |
 | SO_TIMESTAMPING | ON (Linux) | `-DENABLE_SO_TIMESTAMPING=ON/OFF` | `PTPD_DISABLE_*` | HW timestamps |
 | Max Unicast | 128 | `-DMAX_UNICAST_DESTINATIONS=N` | `PTPD_UNICAST_MAX` | Scale limit |
+| PTPD Library | OFF | `-DBUILD_PTPD_LIBRARY=ON/OFF` | `PTPD_LIBRARY_MODE` | Library API / embed |
 | Experimental | OFF | `-DENABLE_EXPERIMENTAL=ON` | `PTPD_EXPERIMENTAL` | Unstable |
 
 ---
@@ -900,5 +927,5 @@ All configurations tested and validated with CMake build system. See [PLAN.txt](
 
 ---
 
-**Last Updated**: February 8, 2026
+**Last Updated**: March 13, 2026
 **Applies To**: PTPd 2.3.1, CMake 3.15+

@@ -13,6 +13,10 @@ static void (^logCallback)(NSString *, int) = nil;
 
 // C callback function for ptpd logs
 static void ios_log_handler(const char *message, int level) {
+    // Always emit to system log so 'xcrun simctl spawn … log stream' and
+    // Xcode debug console can see ptpd diagnostics.
+    NSLog(@"[ptpd] %s", message);
+
     if (logCallback) {
         NSString *msg = [NSString stringWithUTF8String:message];
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -89,11 +93,12 @@ static void ios_log_handler(const char *message, int level) {
 }
 
 - (void)run {
-    NSLog(@"PTPBridge: Starting ptpd with master IP: %@", _masterIP);
-    
+    NSLog(@"PTPBridge: Starting ptpd with master IP: %@  interface: %@  mode: %@",
+          _masterIP, _interface, (_mode == PTPModeUnicast) ? @"unicast" : @"multicast");
+
     // Convert master IP to C string
     const char *masterIPCStr = [_masterIP UTF8String];
-    
+
     // Convert interface to C string
     const char *ifaceCStr = [_interface UTF8String];
 
@@ -104,36 +109,44 @@ static void ios_log_handler(const char *message, int level) {
     //            master grants Announce/Sync/Delay_Resp, then exchange begins.
     const char *argv_multicast[] = {
         "ptpd",
-        "-C",           // ptpengine:preset=slaveonly
+        "-C",           // global:foreground=Y (don't daemonize)
         "-V",           // verbose logging
         "-L",           // ignore lock file
+        "-s",           // ptpengine:preset=slaveonly
+        "-n",           // clock:no_adjust — don't step/adj the system clock
+                        // (simulator sandbox blocks clock_settime, causing a
+                        //  SLAVE→FAULTY loop when the first large offset fires)
         "-i", ifaceCStr,
         NULL
     };
-    int argc_multicast = 6;
+    int argc_multicast = 8;
 
     const char *argv_unicast[] = {
         "ptpd",
-        "-C",           // ptpengine:preset=slaveonly
+        "-C",           // global:foreground=Y (don't daemonize)
         "-V",           // verbose logging
         "-L",           // ignore lock file
+        "-s",           // ptpengine:preset=slaveonly
+        "-n",           // clock:no_adjust — don't step/adj the system clock
+                        // (simulator sandbox blocks clock_settime, causing a
+                        //  SLAVE→FAULTY loop when the first large offset fires)
         "-i", ifaceCStr,
         "-g",           // ptpengine:unicast_negotiation=y
         "-u", masterIPCStr, // ptpengine:unicast_destinations=<IP>
         NULL
     };
-    int argc_unicast = 9;
+    int argc_unicast = 11;
 
     const char **argv = (_mode == PTPModeUnicast) ? argv_unicast  : argv_multicast;
     int          argc = (_mode == PTPModeUnicast) ? argc_unicast  : argc_multicast;
-    
+
     Integer16 ret = 0;
-    
+
     // Set up log callback before init
     if (logCallback) {
         ptpd_set_log_callback(ios_log_handler);
     }
-    
+
     // Initialize ptpd
     _ptpClock = ptpd_init(argc, (char **)argv, &ret);
     if (!_ptpClock) {
@@ -146,14 +159,14 @@ static void ios_log_handler(const char *message, int level) {
         }
         return;
     }
-    
+
     NSLog(@"PTPBridge: ptpd initialized successfully");
     if (logCallback) {
         dispatch_async(dispatch_get_main_queue(), ^{
             logCallback(@"PTP daemon initialized successfully", 1);
         });
     }
-    
+
     // Start ptpd protocol engine in background thread
     int start_ret = ptpd_start(_ptpClock);
     if (start_ret != 0) {
@@ -167,19 +180,20 @@ static void ios_log_handler(const char *message, int level) {
         _ptpClock = NULL;
         return;
     }
-    
+
     NSLog(@"PTPBridge: ptpd started successfully");
     if (logCallback) {
         dispatch_async(dispatch_get_main_queue(), ^{
             logCallback(@"PTP protocol engine started successfully", 1);
         });
     }
-    
+
     // Wait for ptpd to finish.  Poll at 100 ms so stop() is responsive.
-    // stop() may call ptpd_shutdown() concurrently; guard every access to
-    // _ptpClock with a local snapshot to avoid null-dereference races.
+    // The _ptpClock pointer may be NULLed by stop() at any time; take a
+    // @synchronized snapshot on every iteration to avoid racing with stop().
     while (YES) {
-        PtpClock *clock = _ptpClock; // snapshot
+        PtpClock *clock = nil;
+        @synchronized(self) { clock = _ptpClock; }
         if (!clock || !ptpd_is_running(clock)) {
             break;
         }
@@ -188,9 +202,13 @@ static void ios_log_handler(const char *message, int level) {
 
     NSLog(@"PTPBridge: run loop exited");
 
-    // Call shutdown only if stop() hasn't already done so (i.e. _ptpClock
-    // is still non-NULL — stop() NULLs it after ptpd_shutdown).
-    PtpClock *clock = _ptpClock;
+    // Atomically take ownership of _ptpClock so stop() cannot also call
+    // ptpd_shutdown on the same pointer (double-free crash).
+    PtpClock *clock = nil;
+    @synchronized(self) {
+        clock = _ptpClock;
+        _ptpClock = NULL;
+    }
     if (clock) {
         NSLog(@"PTPBridge: Shutting down ptpd (natural exit)");
         if (logCallback) {
@@ -199,42 +217,47 @@ static void ios_log_handler(const char *message, int level) {
             });
         }
         ptpd_shutdown(clock);
-        _ptpClock = NULL;
     }
-    
+
     NSLog(@"PTPBridge: Stopped");
 }
 
 - (void)stop {
-    if (_ptpClock) {
+    // Atomically take ownership of _ptpClock so run()'s natural-exit path
+    // cannot also call ptpd_shutdown on the same pointer (double-free crash).
+    PtpClock *clock = nil;
+    @synchronized(self) {
+        clock = _ptpClock;
+        _ptpClock = NULL;
+    }
+    if (clock) {
         // ptpd_shutdown signals the protocol thread (sets library_should_exit)
         // and waits for it to finish via pthread_join, then cleans up.
         // Must be called from a background thread (not main) since it blocks.
-        ptpd_shutdown(_ptpClock);
-        _ptpClock = NULL;
+        ptpd_shutdown(clock);
     }
 }
 
 - (PTPStatus)getStatus {
     PTPStatus status = { .state = "STOPPED", .offset = 0, .delay = 0, .drift = 0.0 };
-    
+
     if (!_ptpClock) {
         return status;
     }
-    
+
     // Get port state
     const char *stateName = portState_getName(_ptpClock->portDS.portState);
     strncpy(status.state, stateName, sizeof(status.state) - 1);
-    
+
     // Get timing statistics (nanoseconds)
     status.offset = _ptpClock->currentDS.offsetFromMaster.nanoseconds +
                    (_ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
     status.delay = _ptpClock->currentDS.meanPathDelay.nanoseconds +
                   (_ptpClock->currentDS.meanPathDelay.seconds * 1000000000LL);
-    
+
     // Drift is not easily accessible from public API, leave as 0 for now
     status.drift = 0.0;
-    
+
     return status;
 }
 

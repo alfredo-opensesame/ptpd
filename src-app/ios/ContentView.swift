@@ -66,8 +66,24 @@ struct ContentView: View {
                     if selectedInterface.isEmpty {
                         selectedInterface = ptpManager.availableInterfaces.first?.name ?? ""
                     }
+                    // Apply launch arguments (-PTPInterface, -PTPMasterIP, -PTPAutoStart).
+                    // This lets ptp-ios-run.sh wire up and start the session without
+                    // any manual UI interaction.
+                    let launch = ptpManager.parseLaunchArgs()
+                    if let iface = launch.interface,
+                       ptpManager.availableInterfaces.contains(where: { $0.name == iface }) {
+                        selectedInterface = iface
+                    }
+                    if let ip = launch.masterIP {
+                        masterIP = ip
+                    }
+                    if launch.autoStart {
+                        ptpManager.start(masterIP: masterIP,
+                                         interface: selectedInterface,
+                                         unicast: unicastMode)
+                    }
                 }
-                
+
                 // Status Display
                 GroupBox(label: Label("PTP Status", systemImage: "clock")) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -78,7 +94,7 @@ struct ContentView: View {
                     }
                     .padding()
                 }
-                
+
                 // Log Display
                 GroupBox(label: HStack {
                     Label("Logs", systemImage: "text.alignleft")
@@ -125,7 +141,7 @@ struct ContentView: View {
                         }
                     }
                 }
-                
+
                 Spacer()
             }
             .padding()
@@ -137,7 +153,7 @@ struct ContentView: View {
 struct StatusRow: View {
     let title: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(title)

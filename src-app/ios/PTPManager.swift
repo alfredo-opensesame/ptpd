@@ -14,10 +14,10 @@ class PTPManager: ObservableObject {
     @Published var delay = "--"
     @Published var drift = "--"
     @Published var logs: [LogEntry] = []
-    
+
     private var ptpThread: Thread?
     private var ptpBridge: PTPBridge?
-    
+
     init() {
         // Set up log callback
         PTPBridge.setLogCallback { [weak self] message, level in
@@ -30,7 +30,7 @@ class PTPManager: ObservableObject {
             }
         }
     }
-    
+
     @Published var availableInterfaces: [(name: String, label: String)] = []
 
     func refreshInterfaces() {
@@ -63,19 +63,19 @@ class PTPManager: ObservableObject {
     private func actuallyStart(masterIP: String, interface iface: String, unicast: Bool) {
         let mode: PTPMode = unicast ? .unicast : .multicast
         ptpBridge = PTPBridge(masterIP: masterIP, interface: iface, mode: mode)
-        
+
         ptpThread = Thread { [weak self] in
             guard let bridge = self?.ptpBridge else { return }
-            
+
             DispatchQueue.main.async {
                 self?.isRunning = true
                 self?.state = "STARTING"
                 self?.logs.append(LogEntry(message: "Starting PTP client...", level: 1))
             }
-            
+
             // Run ptpd (blocking call)
             bridge.run()
-            
+
             DispatchQueue.main.async {
                 self?.isRunning = false
                 self?.state = "STOPPED"
@@ -85,9 +85,9 @@ class PTPManager: ObservableObject {
                 self?.logs.append(LogEntry(message: "PTP client stopped", level: 1))
             }
         }
-        
+
         ptpThread?.start()
-        
+
         // Start status update timer
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self, self.isRunning else {
@@ -97,7 +97,7 @@ class PTPManager: ObservableObject {
             self.updateStatus()
         }
     }
-    
+
     func stop() {
         guard isRunning else { return }
 
@@ -112,10 +112,41 @@ class PTPManager: ObservableObject {
             self?.ptpBridge?.stop()
         }
     }
-    
+
+    // Called from ContentView.onAppear after interfaces are loaded.
+    // Reads launch arguments set by xcrun simctl launch --args:
+    //   -PTPInterface <name>   pre-select interface
+    //   -PTPMasterIP  <ip>     set master IP
+    //   -PTPAutoStart          start immediately
+    //
+    // Returns (interface, masterIP, shouldStart) so the view can update its
+    // @State vars before kicking off the PTP session.
+    func parseLaunchArgs() -> (interface: String?, masterIP: String?, autoStart: Bool) {
+        let args = ProcessInfo.processInfo.arguments
+        var iface: String?     = nil
+        var ip:    String?     = nil
+        var auto:  Bool        = false
+        var i = 1
+        while i < args.count {
+            switch args[i] {
+            case "-PTPInterface":
+                if i + 1 < args.count { iface = args[i + 1]; i += 2 }
+                else { i += 1 }
+            case "-PTPMasterIP":
+                if i + 1 < args.count { ip = args[i + 1]; i += 2 }
+                else { i += 1 }
+            case "-PTPAutoStart":
+                auto = true; i += 1
+            default:
+                i += 1
+            }
+        }
+        return (iface, ip, auto)
+    }
+
     private func updateStatus() {
         guard let bridge = ptpBridge else { return }
-        
+
         let status = bridge.getStatus()
         // Convert C char array to Swift String
         state = String(cString: withUnsafePointer(to: status.state) { $0.withMemoryRebound(to: CChar.self, capacity: 32) { $0 } })

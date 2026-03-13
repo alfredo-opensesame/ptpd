@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.15)
 
 project(ptpd VERSION 2.3.1 LANGUAGES C)
 
+# Consumer mode: when set, imports a pre-built library instead of rebuilding it.
+# Set PTPD_PREBUILT_DIR in a preset's cacheVariables to build only the app or
+# tests without recompiling src/ or libraries/swclock/.
+set(PTPD_PREBUILT_DIR "" CACHE PATH
+    "Path to a pre-built ptpd library build directory. When set, src/ and \
+    libraries/swclock/ are NOT rebuilt; their static libraries are imported.")
+
 # Override PROJECT_VERSION with VERSION_NUMBER from m4/version.m4
 # PACKAGE_VERSION must match VERSION_NUMBER (6.6.6) not project VERSION (2.3.1)
 # This is what autotools uses and what's displayed in --version output
@@ -76,12 +83,20 @@ endif()
 # Sets ENABLE_* options and validates their values
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options.cmake)
 
-# Generate config.h from template (with full platform detection + options)
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in
-    ${PROJECT_BINARY_DIR}/config.h
-    @ONLY
-)
+# Generate config.h — in consumer mode copy from the pre-built dir to guarantee ABI alignment
+if(PTPD_PREBUILT_DIR)
+    configure_file(
+        "${PTPD_PREBUILT_DIR}/config.h"
+        "${PROJECT_BINARY_DIR}/config.h"
+        COPYONLY
+    )
+else()
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in
+        ${PROJECT_BINARY_DIR}/config.h
+        @ONLY
+    )
+endif()
 
 # Set install directories (matching autotools defaults)
 include(GNUInstallDirs)
@@ -113,44 +128,146 @@ configure_file(
     @ONLY
 )
 
-# Add source directory
-add_subdirectory(src)
+# ── Consumer mode or Library mode? ─────────────────────────────────────────────
+if(PTPD_PREBUILT_DIR)
+    # ── Consumer mode: import pre-built artifacts; skip rebuilding src/ and swclock/ ──
+    message(STATUS "Consumer mode: importing pre-built library from ${PTPD_PREBUILT_DIR}")
 
-# SwClock integration option (compile-time backend selection)
-option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend (software clock)" ON)
-if(BUILD_WITH_SWCLOCK)
-    # Add swclock as a subdirectory
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/swclock/CMakeLists.txt")
-        add_subdirectory(libraries/swclock)
-        message(STATUS "SwClock backend: ENABLED (software clock)")
+    # Determine config-specific library sub-paths (Xcode multi-config vs single-config)
+    if(CMAKE_GENERATOR MATCHES "Xcode")
+        string(TOLOWER "${CMAKE_OSX_SYSROOT}" _sysroot_lc)
+        if(_sysroot_lc MATCHES "iphonesimulator")
+            set(_sfx_d "Debug-iphonesimulator")
+            set(_sfx_r "Release-iphonesimulator")
+        elseif(_sysroot_lc MATCHES "iphoneos")
+            set(_sfx_d "Debug-iphoneos")
+            set(_sfx_r "Release-iphoneos")
+        else()
+            set(_sfx_d "Debug")
+            set(_sfx_r "Release")
+        endif()
+        set(_ptpd2_d "${PTPD_PREBUILT_DIR}/src/${_sfx_d}/libptpd2.a")
+        set(_ptpd2_r "${PTPD_PREBUILT_DIR}/src/${_sfx_r}/libptpd2.a")
+        set(_swclk_d "${PTPD_PREBUILT_DIR}/libraries/swclock/${_sfx_d}/libswclock.a")
+        set(_swclk_r "${PTPD_PREBUILT_DIR}/libraries/swclock/${_sfx_r}/libswclock.a")
     else()
-        message(FATAL_ERROR "BUILD_WITH_SWCLOCK is ON but libraries/swclock not found. Please initialize git submodule.")
+        # Single-config (Unix Makefiles)
+        set(_ptpd2_d "${PTPD_PREBUILT_DIR}/src/libptpd2.a")
+        set(_ptpd2_r "${PTPD_PREBUILT_DIR}/src/libptpd2.a")
+        set(_swclk_d "${PTPD_PREBUILT_DIR}/libraries/swclock/libswclock.a")
+        set(_swclk_r "${PTPD_PREBUILT_DIR}/libraries/swclock/libswclock.a")
     endif()
+
+    # Import ptpd2 static library
+    add_library(ptpd2 STATIC IMPORTED GLOBAL)
+    set_target_properties(ptpd2 PROPERTIES
+        IMPORTED_LOCATION           "${_ptpd2_d}"
+        IMPORTED_LOCATION_DEBUG     "${_ptpd2_d}"
+        IMPORTED_LOCATION_RELEASE   "${_ptpd2_r}"
+    )
+    target_include_directories(ptpd2 INTERFACE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${PROJECT_BINARY_DIR}"
+    )
+    # Compatibility aliases expected by src-app and src-gtests
+    add_library(ptpd-static ALIAS ptpd2)
+    add_library(ptpd-shared ALIAS ptpd2)
+
+    # Import swclock static library
+    option(BUILD_WITH_SWCLOCK "Link against pre-built swclock library" ON)
+    if(BUILD_WITH_SWCLOCK)
+        # zlib is a transitive dependency of swclock (used for log compression)
+        find_package(ZLIB REQUIRED)
+        add_library(swclock STATIC IMPORTED GLOBAL)
+        set_target_properties(swclock PROPERTIES
+            IMPORTED_LOCATION           "${_swclk_d}"
+            IMPORTED_LOCATION_DEBUG     "${_swclk_d}"
+            IMPORTED_LOCATION_RELEASE   "${_swclk_r}"
+        )
+        target_include_directories(swclock INTERFACE
+            "${CMAKE_CURRENT_SOURCE_DIR}/libraries/swclock/src/sw_clock"
+        )
+        target_link_libraries(swclock INTERFACE ZLIB::ZLIB ${MATH_LIBRARY})
+    endif()
+
+    # Declare transitive link deps on ptpd2 (pcap, pthread, math)
+    # These were embedded in the library's translation units; consumers must
+    # supply them at their final link.
+    set(_ptpd2_iface_libs "pthread;${MATH_LIBRARY}")
+    if(PCAP_FOUND)
+        list(APPEND _ptpd2_iface_libs "${PCAP_LIBRARIES}")
+    endif()
+    target_link_libraries(ptpd2 INTERFACE ${_ptpd2_iface_libs})
+
+    # macOS ptpd-app (also builds ptpd_app_utils, required by gtest targets)
+    option(BUILD_PTPD_APP  "Build ptpd-app macOS example application" OFF)
+    # iOS PTP Monitor app (Swift + ObjC; requires an iOS preset)
+    option(BUILD_IOS_APP   "Build iOS PTP Monitor application"        OFF)
+    # GTest suite
+    option(BUILD_PTPD_TESTS "Build GoogleTest unit/integration tests" OFF)
+
+    if(BUILD_PTPD_APP OR BUILD_PTPD_TESTS)
+        add_subdirectory(src-app)
+    endif()
+
+    if(BUILD_IOS_APP)
+        enable_language(Swift OBJC)
+        set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
+        set(CMAKE_XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2")
+        add_subdirectory(src-app/ios)
+    endif()
+
+    if(BUILD_PTPD_TESTS)
+        enable_language(CXX)
+        set(CMAKE_CXX_STANDARD 17)
+        set(CMAKE_CXX_STANDARD_REQUIRED ON)
+        include(CTest)
+        enable_testing()
+        add_subdirectory(src-gtests)
+    endif()
+
 else()
-    message(STATUS "SwClock backend: DISABLED (system clock)")
-endif()
+    # ── Library mode (existing) ──────────────────────────────────────────────
+    # Add source directory
+    add_subdirectory(src)
 
-# Add example application if library build is enabled
-option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
-if(BUILD_PTPD_LIBRARY)
-    add_subdirectory(src-app)
-endif()
-
-# GoogleTest unit/integration tests for ptpd-app and swclock integration.
-# Requires BUILD_PTPD_LIBRARY=ON (for ptpd-shared target) and GTest.
-option(BUILD_PTPD_TESTS "Build GoogleTest unit/integration tests" OFF)
-if(BUILD_PTPD_TESTS)
-    if(NOT BUILD_PTPD_LIBRARY)
-        message(FATAL_ERROR
-            "BUILD_PTPD_TESTS=ON requires BUILD_PTPD_LIBRARY=ON")
+    # SwClock integration option (compile-time backend selection)
+    option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend (software clock)" ON)
+    if(BUILD_WITH_SWCLOCK)
+        # Add swclock as a subdirectory
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/swclock/CMakeLists.txt")
+            add_subdirectory(libraries/swclock)
+            message(STATUS "SwClock backend: ENABLED (software clock)")
+        else()
+            message(FATAL_ERROR "BUILD_WITH_SWCLOCK is ON but libraries/swclock not found. Please initialize git submodule.")
+        endif()
+    else()
+        message(STATUS "SwClock backend: DISABLED (system clock)")
     endif()
-    # Test sources are C++ — enable the language now (project() only declared C)
-    enable_language(CXX)
-    set(CMAKE_CXX_STANDARD 17)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    include(CTest)
-    enable_testing()
-    add_subdirectory(src-gtests)
+
+    # Add example application if library build is enabled
+    option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
+    if(BUILD_PTPD_LIBRARY)
+        add_subdirectory(src-app)
+    endif()
+
+    # GoogleTest unit/integration tests for ptpd-app and swclock integration.
+    # Requires BUILD_PTPD_LIBRARY=ON (for ptpd-shared target) and GTest.
+    option(BUILD_PTPD_TESTS "Build GoogleTest unit/integration tests" OFF)
+    if(BUILD_PTPD_TESTS)
+        if(NOT BUILD_PTPD_LIBRARY)
+            message(FATAL_ERROR
+                "BUILD_PTPD_TESTS=ON requires BUILD_PTPD_LIBRARY=ON")
+        endif()
+        # Test sources are C++ — enable the language now (project() only declared C)
+        enable_language(CXX)
+        set(CMAKE_CXX_STANDARD 17)
+        set(CMAKE_CXX_STANDARD_REQUIRED ON)
+        include(CTest)
+        enable_testing()
+        add_subdirectory(src-gtests)
+    endif()
+
 endif()
 
 # Phase 6: Install targets

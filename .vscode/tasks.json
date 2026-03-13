@@ -1,107 +1,343 @@
 {
     "version": "2.0.0",
     "tasks": [
+
+        // ── macOS static library ──────────────────────────────────────────────
         {
-            "label": "Configure Debug",
+            "label": "Configure macOS Debug",
             "type": "shell",
-            "command": "./scripts/build/config-cmake-debug.sh",
-            "args": [],
+            "command": "cmake --preset macos-debug && cp build-cmake/macos-debug/compile_commands.json compile_commands.json",
             "group": "build",
             "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
         },
         {
-            "label": "Configure Release",
+            "label": "Configure macOS Release",
             "type": "shell",
-            "command": "./scripts/build/config-cmake-release.sh",
-            "args": [],
+            "command": "cmake --preset macos-release",
             "group": "build",
             "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
         },
         {
-            "label": "Build Debug",
+            "label": "Build macOS Debug",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "build-cmake/debug",
-                "--",
-                "-j4"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "dependsOn": "Configure Debug",
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "command": "cmake --build --preset macos-debug",
+            "group": { "kind": "build", "isDefault": true },
+            "dependsOn": "Configure macOS Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
         },
         {
-            "label": "Build Release",
+            "label": "Build macOS Release",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "build-cmake/release",
-                "--",
-                "-j4"
-            ],
+            "command": "cmake --build --preset macos-release",
             "group": "build",
-            "dependsOn": "Configure Release",
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "dependsOn": "Configure macOS Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
         },
+
+        // ── iOS Simulator static library ──────────────────────────────────────
+        {
+            "label": "Configure iOS Simulator Debug",
+            "type": "shell",
+            "command": "cmake --preset ios-simulator-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure iOS Simulator Release",
+            "type": "shell",
+            "command": "cmake --preset ios-simulator-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build iOS Simulator Debug",
+            "type": "shell",
+            "command": "cmake --build --preset ios-simulator-debug",
+            "group": "build",
+            "dependsOn": "Configure iOS Simulator Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build iOS Simulator Release",
+            "type": "shell",
+            "command": "cmake --build --preset ios-simulator-release",
+            "group": "build",
+            "dependsOn": "Configure iOS Simulator Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+
+        // ── iOS Device static library ─────────────────────────────────────────
+        {
+            "label": "Configure iOS Debug",
+            "type": "shell",
+            "command": "cmake --preset ios-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure iOS Release",
+            "type": "shell",
+            "command": "cmake --preset ios-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build iOS Debug",
+            "type": "shell",
+            "command": "cmake --build --preset ios-debug",
+            "group": "build",
+            "dependsOn": "Configure iOS Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build iOS Release",
+            "type": "shell",
+            "command": "cmake --build --preset ios-release",
+            "group": "build",
+            "dependsOn": "Configure iOS Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+
+        // ── macOS GTest (consumer — requires macOS library already built) ─────
+        {
+            "label": "Configure macOS GTest Debug",
+            "type": "shell",
+            "command": "cmake --preset macos-gtest-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure macOS GTest Release",
+            "type": "shell",
+            "command": "cmake --preset macos-gtest-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build macOS GTest Debug",
+            "type": "shell",
+            "command": "cmake --build --preset macos-gtest-debug",
+            "group": "build",
+            "dependsOn": "Configure macOS GTest Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build macOS GTest Release",
+            "type": "shell",
+            "command": "cmake --build --preset macos-gtest-release",
+            "group": "build",
+            "dependsOn": "Configure macOS GTest Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+
+        // ── macOS ptpd-app (consumer — requires macOS library already built) ──
+        {
+            "label": "Configure macOS ptpd-app Debug",
+            "type": "shell",
+            "command": "cmake --preset macos-ptpd-app-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure macOS ptpd-app Release",
+            "type": "shell",
+            "command": "cmake --preset macos-ptpd-app-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build macOS ptpd-app Debug",
+            "type": "shell",
+            "command": "cmake --build --preset macos-ptpd-app-debug",
+            "group": "build",
+            "dependsOn": "Configure macOS ptpd-app Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build macOS ptpd-app Release",
+            "type": "shell",
+            "command": "cmake --build --preset macos-ptpd-app-release",
+            "group": "build",
+            "dependsOn": "Configure macOS ptpd-app Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+
+        // ── iOS Sim ptpd-app (consumer — requires iOS Sim library already built)
+        {
+            "label": "Configure iOS Sim ptpd-app Debug",
+            "type": "shell",
+            "command": "cmake --preset iossim-ptpd-app-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure iOS Sim ptpd-app Release",
+            "type": "shell",
+            "command": "cmake --preset iossim-ptpd-app-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build iOS Sim ptpd-app Debug",
+            "type": "shell",
+            "command": "cmake --build --preset iossim-ptpd-app-debug",
+            "group": "build",
+            "dependsOn": "Configure iOS Sim ptpd-app Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build iOS Sim ptpd-app Release",
+            "type": "shell",
+            "command": "cmake --build --preset iossim-ptpd-app-release",
+            "group": "build",
+            "dependsOn": "Configure iOS Sim ptpd-app Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+
+        // ── Misc ──────────────────────────────────────────────────────────────
         {
             "label": "Clean",
             "type": "shell",
-            "command": "sh",
-            "args": [
-                "-c",
-                "rm -rf build-cmake/debug build-cmake/release compile_commands.json"
-            ],
+            "command": "rm -rf build-cmake/macos-debug build-cmake/macos-release build-cmake/ios-simulator-debug build-cmake/ios-simulator-release build-cmake/ios-debug build-cmake/ios-release build-cmake/macos-gtest-debug build-cmake/macos-gtest-release build-cmake/macos-ptpd-app-debug build-cmake/macos-ptpd-app-release build-cmake/iossim-ptpd-app-debug build-cmake/iossim-ptpd-app-release compile_commands.json",
             "group": "build",
             "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        }
+    ]
+}
+
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure macOS Release",
+            "type": "shell",
+            "command": "cmake --preset macos-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build macOS Debug",
+            "type": "shell",
+            "command": "cmake --build --preset macos-debug",
+            "group": { "kind": "build", "isDefault": true },
+            "dependsOn": "Configure macOS Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build macOS Release",
+            "type": "shell",
+            "command": "cmake --build --preset macos-release",
+            "group": "build",
+            "dependsOn": "Configure macOS Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        // ── iOS Simulator ────────────────────────────────────────────────────
+        {
+            "label": "Configure iOS Simulator Debug",
+            "type": "shell",
+            "command": "cmake --preset ios-simulator-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure iOS Simulator Release",
+            "type": "shell",
+            "command": "cmake --preset ios-simulator-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build iOS Simulator Debug",
+            "type": "shell",
+            "command": "cmake --build --preset ios-simulator-debug",
+            "group": "build",
+            "dependsOn": "Configure iOS Simulator Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build iOS Simulator Release",
+            "type": "shell",
+            "command": "cmake --build --preset ios-simulator-release",
+            "group": "build",
+            "dependsOn": "Configure iOS Simulator Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        // ── iOS Device ───────────────────────────────────────────────────────
+        {
+            "label": "Configure iOS Debug",
+            "type": "shell",
+            "command": "cmake --preset ios-debug",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Configure iOS Release",
+            "type": "shell",
+            "command": "cmake --preset ios-release",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "Build iOS Debug",
+            "type": "shell",
+            "command": "cmake --build --preset ios-debug",
+            "group": "build",
+            "dependsOn": "Configure iOS Debug",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "Build iOS Release",
+            "type": "shell",
+            "command": "cmake --build --preset ios-release",
+            "group": "build",
+            "dependsOn": "Configure iOS Release",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        // ── Misc ─────────────────────────────────────────────────────────────
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "rm -rf build-cmake/debug build-cmake/release build-cmake/ios-simulator build-cmake/ios-simulator-release build-cmake/ios-debug build-cmake/ios-release compile_commands.json",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
         }
     ]
 }
