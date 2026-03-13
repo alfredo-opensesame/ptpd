@@ -1519,102 +1519,118 @@ void getTime(TimeInternal *time) {
   return;
 #else
 
-#if defined(POSIX_TIMERS_SUPPORTED)
-
-  struct timespec tp;
-
+/* swclock path is hoisted outside POSIX_TIMERS_SUPPORTED because macOS does
+ * not define that symbol, which would otherwise cause gettimeofday() to be
+ * used instead of the software clock. */
 #ifdef PTPD_USE_SWCLOCK
-  if (G_ptpClock && G_ptpClock->swclock) {
-    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
-      PERROR("swclock_gettime() failed, exiting.");
+  {
+    struct timespec tp;
+    if (G_ptpClock && G_ptpClock->swclock) {
+      /* Normal path: swclock is ready. */
+      if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
+        PERROR("swclock_gettime() failed, exiting.");
+        exit(0);
+      }
+      time->seconds = tp.tv_sec;
+      time->nanoseconds = tp.tv_nsec;
+    } else if (G_ptpClock) {
+      /* G_ptpClock is set but swclock is NULL — genuine programming error. */
+      DBG("getTime: swclock expected but not initialized, exiting.\n");
+      exit(1);
+    } else {
+      /* G_ptpClock not yet allocated (early startup / config validation).
+       * Fall back to the system clock so startup paths work correctly. */
+      struct timeval tv;
+      gettimeofday(&tv, 0);
+      time->seconds = tv.tv_sec;
+      time->nanoseconds = tv.tv_usec * 1000;
+    }
+  }
+#elif defined(POSIX_TIMERS_SUPPORTED)
+  {
+    struct timespec tp;
+    if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
+      PERROR("clock_gettime() failed, exiting.");
       exit(0);
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;
-  } else {
-    DBG("getTime: swclock expected but not initialized, exiting.\n");
-    exit(1);
   }
 #else
-  if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
-    PERROR("clock_gettime() failed, exiting.");
-    exit(0);
+  {
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    time->seconds = tv.tv_sec;
+    time->nanoseconds = tv.tv_usec * 1000;
   }
-  time->seconds = tp.tv_sec;
-  time->nanoseconds = tp.tv_nsec;
-#endif
-
-#else
-
-  struct timeval tv;
-  gettimeofday(&tv, 0);
-  time->seconds = tv.tv_sec;
-  time->nanoseconds = tv.tv_usec * 1000;
-
-#endif /* _POSIX_TIMERS */
+#endif /* PTPD_USE_SWCLOCK */
 #endif /* __QNXNTO__ */
 }
 
 /*TODO: THIS NEEDS REVIEW */
 void getTimeMonotonic(TimeInternal *time) {
-#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
-
-  struct timespec tp;
-
 #ifdef PTPD_USE_SWCLOCK
-  if (G_ptpClock && G_ptpClock->swclock) {
-    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) < 0) {
-      PERROR("swclock_gettime(MONOTONIC) failed, exiting.");
+  /* Hoisted outside _POSIX_TIMERS guard — macOS has _POSIX_TIMERS == -1. */
+  {
+    struct timespec tp;
+    if (G_ptpClock && G_ptpClock->swclock) {
+      /* Normal path: swclock is ready. */
+      if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) < 0) {
+        PERROR("swclock_gettime(MONOTONIC) failed, exiting.");
+        exit(0);
+      }
+      time->seconds = tp.tv_sec;
+      time->nanoseconds = tp.tv_nsec;
+    } else if (G_ptpClock) {
+      /* G_ptpClock is set but swclock is NULL — genuine programming error. */
+      DBG("getTimeMonotonic: swclock expected but not initialized, exiting.\n");
+      exit(1);
+    } else {
+      /* G_ptpClock not yet allocated (early startup / config validation).
+       * Fall back to a system clock read. */
+      struct timeval tv;
+      gettimeofday(&tv, 0);
+      time->seconds = tv.tv_sec;
+      time->nanoseconds = tv.tv_usec * 1000;
+    }
+  }
+#elif defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
+  {
+    struct timespec tp;
+#ifndef CLOCK_MONOTONIC
+    if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
+#else
+    if (clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
+#endif /* CLOCK_MONOTONIC */
+      PERROR("clock_gettime() failed, exiting.");
       exit(0);
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;
-  } else {
-    DBG("getTimeMonotonic: swclock expected but not initialized, exiting.\n");
-    exit(1);
   }
 #else
-#ifndef CLOCK_MONOTONIC
-  if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
-#else
-  if (clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
-#endif /* CLOCK_MONOTONIC */
-    PERROR("clock_gettime() failed, exiting.");
-    exit(0);
+  {
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    time->seconds = tv.tv_sec;
+    time->nanoseconds = tv.tv_usec * 1000;
   }
-  time->seconds = tp.tv_sec;
-  time->nanoseconds = tp.tv_nsec;
-#endif
-#else
-
-  struct timeval tv;
-  gettimeofday(&tv, 0);
-  time->seconds = tv.tv_sec;
-  time->nanoseconds = tv.tv_usec * 1000;
-
-#endif /* _POSIX_TIMERS */
+#endif /* PTPD_USE_SWCLOCK */
 }
 
 /*TODO: THIS NEEDS REVIEW */
 void setTime(TimeInternal *time) {
 
-#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
-
+  /* Always need a timespec for swclock; timeval for the fallback path. */
   struct timespec tp;
-  tp.tv_sec = time->seconds;
+  tp.tv_sec  = time->seconds;
   tp.tv_nsec = time->nanoseconds;
 
-#else
-
-  struct timeval tv;
-  tv.tv_sec = time->seconds;
-  tv.tv_usec = time->nanoseconds / 1000;
-
-#endif /* _POSIX_TIMERS */
-
-#if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
-
 #ifdef PTPD_USE_SWCLOCK
+  /* swclock path: used on all platforms when the software clock is built in.
+   * Must be checked BEFORE any _POSIX_TIMERS / settimeofday branching because
+   * macOS defines _POSIX_TIMERS as -1 (unsupported), which would otherwise
+   * bypass this block and call settimeofday() directly on the system clock. */
   if (G_ptpClock && G_ptpClock->swclock) {
     if (swclock_settime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
       PERROR("Could not set swclock time");
@@ -1624,18 +1640,19 @@ void setTime(TimeInternal *time) {
     DBG("setTime: swclock expected but not initialized, ignoring step.\n");
     return;
   }
-#else
+#elif defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
   if (clock_settime(CLOCK_REALTIME, &tp) < 0) {
     PERROR("Could not set system time");
     return;
   }
-#endif
-
 #else
-
-  settimeofday(&tv, 0);
-
-#endif /* _POSIX_TIMERS */
+  {
+    struct timeval tv;
+    tv.tv_sec  = time->seconds;
+    tv.tv_usec = time->nanoseconds / 1000;
+    settimeofday(&tv, 0);
+  }
+#endif
 
   struct timespec tmpTs = {time->seconds, 0};
 
@@ -1643,6 +1660,45 @@ void setTime(TimeInternal *time) {
   strftime(timeStr, MAXTIMESTR, "%x %X", localtime(&tmpTs.tv_sec));
   WARNING("Stepped the system clock to: %s.%d\n", timeStr, time->nanoseconds);
 }
+
+#ifdef PTPD_USE_SWCLOCK
+/*
+ * Convert a kernel CLOCK_REALTIME timestamp (e.g. from SO_TIMESTAMP) to the
+ * swclock domain.  After swclock_settime() the swclock diverges from the
+ * kernel's CLOCK_REALTIME.  Packet receive timestamps (T2) are stamped by the
+ * kernel and must be shifted into the swclock domain before offset computation
+ * so that T2 and T1 (from the master) are in the same reference frame.
+ *
+ * The correction is:  T2_sw = T2_kernel + (swclock_now - kernel_now)
+ */
+void swclockFromKernelTime(TimeInternal *time) {
+  if (!G_ptpClock || !G_ptpClock->swclock) return;
+
+  struct timespec sw_now;
+  struct timeval  ker_tv;
+
+  /* Use gettimeofday() for kernel wall time — works on macOS and Linux. */
+  if (gettimeofday(&ker_tv, 0) < 0) return;
+  if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &sw_now) < 0) return;
+
+  int64_t sw_ns  = (int64_t)sw_now.tv_sec  * 1000000000LL + sw_now.tv_nsec;
+  int64_t ker_ns = (int64_t)ker_tv.tv_sec  * 1000000000LL + (int64_t)ker_tv.tv_usec * 1000LL;
+  int64_t delta_ns = sw_ns - ker_ns;
+
+  if (delta_ns == 0) return;
+
+  int64_t t2_ns = (int64_t)time->seconds * 1000000000LL + time->nanoseconds + delta_ns;
+  /* Normalise so that nanoseconds is in [0, 999999999]. */
+  time->seconds     = (Integer32)(t2_ns / 1000000000LL);
+  time->nanoseconds = (Integer32)(t2_ns % 1000000000LL);
+  if (time->nanoseconds < 0) {
+    time->seconds     -= 1;
+    time->nanoseconds += 1000000000;
+  }
+  DBGV("swclockFromKernelTime: delta=%lldns, T2 adjusted to %ds %dns\n",
+       (long long)delta_ns, time->seconds, time->nanoseconds);
+}
+#endif /* PTPD_USE_SWCLOCK */
 
 #ifdef HAVE_LINUX_RTC_H
 

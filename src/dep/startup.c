@@ -674,6 +674,46 @@ void ptpdShutdown(PtpClock *ptpClock) {
 }
 
 /**
+ * Dump the resolved runtime options after config parsing.
+ * Called after parseConfig() succeeds so all fields reflect the final values.
+ */
+static void dump_startup_opts(const RunTimeOpts *rtOpts) {
+  NOTIFY("--- ptpdStartup resolved options ---\n");
+  NOTIFY("  Interface      : %s\n",
+         (rtOpts->ifaceName && rtOpts->ifaceName[0]) ? rtOpts->ifaceName
+                                                      : rtOpts->primaryIfaceName);
+  if (rtOpts->backupIfaceEnabled)
+    NOTIFY("  Backup iface   : %s\n", rtOpts->backupIfaceName);
+  NOTIFY("  Config file    : %s\n",
+         rtOpts->configFile[0] ? rtOpts->configFile : "(none)");
+  NOTIFY("  Preset         : %s\n",
+         getPtpPreset(rtOpts->selectedPreset, rtOpts).presetName);
+  NOTIFY("  Transport      : %d  IP mode: %d\n",
+         (int)rtOpts->transport, (int)rtOpts->ipMode);
+  NOTIFY("  Slave-only     : %s\n", rtOpts->slaveOnly    ? "yes" : "no");
+  NOTIFY("  No-adjust      : %s\n", rtOpts->noAdjust     ? "yes" : "no");
+  NOTIFY("  Step-once      : %s  Step-force: %s  No-reset: %s\n",
+         rtOpts->stepOnce  ? "yes" : "no",
+         rtOpts->stepForce ? "yes" : "no",
+         rtOpts->noResetClock ? "yes" : "no");
+  NOTIFY("  Always-respect-UTC : %s\n",
+         rtOpts->alwaysRespectUtcOffset ? "yes" : "no");
+  NOTIFY("  Unicast negotiation: %s  Accept-any: %s\n",
+         rtOpts->unicastNegotiation ? "yes" : "no",
+         rtOpts->unicastAcceptAny   ? "yes" : "no");
+  if (rtOpts->unicastDestinations[0])
+    NOTIFY("  Unicast dests  : %s\n", rtOpts->unicastDestinations);
+  NOTIFY("  Initial delay-req  : %d\n", rtOpts->initial_delayreq);
+  NOTIFY("  Non-daemon     : %s  Ignore-lock: %s\n",
+         rtOpts->nonDaemon        ? "yes" : "no",
+         rtOpts->ignore_daemon_lock ? "yes" : "no");
+#ifdef RUNTIME_DEBUG
+  NOTIFY("  Debug level    : %d\n", rtOpts->debug_level);
+#endif
+  NOTIFY("------------------------------------\n");
+}
+
+/**
  * Dump the command line parameters to the log
  */
 void dump_command_line_parameters(int argc, char **argv) {
@@ -811,6 +851,9 @@ PtpClock *ptpdStartup(int argc, char **argv, Integer16 *ret,
 
   /* we don't need the candidate config any more */
   dictionary_del(&rtOpts->candidateConfig);
+
+  /* Dump all resolved options now that config is fully parsed */
+  dump_startup_opts(rtOpts);
 
   /* Check network before going into background */
   if (!testInterface(rtOpts->primaryIfaceName, rtOpts)) {

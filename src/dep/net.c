@@ -1775,6 +1775,13 @@ ssize_t netRecvEvent(Octet *buf, TimeInternal *time, NetPath *netPath,
   *time = tmpTime;
 #endif
 
+#ifdef PTPD_USE_SWCLOCK
+  /* Kernel SO_TIMESTAMP / PCAP timestamps are in CLOCK_REALTIME domain.
+   * After swclock_settime() the swclock diverges from the kernel clock.
+   * Shift T2 into swclock domain so the PTP offset computation is correct. */
+  swclockFromKernelTime(time);
+#endif
+
   return ret;
 }
 

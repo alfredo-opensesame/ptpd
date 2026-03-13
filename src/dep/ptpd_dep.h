@@ -488,6 +488,9 @@ Boolean nanoSleep(TimeInternal *);
 void getTime(TimeInternal *);
 void getTimeMonotonic(TimeInternal *);
 void setTime(TimeInternal *);
+#ifdef PTPD_USE_SWCLOCK
+void swclockFromKernelTime(TimeInternal *time);
+#endif
 #if defined(linux) || defined(__linux__)
 void setRtc(TimeInternal *);
 #endif /* linux */
