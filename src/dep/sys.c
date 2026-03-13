@@ -1460,6 +1460,7 @@ static const struct sigevent *timerIntHandler(void *data, int id) {
 }
 #endif
 
+/*TODO: THIS NEEDS REVIEW */
 void getTime(TimeInternal *time) {
 #ifdef __QNXNTO__
   static TimerIntData tmpData;
@@ -1523,25 +1524,25 @@ void getTime(TimeInternal *time) {
   struct timespec tp;
 
 #ifdef PTPD_USE_SWCLOCK
-  /* Use swclock if available and initialized */
   if (G_ptpClock && G_ptpClock->swclock) {
-    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) <
-        0) {
+    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
       PERROR("swclock_gettime() failed, exiting.");
       exit(0);
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;
-    return;
+  } else {
+    DBG("getTime: swclock expected but not initialized, exiting.\n");
+    exit(1);
   }
-#endif
-
+#else
   if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
     PERROR("clock_gettime() failed, exiting.");
     exit(0);
   }
   time->seconds = tp.tv_sec;
   time->nanoseconds = tp.tv_nsec;
+#endif
 
 #else
 
@@ -1554,25 +1555,25 @@ void getTime(TimeInternal *time) {
 #endif /* __QNXNTO__ */
 }
 
+/*TODO: THIS NEEDS REVIEW */
 void getTimeMonotonic(TimeInternal *time) {
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
 
   struct timespec tp;
 
 #ifdef PTPD_USE_SWCLOCK
-  /* Use swclock MONOTONIC if available */
   if (G_ptpClock && G_ptpClock->swclock) {
-    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) <
-        0) {
+    if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) < 0) {
       PERROR("swclock_gettime(MONOTONIC) failed, exiting.");
       exit(0);
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;
-    return;
+  } else {
+    DBG("getTimeMonotonic: swclock expected but not initialized, exiting.\n");
+    exit(1);
   }
-#endif
-
+#else
 #ifndef CLOCK_MONOTONIC
   if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
 #else
@@ -1583,6 +1584,7 @@ void getTimeMonotonic(TimeInternal *time) {
   }
   time->seconds = tp.tv_sec;
   time->nanoseconds = tp.tv_nsec;
+#endif
 #else
 
   struct timeval tv;
@@ -1593,6 +1595,7 @@ void getTimeMonotonic(TimeInternal *time) {
 #endif /* _POSIX_TIMERS */
 }
 
+/*TODO: THIS NEEDS REVIEW */
 void setTime(TimeInternal *time) {
 
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
@@ -1612,19 +1615,21 @@ void setTime(TimeInternal *time) {
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
 
 #ifdef PTPD_USE_SWCLOCK
-  /* Use swclock settime if available */
   if (G_ptpClock && G_ptpClock->swclock) {
-    if (swclock_settime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) <
-        0) {
+    if (swclock_settime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
       PERROR("Could not set swclock time");
       return;
     }
-  } else
-#endif
-      if (clock_settime(CLOCK_REALTIME, &tp) < 0) {
+  } else {
+    DBG("setTime: swclock expected but not initialized, ignoring step.\n");
+    return;
+  }
+#else
+  if (clock_settime(CLOCK_REALTIME, &tp) < 0) {
     PERROR("Could not set system time");
     return;
   }
+#endif
 
 #else
 

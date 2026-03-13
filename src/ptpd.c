@@ -281,14 +281,14 @@ int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp) {
   }
 
 #ifdef PTPD_USE_SWCLOCK
-  /* Get time from swclock if available */
   if (ptpClock->swclock) {
     return swclock_gettime((SwClock *)ptpClock->swclock, clk_id, tp);
   }
-#endif
-
-  /* Fall back to system clock */
+  DBG("ptpd_gettime: swclock expected but not initialized\n");
+  return -1; /* swclock expected but not initialized */
+#else
   return clock_gettime(clk_id, tp);
+#endif
 }
 
 #endif /* PTPD_LIBRARY_MODE */

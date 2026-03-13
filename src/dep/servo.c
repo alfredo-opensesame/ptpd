@@ -781,7 +781,6 @@ void adjFreq_wrapper(const RunTimeOpts *rtOpts, PtpClock *ptpClock,
   }
 
 #ifdef PTPD_USE_SWCLOCK
-  /* Use swclock backend when enabled */
   if (ptpClock->swclock) {
     struct timex tx;
     memset(&tx, 0, sizeof(tx));
@@ -800,9 +799,10 @@ void adjFreq_wrapper(const RunTimeOpts *rtOpts, PtpClock *ptpClock,
     }
     DBG2("     adjFreq_swclock: freq=%.09f ppb, offset=%ld ns\n",
          adj / DBG_UNIT, (long)tx.offset);
-    return;
+  } else {
+    DBG("adjFreq_wrapper: swclock expected but not initialized, skipping adjustment.\n");
   }
-#endif
+#else
 
   /*
    * adjFreq simulation for QNX: correct clock by x ns per tick over clock
@@ -810,7 +810,7 @@ void adjFreq_wrapper(const RunTimeOpts *rtOpts, PtpClock *ptpClock,
    * intervals are regular.
    */
 
-#ifdef __QNXNTO__
+#ifdef __QNXNTO__ /* only reached when PTPD_USE_SWCLOCK is not defined */
 
   struct _clockadjust clockadj;
   struct _clockperiod period;
@@ -838,7 +838,7 @@ void adjFreq_wrapper(const RunTimeOpts *rtOpts, PtpClock *ptpClock,
   DBG2("     adjFreq2: call adjfreq to %.09f us \n", adj / DBG_UNIT);
   adjFreq(adj);
 /* otherwise use adjtime */
-#else
+#else /* !__QNXNTO__ && !HAVE_SYS_TIMEX_H */
   struct timeval tv;
 
   CLAMP(adj, ptpClock->servo.maxOutput);
@@ -850,6 +850,7 @@ void adjFreq_wrapper(const RunTimeOpts *rtOpts, PtpClock *ptpClock,
   }
   adjtime(&tv, NULL);
 #endif
+#endif /* PTPD_USE_SWCLOCK */
 }
 
 /* check if it's OK to update the clock, deal with panic mode, call for clock
