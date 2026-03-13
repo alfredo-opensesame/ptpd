@@ -12,7 +12,7 @@
 #   interface    Host network interface the master is reachable on (e.g. en5)
 #
 # Options:
-#   -m / --master-ip IP    PTP grandmaster IP address (required)
+#   -m / --master-ip IP    PTP grandmaster IP (default: read from resources/ptpd-daemon.conf)
 #   -u / --udid   UDID     Simulator device UDID
 #                          (default: C3F3DBCE-2497-4117-94C7-5A2BCB89F1A9)
 #   -d / --duration N      Run duration in seconds (default: 60)
@@ -70,7 +70,7 @@ Parameters:
   interface    Host network interface to capture on (e.g. en5)
 
 Options:
-  -m / --master-ip IP  PTP grandmaster IP address (required)
+  -m / --master-ip IP  PTP grandmaster IP (default: read from resources/ptpd-daemon.conf)
   -u / --udid   UDID   Simulator device UDID
                        (default: $DEFAULT_UDID)
   -d / --duration N    Run duration in seconds (default: 60)
@@ -123,8 +123,16 @@ parse_arguments() {
     fi
 
     if [ -z "$MASTER_IP" ]; then
-        print_error "master IP is required (-m / --master-ip)"
-        show_usage; exit 1
+        local default_conf="$PROJECT_DIR/resources/ptpd-daemon.conf"
+        if [ -f "$default_conf" ]; then
+            MASTER_IP=$(grep -E '^[[:space:]]*ptpengine:unicast_destinations[[:space:]]*=' "$default_conf" \
+                | head -1 | sed 's/.*=[[:space:]]*//' | cut -d',' -f1 | tr -d '[:space:]')
+        fi
+        if [ -z "$MASTER_IP" ]; then
+            print_error "master IP is required (-m / --master-ip) and could not be read from resources/ptpd-daemon.conf"
+            show_usage; exit 1
+        fi
+        print_status "Master IP read from resources/ptpd-daemon.conf: $MASTER_IP"
     fi
 }
 
