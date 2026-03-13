@@ -102,40 +102,49 @@ static void ios_log_handler(const char *message, int level) {
     // Convert interface to C string
     const char *ifaceCStr = [_interface UTF8String];
 
-    // Build command line arguments for ptpd.
-    // Multicast: no -u/-g flags — ptpd joins 224.0.1.129 and discovers the master.
-    // Unicast:   -u <masterIP> + -g (unicast negotiation) — slave sends
-    //            REQUEST_UNICAST_TRANSMISSION signaling to master:general-port,
-    //            master grants Announce/Sync/Delay_Resp, then exchange begins.
+    // Locate the bundled config file — same conf used by the macOS daemon.
+    // It carries clock:step_startup, clock:step_startup_force, drift_handling,
+    // slaveonly preset, and all other tuned settings.
+    NSString *confNS = [[NSBundle mainBundle] pathForResource:@"ptpd-daemon" ofType:@"conf"];
+    if (!confNS) {
+        NSLog(@"PTPBridge: FATAL — ptpd-daemon.conf not found in app bundle");
+        if (logCallback) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                logCallback(@"ERROR: ptpd-daemon.conf not found in app bundle", 0);
+            });
+        }
+        return;
+    }
+    const char *confPath = [confNS UTF8String];
+    NSLog(@"PTPBridge: Using config file: %@", confNS);
+
+    // Build command line arguments — identical invocation to macOS:
+    //   ptpd -C -c <conf> -i <iface> -D -D -D
+    // The config file handles preset=slaveonly, step_startup, drift_handling, etc.
+    // -i overrides ptpengine:interface from conf.
+    // -u overrides ptpengine:unicast_destinations from conf (unicast mode only).
+    // Identical invocation to macOS: ptpd -C -c <conf> -i <iface> -D -D -D
+    // global:ignore_lock=y is set in the conf (sandbox can't write /var/run).
+    // unicast_negotiation and unicast_destinations are set in the conf.
     const char *argv_multicast[] = {
         "ptpd",
-        "-C",           // global:foreground=Y (don't daemonize)
-        "-V",           // verbose logging
-        "-L",           // ignore lock file
-        "-s",           // ptpengine:preset=slaveonly
-        "-n",           // clock:no_adjust — don't step/adj the system clock
-                        // (simulator sandbox blocks clock_settime, causing a
-                        //  SLAVE→FAULTY loop when the first large offset fires)
-        "-i", ifaceCStr,
+        "-C",            // global:foreground=Y
+        "-c", confPath,  // full daemon config
+        "-i", ifaceCStr, // override interface
+        "-D", "-D", "-D",
         NULL
     };
-    int argc_multicast = 8;
+    int argc_multicast = 9;
 
     const char *argv_unicast[] = {
         "ptpd",
-        "-C",           // global:foreground=Y (don't daemonize)
-        "-V",           // verbose logging
-        "-L",           // ignore lock file
-        "-s",           // ptpengine:preset=slaveonly
-        "-n",           // clock:no_adjust — don't step/adj the system clock
-                        // (simulator sandbox blocks clock_settime, causing a
-                        //  SLAVE→FAULTY loop when the first large offset fires)
+        "-C",
+        "-c", confPath,
         "-i", ifaceCStr,
-        "-g",           // ptpengine:unicast_negotiation=y
-        "-u", masterIPCStr, // ptpengine:unicast_destinations=<IP>
+        "-D", "-D", "-D",
         NULL
     };
-    int argc_unicast = 11;
+    int argc_unicast = 9;
 
     const char **argv = (_mode == PTPModeUnicast) ? argv_unicast  : argv_multicast;
     int          argc = (_mode == PTPModeUnicast) ? argc_unicast  : argc_multicast;

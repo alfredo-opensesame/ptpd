@@ -342,12 +342,24 @@ parse_arguments() {
         exit 1
     fi
 
+    # Build if binary is missing
+    if [ ! -x "$BINARY" ]; then
+        if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
+            print_status "Binary not found, building macos-debug library and macos-ptpd-app-debug..."
+            (cd "$PROJECT_DIR" && cmake --preset macos-debug && cmake --build --preset macos-debug) || {
+                print_error "Library build failed"
+                exit 1
+            }
+            (cd "$PROJECT_DIR" && cmake --preset macos-ptpd-app-debug && cmake --build --preset macos-ptpd-app-debug) || {
+                print_error "App build failed"
+                exit 1
+            }
+        fi
+    fi
+
     # Verify binary exists
     if [ ! -x "$BINARY" ]; then
-        print_error "Binary not found or not executable: $BINARY"
-        if [[ "$BINARY_NAME" == "ptpd-app" ]]; then
-            print_error "Make sure you built with: cmake --preset macos-ptpd-app-debug"
-        fi
+        print_error "Binary not found or not executable after build: $BINARY"
         exit 1
     fi
 

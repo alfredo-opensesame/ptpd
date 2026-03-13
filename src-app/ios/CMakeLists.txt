@@ -54,6 +54,12 @@ set_target_properties(swclock_ios PROPERTIES
     IMPORTED_LOCATION_RELEASE   "${PTPD_PREBUILT_DIR}/libraries/swclock/${_sfx_r}/libswclock.a"
 )
 
+# Bundle the daemon config file so NSBundle can locate it at runtime
+set(PTPD_DAEMON_CONF "${CMAKE_CURRENT_SOURCE_DIR}/../../resources/ptpd-daemon.conf")
+set_source_files_properties(${PTPD_DAEMON_CONF} PROPERTIES
+    MACOSX_PACKAGE_LOCATION Resources
+)
+
 # iOS App Bundle
 add_executable(PTPMonitor MACOSX_BUNDLE
     PTPMonitorApp.swift
@@ -61,6 +67,7 @@ add_executable(PTPMonitor MACOSX_BUNDLE
     PTPManager.swift
     PTPBridge.m
     PTPBridge.h
+    ${PTPD_DAEMON_CONF}
 )
 
 target_include_directories(PTPMonitor PRIVATE

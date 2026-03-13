@@ -33,6 +33,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUNDLE_ID="com.example.ptpmonitor"
 APP_PATH="$PROJECT_DIR/build-cmake/iossim-ptpd-app-debug/src-app/ios/Debug-iphonesimulator/PTPMonitor.app"
 XCODE_PROJECT="$PROJECT_DIR/build-cmake/iossim-ptpd-app-debug/ptpd.xcodeproj"
+LIBRARY_XCODE_PROJECT="$PROJECT_DIR/build-cmake/ios-simulator-debug/ptpd.xcodeproj"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEFAULT_UDID="C3F3DBCE-2497-4117-94C7-5A2BCB89F1A9"
@@ -123,10 +124,22 @@ parse_arguments() {
 
 # ─────────────────────────────────────────────────────────────────────────────
 setup_output() {
-    local ts
+    local ts logs_dir real_user
     ts=$(date +%Y%m%d_%H%M%S)
-    OUTPUT_DIR="$SCRIPT_DIR/../ptpd_logs/ios_${ts}"
+    logs_dir="$SCRIPT_DIR/../ptpd_logs"
+    real_user="${SUDO_USER:-$USER}"
+
+    # Ensure ptpd_logs dir exists and is owned by the invoking user so that
+    # sudo-created directories inside it remain accessible afterwards.
+    mkdir -p "$logs_dir"
+    if [ "$(stat -f '%Su' "$logs_dir")" != "$real_user" ]; then
+        print_status "Fixing ownership of $(realpath "$logs_dir") → $real_user"
+        chown "$real_user" "$logs_dir"
+    fi
+
+    OUTPUT_DIR="$logs_dir/ios_${ts}"
     mkdir -p "$OUTPUT_DIR"
+    chown "$real_user" "$OUTPUT_DIR"
     LOG_FILE="$OUTPUT_DIR/ptpmonitor_${INTERFACE}.log"
     PCAP_FILE="$OUTPUT_DIR/ptp_${INTERFACE}.pcap"
     CSV_FILE="$OUTPUT_DIR/ptpmonitor_${INTERFACE}.csv"
@@ -137,43 +150,36 @@ setup_output() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Return the current state of $UDID using plain-text simctl output (awk).
+# This avoids the python3 JSON path which can silently return "" under sudo
+# or when python3 is not on PATH.
+_simctl_state() {
+    xcrun simctl list devices 2>/dev/null \
+        | grep "$UDID" \
+        | awk -F'[()]' '{print $4}'
+}
+
 ensure_simulator_booted() {
     local state
-    state=$(xcrun simctl list devices -j 2>/dev/null \
-        | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for rt in d.get('devices',{}).values():
-    for dev in rt:
-        if dev.get('udid')=='$UDID':
-            print(dev.get('state',''))
-            sys.exit(0)
-" 2>/dev/null || echo "")
+    state=$(_simctl_state)
 
     if [ "$state" = "Booted" ]; then
         print_success "Simulator $UDID already booted"
+        open -a Simulator 2>/dev/null || true
+        sleep 2
         return
     fi
-    print_status "Booting simulator $UDID ..."
+    print_status "Booting simulator $UDID (current state: ${state:-unknown}) ..."
     xcrun simctl boot "$UDID" 2>/dev/null || true
-    # Wait up to 120 s for Booted state
+    # Wait up to 60 s for Booted state
     local n=0
-    while [ $n -lt 120 ]; do
-        state=$(xcrun simctl list devices -j 2>/dev/null \
-            | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for rt in d.get('devices',{}).values():
-    for dev in rt:
-        if dev.get('udid')=='$UDID':
-            print(dev.get('state',''))
-            sys.exit(0)
-" 2>/dev/null || echo "")
+    while [ $n -lt 60 ]; do
+        state=$(_simctl_state)
         [ "$state" = "Booted" ] && break
         sleep 1; n=$((n+1))
     done
     if [ "$state" != "Booted" ]; then
-        print_error "Simulator did not boot within 120 s (state: $state)"
+        print_error "Simulator did not boot within 60 s (state: ${state:-unknown})"
         exit 1
     fi
     print_success "Simulator booted"
@@ -183,28 +189,69 @@ for rt in d.get('devices',{}).values():
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+build_library() {
+    print_header "🔨 Building ptpd library (ios-simulator-debug)..."
+    # Ensure build-cmake parent dir is user-writable
+    local build_root="$PROJECT_DIR/build-cmake"
+    if [ -d "$build_root" ] && [ ! -w "$build_root" ]; then
+        sudo chown -R "$(id -un)" "$build_root"
+    fi
+    # Configure if the xcodeproj doesn't exist yet
+    if [ ! -d "$LIBRARY_XCODE_PROJECT" ]; then
+        print_status "Configuring ios-simulator-debug..."
+        local lib_build_dir="$PROJECT_DIR/build-cmake/ios-simulator-debug"
+        # Fix ownership if root-owned from a previous sudo run
+        if [ -d "$lib_build_dir" ] && [ ! -w "$lib_build_dir" ]; then
+            sudo chown -R "$(id -un)" "$lib_build_dir" || sudo rm -rf "$lib_build_dir"
+        fi
+        cmake --preset ios-simulator-debug -S "$PROJECT_DIR" || { print_error "CMake configure failed"; exit 1; }
+    fi
+    # Touch all C sources so Xcode always recompiles rather than skipping
+    # files it considers up-to-date by mtime.
+    find "$PROJECT_DIR/src" -name '*.c' -o -name '*.h' \
+        | xargs touch 2>/dev/null || true
+    xcodebuild \
+        -project "$LIBRARY_XCODE_PROJECT" \
+        -scheme ptpd2 \
+        -destination "platform=iOS Simulator,id=$UDID" \
+        -configuration Debug \
+        build \
+        2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" \
+             || true
+    print_success "Library build complete"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 build_app() {
     print_header "🔨 Building PTPMonitor..."
+    # Configure if the xcodeproj doesn't exist yet
+    if [ ! -d "$XCODE_PROJECT" ]; then
+        print_status "Configuring iossim-ptpd-app-debug..."
+        local app_build_dir="$PROJECT_DIR/build-cmake/iossim-ptpd-app-debug"
+        # Fix ownership if root-owned from a previous sudo run
+        if [ -d "$app_build_dir" ] && [ ! -w "$app_build_dir" ]; then
+            sudo chown -R "$(id -un)" "$app_build_dir" || sudo rm -rf "$app_build_dir"
+        fi
+        cmake --preset iossim-ptpd-app-debug -S "$PROJECT_DIR" || { print_error "CMake configure failed"; exit 1; }
+    fi
+    # Touch all Objective-C/Swift sources so Xcode's build system always
+    # recompiles them rather than skipping files it thinks are up-to-date.
+    find "$PROJECT_DIR/src-app/ios" -name '*.m' -o -name '*.mm' -o -name '*.swift' \
+        | xargs touch 2>/dev/null || true
     xcodebuild \
         -project "$XCODE_PROJECT" \
         -scheme PTPMonitor \
         -destination "platform=iOS Simulator,id=$UDID" \
         -configuration Debug \
         build \
-        2>&1 | grep -E "error:|warning:|BUILD |Compiling PTPBridge|Compiling.*Swift" \
-             | grep -v "warning: " \
+        2>&1 | grep -E "error:|BUILD (SUCCEEDED|FAILED)" \
              || true
-    print_success "Build complete"
+    print_success "App build complete"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
 install_app() {
     print_status "📲 Installing $APP_PATH ..."
-    if [ ! -d "$APP_PATH" ]; then
-        print_error "App bundle not found: $APP_PATH"
-        print_error "Run with --build or build with cmake first."
-        exit 1
-    fi
     xcrun simctl install "$UDID" "$APP_PATH"
     print_success "App installed"
 }
@@ -479,11 +526,20 @@ main() {
     print_status "Build      : $DO_BUILD"
     echo ""
 
+    # Build first, before touching the simulator
+    if $DO_BUILD || [ ! -d "$APP_PATH" ]; then
+        build_library
+        build_app
+    fi
+
+    if [ ! -d "$APP_PATH" ]; then
+        print_error "App bundle not found after build: $APP_PATH"
+        exit 1
+    fi
+
     setup_output
 
     ensure_simulator_booted
-
-    $DO_BUILD && build_app
 
     install_app
 
