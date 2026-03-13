@@ -38,7 +38,9 @@ endfunction()
 ptpd_gtest(test_strip_arg         test_strip_arg.cpp)
 ptpd_gtest(test_monitor_csv       test_monitor_csv.cpp)
 ptpd_gtest(test_leap_builtin      test_leap_builtin.cpp)
-add_dependencies(test_leap_builtin leap_header)
+if(TARGET leap_header)
+    add_dependencies(test_leap_builtin leap_header)
+endif()
 
 # Timer / concurrency tests
 ptpd_gtest(test_monotonic_sleep   test_monotonic_sleep.cpp)
