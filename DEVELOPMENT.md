@@ -11,99 +11,89 @@ DIRECTORY STRUCTURE
 -------------------
 
 Source & Build System:
-  src/              - PTPd source code
-  CMakeLists.txt    - CMake build definition (root)
-  cmake/            - CMake modules (platform detection, options)
+  src/                  - PTPd core source code
+  src-app/macos/        - macOS example application (ptpd-app)
+  src-app/ios/          - iOS SwiftUI application (PTPMonitor)
+  src-gtests/           - GTest integration tests
+  libraries/swclock/    - Software clock backend (git submodule)
+  CMakeLists.txt        - Root CMake build definition
+  CMakePresets.json     - All 12 named build presets
+  cmake/                - CMake modules (platform detection, options)
 
 Documentation:
-  BUILD.md          - CMake build instructions and examples
-  CONFIGURATION.md  - Complete technical reference for all config options
+  BUILD.md          - CMake build guide and option reference
+  CONFIGURATION.md  - Technical reference for all config options
   DEVELOPMENT.md    - This file (workflow guide)
-  PLAN.txt          - CMake migration plan and status
+  USAGE.md          - Library integration guide and API reference
+  docs/             - Supplemental notes and configs
 
-Development Tools (Custom Additions):
-  scripts/          - Build automation, testing, and analysis tools
-  resources/        - Configuration templates and resources
+Development Tools:
+  scripts/testing/  - Test runners (ptp-app-run.sh, ptp-ios-run.sh, ptpd-run.sh)
+  scripts/analysis/ - Post-run analysis tools
+  scripts/tools/    - Utilities (clean-ptpd.sh, etc.)
+  resources/        - Configuration templates
 
-Build Outputs:
-  build-cmake/debug/      - Debug build artifacts
-  build-cmake/release/    - Release build artifacts
+Build Outputs (all under build-cmake/):
+  macos-debug/              - macOS library, debug
+  macos-release/            - macOS library, release
+  ios-simulator-debug/      - iOS simulator library, debug
+  ios-simulator-release/    - iOS simulator library, release
+  ios-debug/                - iOS device library, debug
+  ios-release/              - iOS device library, release
+  macos-ptpd-app-debug/     - macOS ptpd-app binary, debug
+  macos-ptpd-app-release/   - macOS ptpd-app binary, release
+  macos-gtest-debug/        - GTest suite, debug
+  macos-gtest-release/      - GTest suite, release
+  iossim-ptpd-app-debug/    - iOS simulator PTPMonitor.app, debug
+  iossim-ptpd-app-release/  - iOS simulator PTPMonitor.app, release
 
 
 DEVELOPMENT WORKFLOWS
 ---------------------
 
-Option A: VS Code Integrated (Recommended for Active Development)
-------------------------------------------------------------------
-Uses scripts/ + VS Code tasks + launch configurations
+Option A: VS Code Integrated (Recommended)
+------------------------------------------
 
 1. Configure & Build:
-   - Press Cmd+Shift+B (default build task)
-   - Or: Terminal → Run Task → "Build Debug"
-   - This runs: scripts/build/config-cmake-debug.sh then cmake --build
+   - Press Cmd+Shift+B → "Build macOS Debug" (default task)
+   - Or: Terminal → Run Task → choose any of the 24 configure/build tasks
+   - Tasks auto-copy compile_commands.json to the workspace root for clangd
 
-2. Debug:
-   - Press F5 or Run → Start Debugging
-   - Uses configuration from .vscode/launch.json
-   - Binary: build-cmake/debug/src/ptpd2
-   - Config: ptpd.conf (in root)
+2. Test (macOS library app):
+   ./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf -d 120
+   Logs saved to: scripts/ptpd_logs/<timestamp>/
 
-3. Test:
-   - Run: ./scripts/testing/ptpd-run.sh -i <interface>
-   - Advanced features: validation, pcap capture, analysis
-   - Logs saved to: scripts/ptpd_logs/<timestamp>/
+3. Test (iOS Simulator):
+   ./scripts/testing/ptp-ios-run.sh en5 192.168.68.114 -d 120
 
 4. Clean:
-   - Run Task: "Clean"
+   - Run Task: "Clean" (removes all 12 build-cmake/ directories)
    - Or: ./scripts/tools/clean-ptpd.sh
 
 
-Option B: Manual CMake Build (For Newcomers or CI)
----------------------------------------------------
-Direct CMake commands - works anywhere
+Option B: Command Line
+----------------------
 
-1. Configure & Build (Debug):
-   ./scripts/build/config-cmake-debug.sh
-   # Or manually:
-   cmake -B build-cmake/debug -DCMAKE_BUILD_TYPE=Debug
-   cmake --build build-cmake/debug
-   - Binary: build-cmake/debug/src/ptpd2
+# Step 1 — build the libraries (required first)
+cmake --preset macos-debug
+cmake --build --preset macos-debug
 
-2. Configure & Build (Release):
-   ./scripts/build/config-cmake-release.sh
-   # Or manually:
-   cmake -B build-cmake/release -DCMAKE_BUILD_TYPE=Release -DENABLE_RUNTIME_DEBUG=OFF
-   cmake --build build-cmake/release
-   - Binary: build-cmake/release/src/ptpd2
-   - Optimized with -O2
+# Step 2 — build a consumer (app / tests) against the pre-built libraries
+cmake --preset macos-ptpd-app-debug
+cmake --build --preset macos-ptpd-app-debug
+# Binary: build-cmake/macos-ptpd-app-debug/src-app/ptpd-app
 
-3. Configuration Options:
-   cmake -B build -DENABLE_SNMP=ON -DENABLE_SLAVE_ONLY=ON -DDEBUG_LEVEL=all
-   - See BUILD.md for complete option reference
-   - See CONFIGURATION.md for technical details on each option
+cmake --preset macos-gtest-debug
+cmake --build --preset macos-gtest-debug
 
-4. Install:
-   sudo cmake --install build-cmake/debug --prefix /usr/local
-   - Installs binary, man pages, and data files
+# iOS Simulator
+cmake --preset ios-simulator-debug
+cmake --build --preset ios-simulator-debug
+cmake --preset iossim-ptpd-app-debug
+cmake --build --preset iossim-ptpd-app-debug
 
-5. Multiple Configurations (CMake advantage):
-   cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
-   cmake -B build-release -DCMAKE_BUILD_TYPE=Release
-   cmake -B build-minimal -DENABLE_STATISTICS=OFF -DENABLE_PCAP=OFF
-   - All coexist without conflicts!
-
-6. IDE Integration:
-   - VS Code: Use CMake tasks (Cmd+Shift+B)
-   - CLion: Native CMake support
-   - Xcode: cmake -B build-xcode -G Xcode
-
-Why CMake?
-  + Better IDE integration (IntelliSense, CLion, Xcode)
-  + Multiple build configs simultaneously (debug + release + custom)
-  + Cross-platform (Linux, macOS, Windows, FreeBSD)
-  + Modern dependency management
-  + Faster configuration
-  = Binary equivalence verified (98-100% symbol match with original autotools builds)
+All presets and their binaryDirs are defined in CMakePresets.json.
+See BUILD.md for a full option reference.
 
 
 BUILD ARTIFACTS & CLEANING
@@ -111,33 +101,29 @@ BUILD ARTIFACTS & CLEANING
 
 Clean build artifacts:
   ./scripts/tools/clean-ptpd.sh
+  # Or via VS Code task: "Clean"
 
-This removes:
-  - build-cmake/ directories
-  - Object files (*.o)
-  - Binaries (ptpd2)
-  - compile_commands.json symlink
+This removes all 12 build-cmake/ preset directories and compile_commands.json.
 
 To rebuild after cleaning:
-  ./scripts/build/config-cmake-debug.sh
-  # Or: cmake -B build-cmake/debug && cmake --build build-cmake/debug
+  cmake --preset macos-debug && cmake --build --preset macos-debug
+  cmake --preset macos-ptpd-app-debug && cmake --build --preset macos-ptpd-app-debug
 
 
 CONFIGURATION FILES
 -------------------
 
 Root:
-  ptpd.conf                     - Local dev config (not in git)
+  ptpd.conf                     - Local dev config (not in git, gitignored)
 
 resources/:
-  ptpd-daemon.conf              - Production-style slave config
+  ptpd-daemon.conf              - Unicast slave config (used by test scripts)
+  ptpd2.conf.default-full       - Full annotated default config
+  ptpd2.conf.minimal            - Minimal slave config
+  templates.conf                - Config templates reference
   test/
     client-e2e-*.conf             - E2E test configurations
-    ptpd2-slave-sw-multicast.conf - SW clock multicast test config
-    ptpd2-slave-sw-unicast.conf   - SW clock unicast test config
-    ptpd2-slave-sw-mixed.conf     - SW clock mixed mode test config
-
-All configuration files (production and test) are now under resources/.
+    ptpd2-slave-sw-*.conf         - SW clock test configs
 
 
 GIT TRACKED vs IGNORED
@@ -163,149 +149,54 @@ See .gitignore for complete list.
 NOTES FOR CONTRIBUTORS
 ----------------------
 
-1. CMake 3.15+ is the build system for this project.
+1. CMake 3.25+ is required (CMakePresets.json uses presets version 6).
 
-2. See BUILD.md for CMake build instructions.
+2. Always build a library preset before its consumer preset:
+   cmake --preset macos-debug before cmake --preset macos-ptpd-app-debug.
 
-3. See CONFIGURATION.md for detailed technical reference on all 13 configuration options.
+3. See BUILD.md for a full option reference table.
 
-4. The scripts/ folder contains development tools consolidated from previous
-   @build-scripts/ and @test-scripts/ directories.
+4. See CONFIGURATION.md for PTP runtime configuration options.
 
-5. VS Code configuration supports CMake builds with IntelliSense, debugging, and tasks.
+5. compile_commands.json at the workspace root is auto-generated by the
+   "Configure macOS Debug" VS Code task — needed for clangd/IntelliSense.
 
-6. Test logs can be safely deleted - they're not tracked in git.
+6. Test logs in scripts/ptpd_logs/ can be safely deleted; they are gitignored.
 
 
 RECENT CHANGES
 --------------
 
+- Mar 2026: Added CMakePresets.json with 12 presets (6 library + 6 consumer)
+- Mar 2026: Added PTPD_PREBUILT_DIR consumer mode to CMakeLists.txt
+- Mar 2026: iOS PTPMonitor app: noAdjust flag, PTPManager/ContentView improvements
+- Mar 2026: Added ptp-ios-run.sh test runner for iOS Simulator
+- Mar 2026: Updated all test scripts for new preset-based build directories
+- Mar 2026: Removed obsolete scripts/build/ scripts (superseded by presets)
+- Mar 2026: API anti-windup fix in swclock PI servo
+- Mar 2026: clang-format (LLVM) applied to src/
 - Feb 2026: Completed CMake migration, removed autotools
-- Feb 2026: Consolidated scripts into scripts/ directory
-- Feb 2026: Created resources/ for configuration templates
-- Feb 2026: Added comprehensive CONFIGURATION.md reference
-- Oct 2025: Added SW clock implementation
-- Oct 2025: VS Code integration enhanced
+- Oct 2025: Added SW clock implementation (swclock submodule)
 
 
-SOURCE CODE CHANGES (Since Fork)
----------------------------------
-
-This fork has 13 commits modifying src/ beyond the upstream ptpd codebase.
-All changes were made in October 2025 by Alfredo Franco.
-
-MAJOR ADDITION: Software Clock Implementation
-----------------------------------------------
-
-New directory: src/dep/sw_clock/ (434 lines)
-  - sw_adjtimex.c/h      (62 + 55 lines) - adjtime() emulation for macOS
-  - swclock.c/h          (178 + 40 lines) - Software clock core
-  - swclock_compat.c/h   (66 + 33 lines) - Platform compatibility layer
-
-Purpose: Provides a software-based clock adjustment mechanism for macOS,
-which lacks native adjtime() support. Enabled with --enable-sw-clock flag.
-
-Status: Implementation complete, integration in progress.
-
-
-MODIFIED FILES
---------------
-
-src/dep/sys.c (232 lines changed)
-  - Changed POSIX timer detection from _POSIX_TIMERS to POSIX_TIMERS_SUPPORTED
-  - Improved platform compatibility for timer functions
-  - Status: Has uncommitted local changes
-
-src/dep/startup.c (294 lines refactored)
-  - Integration hooks for SW clock initialization
-  - Build system updates for sw_clock/ subdirectory
-
-src/dep/servo.c
-  - Clock adjustment logic modifications
-  - SW clock integration points
-
-src/dep/timingdomain.c
-  - Timing domain handling updates
-
-src/datatypes.h
-  - Added SW clock data structures
-  - Configuration flags for SW clock feature
-
-src/dep/eventtimer_itimer.c
-src/dep/eventtimer_posix.c
-  - Event timer compatibility improvements
-
-
-COMMIT TIMELINE (Chronological)
---------------------------------
-
-1. 2ec83d8 - Commented out noisy timer logs
-2. fd4a59d - Cosmetic changes
-3. 2f03cc0 - Debug messages added and formatting improved
-4. 438b384 - Improved formatting
-5. ef38baa - Added the SW clock implementation (origin/macos)
-6. 365049a - Formatting fixes and documentation
-7. 4247fc3 - Start to integrate a SW clock
-8. 13b1192 - Start of sw_clock integration (HEAD)
-
-Branch Status: 3 commits ahead of origin/macos
-
-
-KEY MODIFICATIONS
+SWCLOCK SUBMODULE
 -----------------
 
-1. SW Clock Core:
-   - Provides adjtime() emulation for macOS
-   - Software-based frequency adjustment
-   - Compatible with ptpd servo mechanisms
+The software clock backend lives in libraries/swclock/ as a git submodule.
+After cloning, initialise it with:
 
-2. Platform Compatibility:
-   - POSIX timer detection improvements
-   - macOS-specific workarounds
-   - Conditional compilation via --enable-sw-clock
+  git submodule update --init --recursive
 
-3. Code Quality:
-   - Formatting consistency improvements
-   - Debug message enhancements
-   - Reduced log verbosity (commented noisy timers)
-
-4. Build System:
-   - Makefile.am updated for src/dep/sw_clock/
-   - Configure flag: --enable-sw-clock
-   - Conditional compilation support
-
-
-INTEGRATION STATUS
-------------------
-
-✅ Complete:
-  - SW clock implementation (434 lines)
-  - Build system integration (--enable-sw-clock flag)
-  - Basic formatting and cleanup
-
-🔄 In Progress:
-  - Full integration with ptpd servo (commits 4247fc3, 13b1192)
-  - POSIX timer compatibility refinement
-
-⚠️  Uncommitted:
-  - src/dep/sys.c: POSIX_TIMERS macro change
-
-
-TESTING
--------
-
-To build with SW clock support:
-  cmake -B build -DENABLE_SW_CLOCK=ON
-  cmake --build build
-
-Test configurations available in resources/test/ptpd2-slave-sw-*.conf
+BUILD_WITH_SWCLOCK=ON is the default for all presets and is required for
+the iOS and macOS apps. The submodule is automatically built as part of the
+library presets (macos-debug, ios-simulator-debug, etc.).
 
 
 FOR MORE INFORMATION
 --------------------
 
 Upstream PTPd: https://github.com/ptpd/ptpd
-Documentation: doc/ folder
 Man pages: src/ptpd2.8.in, src/ptpd2.conf.5.in
-CMake Build Guide: BUILD.md
-Configuration Reference: CONFIGURATION.md
+Build guide: BUILD.md
+Configuration reference: CONFIGURATION.md
+Library integration: USAGE.md

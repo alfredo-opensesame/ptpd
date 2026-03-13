@@ -252,7 +252,7 @@ Compile-time debug output level. Mutually exclusive with ENABLE_RUNTIME_DEBUG.
 - Debug builds (`CMAKE_BUILD_TYPE=Debug`): `all` (all debug compiled in) — **unless `ENABLE_RUNTIME_DEBUG=ON` is also set, in which case it is silently forced to `none`**
 - Release builds (`CMAKE_BUILD_TYPE=Release`): `none` (no debug overhead)
 
-> **Warning**: The project's `scripts/build/config-cmake-debug.sh` explicitly sets both `-DENABLE_RUNTIME_DEBUG=ON` and `-DDEBUG_LEVEL=all`. The mutual exclusivity rule in `Options.cmake` means `ENABLE_RUNTIME_DEBUG` wins and `DEBUG_LEVEL` is silently reset to `none`. The effective debug build configuration therefore has `ENABLE_RUNTIME_DEBUG=ON` and `DEBUG_LEVEL=none`.
+> **Warning**: The `macos-debug` preset sets both `-DENABLE_RUNTIME_DEBUG=ON` and `-DDEBUG_LEVEL=all`. The mutual exclusivity rule in `Options.cmake` means `ENABLE_RUNTIME_DEBUG` wins and `DEBUG_LEVEL` is silently reset to `none`. The effective debug build configuration therefore has `ENABLE_RUNTIME_DEBUG=ON` and `DEBUG_LEVEL=none`.
 
 #### Technical Details
 
@@ -327,7 +327,7 @@ Enables runtime control of debug output levels. Mutually exclusive with DEBUG_LE
 - Debug builds (`CMAKE_BUILD_TYPE=Debug`): `OFF` (use compile-time DEBUG_LEVEL=all)
 - Release builds (`CMAKE_BUILD_TYPE=Release`): `ON` (enable runtime control)
 
-> **Note**: `scripts/build/config-cmake-debug.sh` explicitly overrides this to `ON` for the project's Debug build, which also overrides `DEBUG_LEVEL` to `none` via the mutual exclusivity rule. The actual macOS debug build runs with `ENABLE_RUNTIME_DEBUG=ON`.
+> **Note**: The `macos-debug` preset overrides this to `ON`, which also forces `DEBUG_LEVEL` to `none` via the mutual exclusivity rule. The actual macOS debug build runs with `ENABLE_RUNTIME_DEBUG=ON`.
 
 #### Technical Details
 
@@ -524,8 +524,6 @@ When slave-only, these are disabled:
 
 #### Description
 Builds ptpd with the swclock software clock backend. The swclock library lives in `libraries/swclock/` as a git submodule. When enabled, ptpd uses swclock for clock management instead of calling system clock APIs directly.
-
-> **Note**: `ENABLE_SW_CLOCK` is referenced in `cmake/README.md` examples but is **not** a real CMake option. The actual option is `BUILD_WITH_SWCLOCK`.
 
 #### Technical Details
 
@@ -803,7 +801,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug \
 ```
 Features: `DEBUG_LEVEL=all` by default (all debug macros compiled in), full symbols, statistics.
 
-> **Note**: The project's `scripts/build/config-cmake-debug.sh` also passes `-DENABLE_RUNTIME_DEBUG=ON`, which silently overrides `DEBUG_LEVEL` to `none`. If you want compile-time `DEBUG_LEVEL=all`, do not pass `-DENABLE_RUNTIME_DEBUG=ON` alongside it.
+> **Note**: The `macos-debug` preset also sets `-DENABLE_RUNTIME_DEBUG=ON`, which silently overrides `DEBUG_LEVEL` to `none`. If you want compile-time `DEBUG_LEVEL=all`, do not pass `-DENABLE_RUNTIME_DEBUG=ON` alongside it.
 
 #### Dedicated Slave Device
 ```bash
@@ -866,7 +864,7 @@ Approximate binary size impact of each option (on x86_64 Linux):
 | ENABLE_STATISTICS | 320 KB | 280 KB | +40 KB |
 | DEBUG_LEVEL=all | 340 KB | 320 KB | +20 KB |
 | ENABLE_RUNTIME_DEBUG | 340 KB | 320 KB | +20 KB |
-| ENABLE_SW_CLOCK | 360 KB | 320 KB | +40 KB |
+| BUILD_WITH_SWCLOCK | 360 KB | 320 KB | +40 KB |
 | Full featured | 460 KB | - | - |
 
 Note: Sizes are approximate and vary by platform and compiler optimization.
@@ -880,17 +878,16 @@ See [CONFIGURATION-MATRIX.txt](CONFIGURATION-MATRIX.txt) for the complete test m
 
 ### Automated Testing
 ```bash
-# Test specific configuration
-./scripts/test-config.sh 1   # Default
-./scripts/test-config.sh 2   # Minimal
-./scripts/test-config.sh 16  # Combined
+# Build all presets (library + app)
+cmake --preset macos-debug && cmake --build --preset macos-debug
+cmake --preset macos-ptpd-app-debug && cmake --build --preset macos-ptpd-app-debug
 
-# Test all configurations
-./scripts/test-all-configs.sh
+# Run the test script
+./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf -d 60
 ```
 
 ### Verification
-All configurations tested and validated with CMake build system. See [PLAN.txt](PLAN.txt) for migration testing details.
+All configurations tested and validated with CMake build system (all 12 presets).
 
 ---
 
@@ -922,8 +919,7 @@ All configurations tested and validated with CMake build system. See [PLAN.txt](
 - [BUILD.md](BUILD.md) - CMake build instructions
 - [cmake/README.md](cmake/README.md) - CMake module documentation
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development workflows
-- [PLAN.txt](PLAN.txt) - CMake migration history
-- Configuration file format: `man ptpd2.conf` or see `src/ptpd2.conf.default-full`
+- Configuration file format: `man ptpd2.conf` or see `resources/ptpd2.conf.default-full`
 
 ---
 

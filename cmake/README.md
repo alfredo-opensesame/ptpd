@@ -147,7 +147,7 @@ endif()
    option(ENABLE_RUNTIME_DEBUG "Enable runtime debug control" OFF)
    option(ENABLE_EXPERIMENTAL "Enable experimental options" OFF)
    option(ENABLE_SLAVE_ONLY "Enable slave-only mode" OFF)
-   option(ENABLE_SW_CLOCK "Enable software clock" OFF)
+   option(BUILD_WITH_SWCLOCK "Build ptpd with swclock backend" ON)
    ```
 
 2. **Library Enable/Disable**
@@ -330,7 +330,7 @@ cmake -B build-test -DMAX_UNICAST_DESTINATIONS=99999
 # Should fail with range error
 
 # Test configuration combinations
-cmake -B build-test -DENABLE_SLAVE_ONLY=ON -DENABLE_SW_CLOCK=ON
+cmake -B build-test -DENABLE_SLAVE_ONLY=ON -DBUILD_WITH_SWCLOCK=ON
 cmake --build build-test
 ```
 

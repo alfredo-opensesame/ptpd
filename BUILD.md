@@ -1,10 +1,10 @@
 # PTPd CMake Build System
 
-This document describes how to build PTPd using CMake as an alternative to the traditional autotools build system.
+This document describes how to build PTPd using CMake and named presets.
 
 ## Status
 
-The CMake build system is **fully equivalent** to autotools and has been tested across all 16 critical configurations with 100% success rate. Both build systems are maintained in parallel.
+The CMake build system is the **only** supported build system. Autotools has been removed. All 12 CMake presets build cleanly on macOS.
 
 ## Prerequisites
 
@@ -27,32 +27,52 @@ On Linux, if you want to use SO_TIMESTAMPING features, you may need kernel heade
 
 ## Quick Start
 
-### Basic Build (Debug)
+This project uses **CMake Presets** (CMake 3.25+ required). Use `cmake --preset`
+instead of `-B`/`-D` flags directly.
+
+### Library Build (macOS)
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
+# Debug library (libptpd2.a + libswclock.a)
+cmake --preset macos-debug
+cmake --build --preset macos-debug
+
+# Release library
+cmake --preset macos-release
+cmake --build --preset macos-release
 ```
 
-The binary will be at: `build/src/ptpd2`
+### Application Build (macOS)
 
-### Basic Build (Release)
+Consumer presets link against a pre-built library; build the library first.
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+# macOS example app
+cmake --preset macos-ptpd-app-debug
+cmake --build --preset macos-ptpd-app-debug
+# Binary: build-cmake/macos-ptpd-app-debug/src-app/ptpd-app
+
+# GTest suite
+cmake --preset macos-gtest-debug
+cmake --build --preset macos-gtest-debug
 ```
 
-### Install
+### iOS Simulator
 
 ```bash
-sudo cmake --install build --prefix /usr/local
+cmake --preset ios-simulator-debug
+cmake --build --preset ios-simulator-debug
+cmake --preset iossim-ptpd-app-debug
+cmake --build --preset iossim-ptpd-app-debug
+# App bundle: build-cmake/iossim-ptpd-app-debug/src-app/ios/Debug-iphonesimulator/PTPMonitor.app
 ```
 
-This installs:
-- Binary: `/usr/local/sbin/ptpd2`
-- Man pages: `/usr/local/share/man/man8/ptpd2.8`, `/usr/local/share/man/man5/ptpd2.conf.5`
-- Data files: `/usr/local/share/ptpd/` (config templates, leap seconds, MIB)
+### Clean
+
+```bash
+# Via VS Code task "Clean", or:
+rm -rf build-cmake compile_commands.json
+```
 
 ## Build Types
 
@@ -95,17 +115,17 @@ cmake -B build -DENABLE_SNMP=ON -DDEBUG_LEVEL=all
 | N/A | `ENABLE_ROOT_CHECK=ON/OFF` | OFF | Require root privileges at startup |
 | `--with-max-unicast-destinations=N` | `MAX_UNICAST_DESTINATIONS=N` | 128 | Max unicast destinations (16-2048) |
 | `--enable-experimental-options` | `ENABLE_EXPERIMENTAL=ON` | OFF | Enable experimental features |
-| `--enable-sw-clock` | `ENABLE_SW_CLOCK=ON` | OFF | Enable software clock simulation |
+| `--enable-sw-clock` | `BUILD_WITH_SWCLOCK=ON` | ON | Enable software clock backend |
 | `--disable-sotimestamping` | `ENABLE_SO_TIMESTAMPING=OFF` | ON (Linux) | Disable SO_TIMESTAMPING |
 
 ### Common Configuration Examples
 
 #### 1. Default Configuration (Production)
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake --preset macos-release
+cmake --build --preset macos-release
 ```
-Features: PCAP, statistics, POSIX timers (if available)
+Features: PCAP, statistics, POSIX timers (if available), swclock enabled
 
 #### 2. Minimal Build
 ```bash
@@ -148,7 +168,7 @@ Supports up to 2048 unicast destinations
 ```bash
 cmake -B build \
   -DCMAKE_BUILD_TYPE=Release \
-  -DENABLE_SW_CLOCK=ON \
+  -DBUILD_WITH_SWCLOCK=ON \
   -DENABLE_SLAVE_ONLY=ON \
   -DDEBUG_LEVEL=all \
   -DMAX_UNICAST_DESTINATIONS=512
@@ -361,14 +381,9 @@ sudo yum install kernel-devel                   # RHEL/CentOS
 cmake -B build -DENABLE_SO_TIMESTAMPING=OFF
 ```
 
-### Symbol Count Different from Autotools
+### Symbol Count Differs Between Debug and Release
 
-This is normal. CMake and autotools may produce slightly different binaries due to:
-- Different optimization strategies
-- Different compiler flag ordering
-- Different object file organization
-
-As long as the symbol count is within 2-5%, the binaries are functionally equivalent.
+This is expected. Different build types produce different inlined/optimised symbols. As long as the functional interface is the same, this is not a problem.
 
 ### "config.h not found" During Build
 
@@ -380,66 +395,56 @@ cmake --build build   # Then build
 
 ### Older CMake Version
 
-If your system has CMake < 3.15:
+If your system has CMake < 3.25 (required for preset support):
 ```bash
-# Install newer CMake from official website
-# https://cmake.org/download/
-
-# Or use snap (Linux)
-sudo snap install cmake --classic
-
-# Or use homebrew (macOS)
+# macOS via Homebrew
 brew install cmake
+brew upgrade cmake
 ```
 
-## Comparison with Autotools
+## Preset vs Manual CMake
 
-Both build systems are maintained in parallel and produce equivalent binaries.
+Presets are the recommended approach — they encode all the right flags,
+sysroot paths, and binaryDir conventions. For custom one-off builds you can
+still pass flags directly, but the binaryDir won't match the preset convention.
 
-### Autotools Workflow
+### Preset workflow (recommended)
 ```bash
-./configure --prefix=/usr/local --enable-statistics
-make clean && make
-sudo make install
+cmake --preset macos-debug
+cmake --build --preset macos-debug
 ```
 
-### Equivalent CMake Workflow
+### Manual workflow (advanced)
 ```bash
-cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_STATISTICS=ON
-cmake --build build
-sudo cmake --install build
+cmake -B my-build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_FLAGS="-DPTPD_LIBRARY_MODE=1" \
+  -DENABLE_PCAP=ON \
+  -DBUILD_WITH_SWCLOCK=ON
+cmake --build my-build
 ```
 
 ### Key Differences
 
-| Aspect | Autotools | CMake |
-|--------|-----------|-------|
-| Configuration | `./configure --option` | `cmake -B build -DOPTION=value` |
-| Build | `make` | `cmake --build build` |
-| Install | `make install` | `cmake --install build` |
-| Clean | `make clean` | `rm -rf build` or `cmake --build build --target clean` |
-| Debug Build | `./configure CFLAGS="-g -O0"` | `cmake -B build -DCMAKE_BUILD_TYPE=Debug` |
-| Out-of-tree | `mkdir build && cd build && ../configure` | `cmake -B build` |
-| IDE Support | Limited | Excellent (VS Code, CLion, Xcode, VS) |
-| Multiple Configs | Need multiple source trees | `cmake -B build1`, `cmake -B build2`, etc. |
+| Aspect | Preset (recommended) | Manual |
+|--------|---------------------|--------|
+| Configuration | `cmake --preset macos-debug` | `cmake -B my-build -DCMAKE_BUILD_TYPE=Debug ...` |
+| Build | `cmake --build --preset macos-debug` | `cmake --build my-build` |
+| Clean | VS Code "Clean" task or `rm -rf build-cmake` | `rm -rf my-build` |
+| binaryDir | Fixed convention (`build-cmake/<name>/`) | User-defined |
+| Platform settings | Encoded in preset (sysroot, arch) | Must be passed manually |
+| IDE integration | Auto-discovered by VS Code / CLion | Requires manual configuration |
 
-## Testing Binary Equivalence
-
-If you want to verify CMake produces equivalent binaries to autotools:
+## Binary Comparison
 
 ```bash
-# Build with autotools
-./configure
-make clean && make
-cp src/ptpd2 /tmp/ptpd2-autotools
+# Build two variants and compare symbols
+cmake --preset macos-debug && cmake --build --preset macos-debug
+cmake --preset macos-release && cmake --build --preset macos-release
 
-# Build with CMake (use RelWithDebInfo to match autotools optimization)
-cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build
-cp build/src/ptpd2 /tmp/ptpd2-cmake
-
-# Compare
-./scripts/compare-binaries.sh /tmp/ptpd2-autotools /tmp/ptpd2-cmake
+./scripts/tools/compare-binaries.sh \
+  build-cmake/macos-debug/src/libptpd2.a \
+  build-cmake/macos-release/src/libptpd2.a
 ```
 
 The script compares:
@@ -452,55 +457,22 @@ The script compares:
 ## Getting Help
 
 - Check [CONFIGURATION.md](CONFIGURATION.md) for complete technical reference on all configuration options
-- Check [PLAN.txt](PLAN.txt) for detailed migration notes
 - Check [cmake/README.md](cmake/README.md) for CMake module documentation
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for general build workflows
 - Report issues on the project issue tracker
 
-## Migration from Autotools
-
-If you're migrating from autotools builds:
-
-1. **Parallel Installation**: You can keep both build systems
-   ```bash
-   # Autotools build
-   ./configure --prefix=/opt/ptpd-autotools
-   make install
-
-   # CMake build
-   cmake -B build -DCMAKE_INSTALL_PREFIX=/opt/ptpd-cmake
-   cmake --install build
-   ```
-
-2. **Same Configuration**: Match your autotools options in CMake
-   ```bash
-   # Before (autotools)
-   ./configure --enable-slave-only --enable-statistics
-
-   # After (CMake)
-   cmake -B build -DENABLE_SLAVE_ONLY=ON -DENABLE_STATISTICS=ON
-   ```
-
-3. **Test Equivalence**: Use provided test scripts
-   ```bash
-   ./scripts/test-config.sh 1  # Test default config
-   ```
-
-Both build systems will be maintained in parallel for the foreseeable future.
-
 ## See Also
 
 - [README.md](README.md) - Project overview and quick start
-- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all 13 options
+- [CONFIGURATION.md](CONFIGURATION.md) - Technical reference for all configuration options
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Developer workflows and VS Code integration
-- [PLAN.txt](PLAN.txt) - CMake migration history
 
 ## Version
 
 This documentation applies to:
 - **PTPd Version**: 2.3.1 (6.6.6)
-- **CMake Build System**: Added February 2026
-- **CMake Minimum Version**: 3.15
-- **Status**: Production-ready, fully tested
+- **CMake Preset System**: Added March 2026 (12 presets)
+- **CMake Minimum Version**: 3.25
+- **Status**: Production-ready
 
-Last Updated: February 8, 2026
+Last Updated: March 2026

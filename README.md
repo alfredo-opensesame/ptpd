@@ -24,66 +24,71 @@ coordinate computer clocks with an absolute time reference such as UTC.
 Requirements
 ---
 
-- **CMake** 3.15 or later
-- **C Compiler** (GCC, Clang, MSVC)
-- **libpcap** development files (optional but recommended)
+- **CMake** 3.25 or later (required for preset support)
+- **C Compiler** (GCC, Clang)
+- **libpcap** development files (macOS: bundled with Xcode CLI tools)
 - **Net-SNMP** development files (optional, for SNMP support)
 
 Build Instructions
 ---
 
-### Quick Start
+This project uses **CMake Presets** (`CMakePresets.json`). All builds go through
+a named preset rather than raw `-B`/`-D` flags.
+
+### Quick Start (macOS)
 
 ```bash
-# Configure and build (Release)
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+# Library build (produces libptpd2.a + libswclock.a)
+cmake --preset macos-debug
+cmake --build --preset macos-debug
 
-# Binary will be in: build/src/ptpd2
+# Example application (links against the pre-built library)
+cmake --preset macos-ptpd-app-debug
+cmake --build --preset macos-ptpd-app-debug
+# Binary: build-cmake/macos-ptpd-app-debug/src-app/ptpd-app
 
-# Install (optional)
-sudo cmake --install build --prefix /usr/local
+# Release
+cmake --preset macos-release
+cmake --build --preset macos-release
 ```
 
-### Configuration Options
+### Available Presets
 
-Common configuration examples:
-
-```bash
-# Disable statistics (lower CPU/RAM usage)
-cmake -B build -DENABLE_STATISTICS=OFF
-
-# Build slave-only version
-cmake -B build -DENABLE_SLAVE_ONLY=ON
-
-# Enable runtime debug messages
-cmake -B build -DENABLE_RUNTIME_DEBUG=ON
-
-# Set debug level
-cmake -B build -DDEBUG_LEVEL=all
-
-# Multiple options
-cmake -B build -DENABLE_SLAVE_ONLY=ON -DDEBUG_LEVEL=all
-```
+| Preset | Output | Description |
+|--------|--------|-------------|
+| `macos-debug` | `build-cmake/macos-debug` | Library (debug) |
+| `macos-release` | `build-cmake/macos-release` | Library (release) |
+| `ios-simulator-debug` | `build-cmake/ios-simulator-debug` | iOS sim library (debug) |
+| `ios-simulator-release` | `build-cmake/ios-simulator-release` | iOS sim library (release) |
+| `ios-debug` | `build-cmake/ios-debug` | iOS device library (debug) |
+| `ios-release` | `build-cmake/ios-release` | iOS device library (release) |
+| `macos-ptpd-app-debug` | `build-cmake/macos-ptpd-app-debug` | macOS app (debug) |
+| `macos-ptpd-app-release` | `build-cmake/macos-ptpd-app-release` | macOS app (release) |
+| `macos-gtest-debug` | `build-cmake/macos-gtest-debug` | GTest suite (debug) |
+| `macos-gtest-release` | `build-cmake/macos-gtest-release` | GTest suite (release) |
+| `iossim-ptpd-app-debug` | `build-cmake/iossim-ptpd-app-debug` | iOS sim app (debug) |
+| `iossim-ptpd-app-release` | `build-cmake/iossim-ptpd-app-release` | iOS sim app (release) |
 
 ### Testing
 
 ```bash
-# Run ptpd2 with test configuration
-./build/src/ptpd2 -c resources/test/client-e2e-socket.conf
+# Run the macOS library-based app
+./scripts/testing/ptp-app-run.sh en5 resources/ptpd-daemon.conf -d 120
 
-# Get help
-./build/src/ptpd2 --help
-./build/src/ptpd2 --long-help
+# Run tests against iOS Simulator
+./scripts/testing/ptp-ios-run.sh en5 192.168.68.114 -d 120
+
+# Run GTest suite
+cmake --preset macos-gtest-debug && cmake --build --preset macos-gtest-debug
 ```
 
 Documentation
 ---
 
 - **[BUILD.md](BUILD.md)** - Comprehensive build guide with all options
-- **[CONFIGURATION.md](CONFIGURATION.md)** - Technical reference for all 12 configuration options
+- **[CONFIGURATION.md](CONFIGURATION.md)** - Technical reference for all configuration options
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Developer workflows and project structure
-- **[PLAN.txt](PLAN.txt)** - CMake migration history and status
+- **[USAGE.md](USAGE.md)** - Library integration guide and API reference
 
 Legal notice
 ---
@@ -102,9 +107,11 @@ PTPd comes with absolutely no warranty.
 About This Fork
 ---
 
-This is a macOS-focused fork of PTPd v2.3.x that has been migrated from GNU
-Autotools to CMake. The migration includes comprehensive testing (16/16
-configurations verified) and maintains binary equivalence with the original
-autotools build system.
+This is a macOS/iOS-focused fork of PTPd v2.3.x. The project has been migrated
+from GNU Autotools to CMake with preset-based builds, and extended with:
+- A software clock backend (`swclock`) as a git submodule
+- iOS app integration via the `ptpdlib` public API
+- An example macOS application (`ptpd-app`)
+- Full GTest suite
 
 **Upstream PTPd:** https://github.com/ptpd/ptpd

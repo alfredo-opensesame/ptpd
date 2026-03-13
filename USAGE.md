@@ -89,8 +89,10 @@ cmake --build build
 ```
 
 This produces:
-- `build/src/ptpd2` — standalone daemon  
-- `build/src-app/ptpd-app` — example application using the library API
+- `build-cmake/macos-ptpd-app-debug/src-app/ptpd-app` — example application using the library API
+
+> Note: In library mode (`BUILD_PTPD_LIBRARY=ON`) there is no standalone `ptpd2` daemon.
+> The `ptpd-app` binary exercises the full public API (`ptpd_init` / `ptpd_start` / `ptpd_shutdown`).
 
 ### Embedding with add_subdirectory
 
@@ -117,7 +119,7 @@ If you build the library separately:
 
 ```bash
 cmake -B ptpd/build \
-  -DCMAKE_C_FLAGS="-DPTPD_LIBRARY_MODE" \
+  -DCMAKE_C_FLAGS="-DPTPD_LIBRARY_MODE=1" \
   -DBUILD_WITH_SWCLOCK=ON \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build ptpd/build
@@ -517,8 +519,8 @@ bash scripts/testing/ptp-app-run.sh en0 resources/ptpd-daemon.conf -b ptpd-app -
 
 #### 1. Argument Parsing
 Validates the interface name and config file path, resolves the binary path
-under `build-cmake/debug/src/` (for `ptpd2`) or `build-cmake/debug/src-app/`
-(for `ptpd-app`), and rejects unknown options early.
+under `build-cmake/macos-ptpd-app-debug/src-app/` (for `ptpd-app`),
+and rejects unknown options early.
 
 #### 2. Stopping Stale Instances (`stop_ptpd_processes`)
 Before starting, the script performs a thorough cleanup:
@@ -608,10 +610,9 @@ report.
 
 ### Binary Selection: `ptpd2` vs `ptpd-app`
 
-| Binary | Source | Build requirement |
+| Binary | Source | Build preset |
 |---|---|---|
-| `ptpd2` | `build-cmake/debug/src/ptpd2` | Default build |
-| `ptpd-app` | `build-cmake/debug/src-app/ptpd-app` | `cmake -DBUILD_PTPD_LIBRARY=ON` |
+| `ptpd-app` | `build-cmake/macos-ptpd-app-debug/src-app/ptpd-app` | `macos-ptpd-app-debug` |
 
 `ptpd-app` exercises the public library API (`ptpd_init` / `ptpd_start` /
 `ptpd_shutdown`) and is the correct target to test when validating library
