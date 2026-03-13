@@ -156,9 +156,9 @@ for rt in d.get('devices',{}).values():
     fi
     print_status "Booting simulator $UDID ..."
     xcrun simctl boot "$UDID" 2>/dev/null || true
-    # Wait up to 30 s for Booted state
+    # Wait up to 120 s for Booted state
     local n=0
-    while [ $n -lt 30 ]; do
+    while [ $n -lt 120 ]; do
         state=$(xcrun simctl list devices -j 2>/dev/null \
             | python3 -c "
 import json,sys
@@ -173,7 +173,7 @@ for rt in d.get('devices',{}).values():
         sleep 1; n=$((n+1))
     done
     if [ "$state" != "Booted" ]; then
-        print_error "Simulator did not boot within 30 s (state: $state)"
+        print_error "Simulator did not boot within 120 s (state: $state)"
         exit 1
     fi
     print_success "Simulator booted"
