@@ -37,6 +37,8 @@ endfunction()
 # Pure unit tests — no ptpd, no network, no threads
 ptpd_gtest(test_strip_arg         test_strip_arg.cpp)
 ptpd_gtest(test_monitor_csv       test_monitor_csv.cpp)
+ptpd_gtest(test_leap_builtin      test_leap_builtin.cpp)
+add_dependencies(test_leap_builtin leap_header)
 
 # Timer / concurrency tests
 ptpd_gtest(test_monotonic_sleep   test_monotonic_sleep.cpp)
@@ -52,7 +54,7 @@ ptpd_gtest(test_swclock_integration test_swclock_integration.cpp)
 
 # Label all six targets as "unit" for selective ctest runs
 set_tests_properties(
-    test_strip_arg test_monitor_csv test_monotonic_sleep
+    test_strip_arg test_monitor_csv test_leap_builtin test_monotonic_sleep
     test_network test_swclock_rwlock test_swclock_integration
     PROPERTIES LABELS "unit")
 
@@ -71,4 +73,4 @@ set_tests_properties(test_system_integration PROPERTIES
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     ENVIRONMENT "PTPD_TEST_CONFIG=${CMAKE_SOURCE_DIR}/resources/ptpd-daemon-current.conf")
 
-message(STATUS "ptpd src-gtests: 7 test targets configured (6 unit + 1 integration)")
+message(STATUS "ptpd src-gtests: 8 test targets configured (7 unit + 1 integration)")

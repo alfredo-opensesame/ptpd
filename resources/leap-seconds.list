@@ -64,11 +64,11 @@
 #
 #	2) Expiration date of the file given on a semi-annual basis: last June or last December
 #
-#	File expires on 28 December 2026
+#	File expires on 28 December 2028
 #
 #	Expire date in NTP timestamp:
 #
-#@	4007404800
+#@	4070563200
 #
 #
 #	LIST OF LEAP SECONDS

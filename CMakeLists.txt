@@ -50,6 +50,10 @@ find_package(PCAP)
 # User can disable with -DENABLE_SNMP=OFF
 find_package(NETSNMP)
 
+# Python 3 interpreter — required to generate src/def/leap_seconds_builtin.h
+# at build time from resources/leap-seconds.list.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
 # Phase 7: Build date and version information (matching autotools configure.ac)
 # Get build date in YYYYMMDD format (always set, but only used if CODE_REVISION is defined)
 string(TIMESTAMP BUILD_DATE "%Y%m%d")

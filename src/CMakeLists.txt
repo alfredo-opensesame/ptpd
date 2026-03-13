@@ -78,6 +78,27 @@ else()
     set(PTPD_IS_LIBRARY FALSE)
 endif()
 
+# ---------------------------------------------------------------------------
+# Built-in leap seconds table — generated from resources/leap-seconds.list
+# at build time so that library users get the correct TAI-UTC offset even
+# when no clock:leap_seconds_file is configured at runtime.
+# The generated file is gitignored; it is an internal implementation detail
+# and is never installed or exposed through ptpdlib.h.
+# ---------------------------------------------------------------------------
+set(_leap_src "${CMAKE_SOURCE_DIR}/resources/leap-seconds.list")
+set(_leap_hdr "${CMAKE_CURRENT_SOURCE_DIR}/def/leap_seconds_builtin.h")
+set(_leap_gen "${CMAKE_SOURCE_DIR}/scripts/tools/gen-leap-header.py")
+
+add_custom_command(
+    OUTPUT  "${_leap_hdr}"
+    COMMAND "${Python3_EXECUTABLE}" "${_leap_gen}" "${_leap_src}" "${_leap_hdr}"
+    DEPENDS "${_leap_src}" "${_leap_gen}"
+    COMMENT "Generating src/def/leap_seconds_builtin.h from resources/leap-seconds.list"
+    VERBATIM
+)
+add_custom_target(leap_header DEPENDS "${_leap_hdr}")
+add_dependencies(ptpd2 leap_header)
+
 # Set target include directories
 # Build directory MUST come first to find CMake-generated config.h
 # before any config.h from old autotools builds
@@ -365,6 +386,7 @@ if(BUILD_PTPD_LIBRARY)
     add_library(ptpd-static STATIC ${PTPD2_SOURCES})
     set_target_properties(ptpd-static PROPERTIES OUTPUT_NAME ptpd)
     configure_ptpd_library(ptpd-static)
+    add_dependencies(ptpd-static leap_header)
 
     # Build shared library
     add_library(ptpd-shared SHARED ${PTPD2_SOURCES})
@@ -374,6 +396,7 @@ if(BUILD_PTPD_LIBRARY)
         SOVERSION 2
     )
     configure_ptpd_library(ptpd-shared)
+    add_dependencies(ptpd-shared leap_header)
 
     # Install libraries
     install(TARGETS ptpd-static ptpd-shared

@@ -32,6 +32,9 @@ _deps/
 !CMakeLists.txt
 !cmake/*.cmake
 
+# Build-time generated sources (produced by scripts/tools/gen-leap-header.py)
+src/def/leap_seconds_builtin.h
+
 # Test results
 /test-results/
 /build-cmake-test-*/

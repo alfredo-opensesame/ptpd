@@ -6,6 +6,9 @@
 #include "ptpd.h"
 #include "dep/ntpengine/ntpdcontrol.h"
 #include "dep/ptpd_clock.h"
+/* Built-in leap-seconds table generated from resources/leap-seconds.list at
+ * build time. Used as automatic fallback when no leapFile is configured. */
+#include "def/leap_seconds_builtin.h"
 
 #ifdef LOCAL_PREFIX
 #undef LOCAL_PREFIX
@@ -141,6 +144,49 @@ cmpTimingServiceQS (void *pA, void *pB)
 }
 */
 
+/* parseLeapTable — populate *info from the built-in compiled-in leap-second
+ * table.  Used as a fallback when no runtime leap-seconds file is configured.
+ * Returns 1 if currentOffset was successfully resolved, 0 otherwise. */
+static int parseLeapTable(LeapSecondInfo *info) {
+  TimeInternal now;
+  getTime(&now);
+  /* Convert POSIX time to NTP timestamp (seconds since 1900-01-01) */
+  uint32_t now_ntp = (uint32_t)((int64_t)now.seconds + 2208988800LL);
+
+  memset(info, 0, sizeof(LeapSecondInfo));
+
+  if (ptpd_leap_table_expiry_ntp && now_ntp > ptpd_leap_table_expiry_ntp) {
+    WARNING("Built-in leap seconds table has expired. "
+            "Rebuild the library to obtain current data.\n");
+    return 0;
+  }
+
+  for (int i = 0; i < ptpd_leap_table_count; i++) {
+    uint32_t ts     = ptpd_leap_table[i].ntp_ts;
+    int      offset = ptpd_leap_table[i].tai_offset;
+    /* Convert NTP timestamp to POSIX seconds for comparison with now.seconds */
+    int64_t  unix_ts = (int64_t)ts - 2208988800LL;
+
+    if ((int64_t)now.seconds >= unix_ts) {
+      /* This entry is already in effect — update current offset */
+      info->currentOffset = offset;
+    } else if (info->nextOffset == 0) {
+      /* First future entry — record as the upcoming leap event */
+      info->nextOffset = offset;
+      info->endTime    = (int32_t)unix_ts;
+      info->startTime  = (int32_t)(unix_ts - 86400);
+    }
+  }
+
+  if (info->currentOffset != 0)
+    info->offsetValid = TRUE;
+  if (info->startTime && info->endTime &&
+      info->currentOffset && info->nextOffset)
+    info->valid = TRUE;
+
+  return info->offsetValid ? 1 : 0;
+}
+
 static int ptpServiceInit(TimingService *service) {
   RunTimeOpts *rtOpts = (RunTimeOpts *)service->config;
   PtpClock *ptpClock = (PtpClock *)service->controller;
@@ -148,6 +194,8 @@ static int ptpServiceInit(TimingService *service) {
   memset(&rtOpts->leapInfo, 0, sizeof(LeapSecondInfo));
   if (strcmp(rtOpts->leapFile, "")) {
     parseLeapFile(rtOpts->leapFile, &rtOpts->leapInfo);
+  } else {
+    parseLeapTable(&rtOpts->leapInfo);
   }
 
   /* read current UTC offset from leap file or from kernel if not configured */
@@ -256,7 +304,12 @@ static void prepareLeapFlags(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
       if (strcmp(rtOpts->leapFile, "")) {
         memset(&rtOpts->leapInfo, 0, sizeof(LeapSecondInfo));
         parseLeapFile(rtOpts->leapFile, &rtOpts->leapInfo);
-
+        if (rtOpts->leapInfo.offsetValid) {
+          ptpClock->clockStatus.utcOffset = rtOpts->leapInfo.currentOffset;
+        }
+      } else {
+        memset(&rtOpts->leapInfo, 0, sizeof(LeapSecondInfo));
+        parseLeapTable(&rtOpts->leapInfo);
         if (rtOpts->leapInfo.offsetValid) {
           ptpClock->clockStatus.utcOffset = rtOpts->leapInfo.currentOffset;
         }
