@@ -19,27 +19,27 @@ jobs:
         submodules: recursive
 
     - name: Install dependencies
-      run: brew install libpcap
+      run: brew install libpcap googletest
 
     # ── Library (debug + release) ─────────────────────────────────────────────
     - name: Configure – macos-debug
       run: cmake --preset macos-debug
 
     - name: Build – macos-debug
-      run: cmake --build --preset macos-debug -- -j4
+      run: cmake --build --preset macos-debug --parallel 4
 
     - name: Configure – macos-release
       run: cmake --preset macos-release
 
     - name: Build – macos-release
-      run: cmake --build --preset macos-release -- -j4
+      run: cmake --build --preset macos-release --parallel 4
 
     # ── Unit tests ────────────────────────────────────────────────────────────
     - name: Configure – macos-gtest-debug
       run: cmake --preset macos-gtest-debug
 
     - name: Build – macos-gtest-debug
-      run: cmake --build --preset macos-gtest-debug -- -j4
+      run: cmake --build --preset macos-gtest-debug --parallel 4
 
     - name: Run unit tests
       run: ctest --test-dir build-cmake/macos-gtest-debug -L unit --output-on-failure
@@ -49,7 +49,7 @@ jobs:
       run: cmake --preset macos-ptpd-app-debug
 
     - name: Build – macos-ptpd-app-debug
-      run: cmake --build --preset macos-ptpd-app-debug -- -j4
+      run: cmake --build --preset macos-ptpd-app-debug --parallel 4
 
   # ── iOS simulator + device libraries ────────────────────────────────────────
   ios:
@@ -67,24 +67,24 @@ jobs:
       run: cmake --preset ios-simulator-debug
 
     - name: Build – ios-simulator-debug
-      run: cmake --build --preset ios-simulator-debug -- -j4
+      run: cmake --build --preset ios-simulator-debug --parallel 4
 
     - name: Configure – ios-simulator-release
       run: cmake --preset ios-simulator-release
 
     - name: Build – ios-simulator-release
-      run: cmake --build --preset ios-simulator-release -- -j4
+      run: cmake --build --preset ios-simulator-release --parallel 4
 
     # ── iOS device library (debug) ────────────────────────────────────────────
     - name: Configure – ios-debug
       run: cmake --preset ios-debug
 
     - name: Build – ios-debug
-      run: cmake --build --preset ios-debug -- -j4
+      run: cmake --build --preset ios-debug --parallel 4
 
     # ── PTPMonitor iOS simulator app ──────────────────────────────────────────
     - name: Configure – iossim-ptpd-app-debug
       run: cmake --preset iossim-ptpd-app-debug
 
     - name: Build – iossim-ptpd-app-debug
-      run: cmake --build --preset iossim-ptpd-app-debug -- -j4
+      run: cmake --build --preset iossim-ptpd-app-debug --parallel 4
