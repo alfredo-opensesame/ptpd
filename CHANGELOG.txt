@@ -105,7 +105,7 @@ Repositories covered:
       * Master-only
       * Master-slave (auto)
   - Lock file behaviour and ignore_lock guidance.
-  - macOS privilege notes: PTPD_NO_ROOT_CHECK, PTPD_OPENSESAME, required
+  - macOS privilege notes: PTPD_NO_ROOT_CHECK, PTPD_OPENSESAME_PORTS, required
     sysctl knobs.
   - PTPD_IOS flag explanation and when it applies on macOS.
   - swclock backend overview.

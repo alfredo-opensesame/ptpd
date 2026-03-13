@@ -491,7 +491,7 @@ setup_binary_args() {
 # Function to start packet capture
 start_packet_capture() {
     print_status "📡 Starting packet capture on $INTERFACE..."
-    sudo tcpdump -i "$INTERFACE" -n -U '(udp port 319 or udp port 320)' -w "$PCAP_FILE" > /dev/null 2>&1 &
+    sudo tcpdump -i "$INTERFACE" -n -U '(udp port 319 or udp port 320 or udp port 10319 or udp port 10320)' -w "$PCAP_FILE" > /dev/null 2>&1 &
     TCPDUMP_PID=$!
     print_success "Packet capture started (PID: $TCPDUMP_PID)"
 }
@@ -897,7 +897,7 @@ analyze_results() {
 
     # Run analysis scripts
     local analysis_dir="$(dirname "$SCRIPT_DIR")/analysis"
-    
+
     # Analyze CSV statistics
     if [ -f "$STATS_FILE" ] && command -v python3 >/dev/null 2>&1; then
         if [ -f "$analysis_dir/analyze_ptp.py" ]; then
@@ -906,7 +906,7 @@ analyze_results() {
             echo ""
         fi
     fi
-    
+
     # Analyze packet capture
     if [ -f "$PCAP_FILE" ] && command -v tcpdump >/dev/null 2>&1; then
         if [ -f "$analysis_dir/analyze_pcap.sh" ]; then

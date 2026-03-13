@@ -1109,14 +1109,22 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock) {
                     pcap_set_buffer_size(netPath->pcapEvent, 1024 * 2 *
        UNICAST_MAX_DESTINATIONS); pcap_activate(netPath->pcapEvent);
     */
-    if (pcap_compile(netPath->pcapEvent, &program,
-                     (rtOpts->transport == IEEE_802_3) ? "ether proto 0x88f7"
-                     : (rtOpts->ipMode == IPMODE_UNICAST)
-                         ? "udp port 319 and not multicast"
-                     : (rtOpts->ipMode != IPMODE_MULTICAST)
-                         ? "udp port 319"
-                         : "host (224.0.1.129 or 224.0.0.107) and udp port 319",
-                     1, 0) < 0) {
+    /* Build event filter using the compiled-in port number so it works
+     * with both standard (319) and OPENSESAME_PORTS (10319) builds. */
+    char pcap_event_filter[128];
+    if (rtOpts->transport == IEEE_802_3) {
+      snprintf(pcap_event_filter, sizeof(pcap_event_filter), "ether proto 0x88f7");
+    } else if (rtOpts->ipMode == IPMODE_UNICAST) {
+      snprintf(pcap_event_filter, sizeof(pcap_event_filter),
+               "udp port %d and not multicast", PTP_EVENT_PORT);
+    } else if (rtOpts->ipMode != IPMODE_MULTICAST) {
+      snprintf(pcap_event_filter, sizeof(pcap_event_filter),
+               "udp port %d", PTP_EVENT_PORT);
+    } else {
+      snprintf(pcap_event_filter, sizeof(pcap_event_filter),
+               "host (224.0.1.129 or 224.0.0.107) and udp port %d", PTP_EVENT_PORT);
+    }
+    if (pcap_compile(netPath->pcapEvent, &program, pcap_event_filter, 1, 0) < 0) {
       PERROR("failed to compile pcap event filter");
       pcap_perror(netPath->pcapEvent, "ptpd2");
       return FALSE;
@@ -1138,14 +1146,21 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock) {
       return FALSE;
     }
     if (rtOpts->transport != IEEE_802_3) {
-      if (pcap_compile(
-              netPath->pcapGeneral, &program,
-              (rtOpts->ipMode == IPMODE_UNICAST)
-                  ? "udp port 320 and not multicast"
-              : (rtOpts->ipMode != IPMODE_MULTICAST)
-                  ? "udp port 320"
-                  : "host (224.0.1.129 or 224.0.0.107) and udp port 320",
-              1, 0) < 0) {
+      /* Build general filter using the compiled-in port number.
+       * In multicast mode we must NOT restrict to multicast host addresses:
+       * Delay_Resp is sent unicast from master to the slave's IP, so
+       * restricting to 224.0.x.x would silently drop all Delay_Resp messages,
+       * leaving oneWayDelay permanently zero. */
+      char pcap_general_filter[128];
+      if (rtOpts->ipMode == IPMODE_UNICAST) {
+        snprintf(pcap_general_filter, sizeof(pcap_general_filter),
+                 "udp port %d and not multicast", PTP_GENERAL_PORT);
+      } else {
+        snprintf(pcap_general_filter, sizeof(pcap_general_filter),
+                 "udp port %d", PTP_GENERAL_PORT);
+      }
+      if (pcap_compile(netPath->pcapGeneral, &program,
+                       pcap_general_filter, 1, 0) < 0) {
         PERROR("failed to compile pcap general filter");
         pcap_perror(netPath->pcapGeneral, "ptpd2");
         return FALSE;
@@ -1435,7 +1450,17 @@ int netSelect(TimeInternal *timeout, NetPath *netPath, fd_set *readfds) {
     tv.tv_usec = timeout->nanoseconds / 1000;
     tv_ptr = &tv;
   } else {
+#if defined(PTPD_LIBRARY_MODE) && !defined(PTPD_POSIX_TIMERS)
+    /* In library mode the protocol runs in a pthread. setitimer() SIGALRM is
+     * delivered to the process but not reliably to this thread, so select(NULL)
+     * would block forever when no PTP traffic arrives. Use one timer tick as a
+     * fallback timeout so the protocol loop wakes up to check timers. */
+    tv.tv_sec = 0;
+    tv.tv_usec = 31250; /* US_TIMER_INTERVAL from eventtimer_itimer.c */
+    tv_ptr = &tv;
+#else
     tv_ptr = NULL;
+#endif
   }
 
   FD_ZERO(readfds);

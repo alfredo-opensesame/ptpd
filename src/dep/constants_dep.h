@@ -126,11 +126,13 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 
 /* PTP UDP Port Configuration
  * Standard ports (319/320) require root/privileged access on Unix systems.
- * Define PTPD_OPENSESAME to use non-standard ports (10319/10320) that don't
- * require root. Note: ALL nodes in the PTP network (master and slaves) must use
+ * PTPD_OPENSESAME_PORTS selects non-standard ports (10319/10320) that don't
+ * require root. It is defined by default in ptpd.h; define PTPD_STANDARD_PORTS
+ * at compile time to revert to the standard IEEE 1588 ports.
+ * Note: ALL nodes in the PTP network (master and slaves) must use
  * the same port numbers.
  */
-#ifdef PTPD_OPENSESAME
+#ifdef PTPD_OPENSESAME_PORTS
 #define PTP_EVENT_PORT 10319   /* Unprivileged port for event messages */
 #define PTP_GENERAL_PORT 10320 /* Unprivileged port for general messages */
 #else

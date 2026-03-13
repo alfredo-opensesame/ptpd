@@ -26,7 +26,15 @@
 #ifdef PTPD_IOS
 #define PTPD_NO_ROOT_CHECK    /* Skip privilege checks on iOS */
 #define PTPD_SOCKET_TIMEOUT 1 /* Non-blocking sockets (1 second timeout) */
-#define PTPD_OPENSESAME       /* Use non-privileged ports (10319/10320) */
+#define PTPD_OPENSESAME_PORTS /* Use non-privileged ports (10319/10320) */
+#endif
+
+/* Use non-privileged ports (10319/10320) by default.
+ * Define PTPD_STANDARD_PORTS at compile time to use the standard IEEE 1588
+ * ports (319/320), which require root/privileged access on Unix systems.
+ * Note: ALL nodes in the PTP network must use the same port numbers. */
+#ifndef PTPD_STANDARD_PORTS
+#define PTPD_OPENSESAME_PORTS
 #endif
 
 #if defined(linux) || defined(__linux__)
