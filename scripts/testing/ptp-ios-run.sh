@@ -6,13 +6,13 @@
 # monitors the PTP state machine live, and produces a summary.
 #
 # Usage:
-#   ./ptp-ios-run.sh <interface> <master_ip> [options]
+#   ./ptp-ios-run.sh <interface> [options]
 #
 # Parameters:
-#   interface   Host network interface the master is reachable on (e.g. en5)
-#   master_ip   PTP grandmaster IP address (e.g. 192.168.68.114)
+#   interface    Host network interface the master is reachable on (e.g. en5)
 #
 # Options:
+#   -m / --master-ip IP    PTP grandmaster IP address (required)
 #   -u / --udid   UDID     Simulator device UDID
 #                          (default: C3F3DBCE-2497-4117-94C7-5A2BCB89F1A9)
 #   -d / --duration N      Run duration in seconds (default: 60)
@@ -21,9 +21,9 @@
 #   -h / --help            Show this help
 #
 # Examples:
-#   ./ptp-ios-run.sh en0 192.168.68.114
-#   ./ptp-ios-run.sh en0 192.168.68.114 -d 120 --build
-#   ./ptp-ios-run.sh en0 192.168.68.114 -u AABBCCDD-... -d 60
+#   ./ptp-ios-run.sh en0 -m 192.168.68.114
+#   ./ptp-ios-run.sh en0 -m 192.168.68.114 -d 120 --build
+#   ./ptp-ios-run.sh en0 -m 192.168.68.114 -u AABBCCDD-... -d 60
 
 set -e
 
@@ -64,13 +64,13 @@ CSV_FILE=""
 # ─────────────────────────────────────────────────────────────────────────────
 show_usage() {
     cat <<EOF
-Usage: $0 <interface> <master_ip> [options]
+Usage: $0 <interface> [options]
 
 Parameters:
   interface    Host network interface to capture on (e.g. en5)
-  master_ip    PTP grandmaster IP (e.g. 192.168.68.114)
 
 Options:
+  -m / --master-ip IP  PTP grandmaster IP address (required)
   -u / --udid   UDID   Simulator device UDID
                        (default: $DEFAULT_UDID)
   -d / --duration N    Run duration in seconds (default: 60)
@@ -79,9 +79,9 @@ Options:
   -h / --help          Show this help
 
 Examples:
-  $0 en0 192.168.68.114
-  $0 en0 192.168.68.114 -d 120 --build
-  $0 en0 192.168.68.114 -u AABBCCDD-1234-... -d 60
+  $0 en0 -m 192.168.68.114
+  $0 en0 -m 192.168.68.114 -d 120 --build
+  $0 en0 -m 192.168.68.114 -u AABBCCDD-1234-... -d 60
 EOF
 }
 
@@ -89,12 +89,13 @@ EOF
 parse_arguments() {
     case "${1:-}" in -h|--help) show_usage; exit 0 ;; esac
 
-    if [ $# -lt 2 ]; then show_usage; exit 1; fi
+    if [ $# -lt 1 ]; then show_usage; exit 1; fi
     INTERFACE="$1"; shift
-    MASTER_IP="$1";  shift
 
     while [[ $# -gt 0 ]]; do
         case $1 in
+            -m|--master-ip)
+                MASTER_IP="$2"; shift 2 ;;
             -u|--udid)
                 UDID="$2"; shift 2 ;;
             -d|--duration)
@@ -116,8 +117,13 @@ parse_arguments() {
 
     [ -z "$UDID" ] && UDID="$DEFAULT_UDID"
 
-    if [ -z "$INTERFACE" ] || [ -z "$MASTER_IP" ]; then
-        print_error "interface and master_ip are required"
+    if [ -z "$INTERFACE" ]; then
+        print_error "interface is required"
+        show_usage; exit 1
+    fi
+
+    if [ -z "$MASTER_IP" ]; then
+        print_error "master IP is required (-m / --master-ip)"
         show_usage; exit 1
     fi
 }

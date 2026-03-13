@@ -146,6 +146,7 @@ struct ContentView: View {
             }
             .padding()
             .navigationTitle("PTP Monitor")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
