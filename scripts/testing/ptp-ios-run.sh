@@ -382,6 +382,20 @@ monitor_live() {
                 fi
             fi
 
+            # Delay lines — ptpd logs:
+            #   "delay averaged (E2E):           0s      119611ns"
+            local delay_ns=""
+            local delay_line
+            delay_line=$(grep -o 'delay averaged (E2E):.*ns' "$LOG_FILE" 2>/dev/null | tail -1 || true)
+            if [ -n "$delay_line" ]; then
+                local dsec_val dns_val
+                dsec_val=$(echo "$delay_line" | grep -oE '[0-9]+s' | head -1 | tr -d 's')
+                dns_val=$(echo "$delay_line" | grep -oE '[-]?[0-9]+ns' | tail -1 | tr -d 'ns')
+                if [ -n "$dsec_val" ] && [ -n "$dns_val" ]; then
+                    delay_ns=$(( dsec_val * 1000000000 + dns_val ))
+                fi
+            fi
+
             if [ -n "$offset_ns" ] && [ "$offset_ns" != "0" ]; then
                 # Detect master from unicast grant messages
                 if grep -q "received.*grant\|ANNOUNCE.*grant\|unicast.*granted" "$LOG_FILE" 2>/dev/null; then
@@ -391,10 +405,11 @@ monitor_live() {
                 # Append to CSV
                 echo "$elapsed,$last_state,$offset_ns" >>"$CSV_FILE"
 
-                local offset_us
+                local offset_us delay_us
                 offset_us=$(( offset_ns / 1000 ))
-                printf "\r\033[K${BLUE}[%ds]${NC} State: %-20s Offset: %d ns (%d µs)  Master: %s  Slave: %s" \
-                    "$elapsed" "$last_state" "$offset_ns" "$offset_us" \
+                delay_us=$(( ${delay_ns:-0} / 1000 ))
+                printf "\r\033[K${BLUE}[%ds]${NC} State: %-20s Offset: %d µs | Delay: %d µs  Master: %s  Slave: %s" \
+                    "$elapsed" "$last_state" "$offset_us" "$delay_us" \
                     "$([ "$master_found" = true ] && echo "✅" || echo "❌")" \
                     "$([ "$slave_achieved" = true ] && echo "✅" || echo "❌")"
             else
