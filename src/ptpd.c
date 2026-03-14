@@ -114,6 +114,10 @@ static PtpClock *ptpd_common_init(int argc, char **argv, Integer16 *ret) {
   if (!ptpClock->swclock) {
     ERROR("Failed to create software clock\n");
     /* Continue with system clock fallback - ptpd_clock.h macros will handle */
+  } else {
+    /* Disable inner PI servo — ptpd's outer PI servo drives frequency via
+     * adjFreq_wrapper(); the swclock inner loop is not needed. */
+    swclock_disable_pi_servo((SwClock *)ptpClock->swclock);
   }
 #endif
 
