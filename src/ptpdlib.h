@@ -243,7 +243,7 @@ typedef enum {
 typedef struct {
     struct timespec    ts;              /**< The timestamp                              */
     ptpd_time_source_t source;          /**< Where the timestamp came from              */
-    int                is_synchronized; /**< 1 iff state == PTP_SLAVE and servo settled */
+    int                is_synchronized; /**< 1 iff state == PTP_SLAVE                   */
     int64_t            offset_ns;       /**< Last known offset from master (ns)         */
     int64_t            uncertainty_ns;  /**< swclock maxerror in ns; INT64_MAX when
                                              unknown (sysclock path or no data yet)      */
@@ -331,6 +331,9 @@ int ptpd_gettime_ex_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
 /**
  * Current PTP daemon status snapshot (A7).
  * All fields reflect the state at the moment of the ptpd_get_status() call.
+ * Units:
+ *   offset_ns, delay_ns: nanoseconds (signed)
+ *   drift_ppb: parts per billion (integer, truncated from internal double)
  */
 typedef struct {
     uint8_t  state;           /**< Port state (PTP_SLAVE, PTP_LISTENING, …)  */
@@ -407,7 +410,8 @@ int ptpd_get_current_interface(PtpdHandle *ptpClock, char *out, int out_len);
  *   correction_ppb   — frequency correction (ppb) produced by the last PI
  *                      step and applied to the local clock
  *   drift_ppb        — accumulated integral term (observedDrift, ppb); same
- *                      value as ptpd_status_t::drift_ppb
+ *                      quantity as ptpd_status_t::drift_ppb (but here kept
+ *                      as double precision)
  */
 typedef struct {
     double  kP;             /**< Proportional gain */

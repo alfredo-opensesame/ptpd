@@ -204,6 +204,11 @@ int ptpd_timestamp_event(PtpdHandle *ptp, ptpd_time_t *out);
 `ptpd_gettime_ex()` fills a `ptpd_time_t` which carries the timestamp plus
 `is_synchronized`, `offset_ns`, `uncertainty_ns`, and a `source` tag indicating
 whether the result came from the PTP-disciplined swclock or the kernel fallback.
+Field units and semantics:
+- `ts`: `struct timespec` (`tv_sec` in seconds, `tv_nsec` in nanoseconds)
+- `is_synchronized`: `1` when state is `PTP_SLAVE`
+- `offset_ns`: nanoseconds
+- `uncertainty_ns`: nanoseconds (from swclock `maxerror`, converted from microseconds)
 
 The `ptpd_clock_id_t` enum (`PTPD_CLOCK_WALL`, `PTPD_CLOCK_MONOTONIC`,
 `PTPD_CLOCK_TAI`, `PTPD_CLOCK_RAW`) avoids leaking POSIX clock IDs into calling
@@ -226,9 +231,9 @@ void        ptpd_set_log_level(PtpdHandle *ptp, int level);  // LOG_ERR … LOG_
 ```c
 typedef struct {
     uint8_t  state;           // PTP_SLAVE, PTP_LISTENING, …
-    int64_t  offset_ns;       // current offsetFromMaster (ns)
-    int64_t  delay_ns;        // current meanPathDelay (ns)
-    int32_t  drift_ppb;       // servo observedDrift (ppb)
+  int64_t  offset_ns;       // current offsetFromMaster (nanoseconds)
+  int64_t  delay_ns;        // current meanPathDelay (nanoseconds)
+  int32_t  drift_ppb;       // servo observedDrift (parts per billion, truncated)
     int      is_synchronized; // 1 when state == PTP_SLAVE
 } ptpd_status_t;
 ```
@@ -256,9 +261,9 @@ int ptpd_set_servo_gains(PtpdHandle *ptp, double kp, double ki);
 typedef struct {
     double  kP;             // proportional gain
     double  kI;             // integral gain
-    int32_t error_ns;       // OFM (ns) last consumed by the PI step
-    double  correction_ppb; // frequency correction applied to clock (ppb)
-    double  drift_ppb;      // integral accumulator / observedDrift (ppb)
+  int32_t error_ns;       // OFM (nanoseconds) last consumed by the PI step
+  double  correction_ppb; // frequency correction applied to clock (parts per billion)
+  double  drift_ppb;      // integral accumulator / observedDrift (parts per billion)
 } ptpd_servo_params_t;
 ```
 
