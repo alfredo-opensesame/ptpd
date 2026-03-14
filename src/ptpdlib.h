@@ -356,6 +356,61 @@ typedef struct {
 int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out);
 
 /**
+ * @brief Snapshot of all PI-servo runtime parameters (D1)
+ *
+ * Populated by ptpd_get_servo_params().  All fields reflect the servo state
+ * at the moment of the call.
+ *
+ *   kP / kI          — current proportional and integral gains
+ *   error_ns         — offset-from-master (ns) last consumed by the PI step;
+ *                      captured at PI-run time so it may lag by one message
+ *                      interval relative to ptpd_status_t::offset_ns
+ *   correction_ppb   — frequency correction (ppb) produced by the last PI
+ *                      step and applied to the local clock
+ *   drift_ppb        — accumulated integral term (observedDrift, ppb); same
+ *                      value as ptpd_status_t::drift_ppb
+ */
+typedef struct {
+    double  kP;             /**< Proportional gain */
+    double  kI;             /**< Integral gain */
+    int32_t error_ns;       /**< Servo error — OFM (ns) at last PI run */
+    double  correction_ppb; /**< Frequency correction applied to clock (ppb) */
+    double  drift_ppb;      /**< Integral accumulator / observedDrift (ppb) */
+} ptpd_servo_params_t;
+
+/**
+ * @brief Read current PI-servo parameters into *out (D1)
+ * @param handle  Opaque handle returned by ptpd_init(); must not be NULL
+ * @param out     Caller-allocated ptpd_servo_params_t; must not be NULL
+ * @return        0 on success, -1 if handle or out is NULL
+ *
+ * Populates all fields of *out from the live PIservo struct.  Safe to call
+ * from any thread; each field read is at most pointer-sized.
+ *
+ * Example:
+ *   ptpd_servo_params_t sp;
+ *   ptpd_get_servo_params(ptp, &sp);
+ *   printf("kP=%.6f kI=%.6f error=%d ns\n", sp.kP, sp.kI, sp.error_ns);
+ */
+int ptpd_get_servo_params(PtpdHandle *handle, ptpd_servo_params_t *out);
+
+/**
+ * @brief Update the PI-servo gains (D2)
+ * @param handle  Opaque handle returned by ptpd_init(); must not be NULL
+ * @param kp      New proportional gain (e.g. 0.1)
+ * @param ki      New integral gain (e.g. 0.001)
+ * @return        0 on success, -1 if handle is NULL
+ *
+ * Writes kp / ki to both the live PIservo struct (takes effect at the next
+ * servo tick) and to RunTimeOpts (persists across servo re-initialisation
+ * caused by port-state transitions).
+ *
+ * Example:
+ *   ptpd_set_servo_gains(ptp, 0.1, 0.001);
+ */
+int ptpd_set_servo_gains(PtpdHandle *handle, double kp, double ki);
+
+/**
  * @brief Return a human-readable name for a PTP port state value (A1)
  * @param state  uint8_t state from ptpd_status_t::state
  * @return       A static string, e.g. "SLAVE", "LISTENING", "MASTER"; returns

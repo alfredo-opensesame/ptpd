@@ -89,7 +89,7 @@ B6. [DONE] No atomic event timestamping
 
 ── C. RUNTIME RECONFIGURATION ───────────────────────────────────────────────
 
-C1. Interface change at runtime
+C1. [DONE] Interface change at runtime
     The network interface is parsed once at ptpd_init() and baked into
     RunTimeOpts.  When an interface disappears (Wi-Fi roam, USB unplug)
     the daemon goes FAULTY and never recovers without a full restart.
@@ -98,20 +98,20 @@ C1. Interface change at runtime
     machine from INITIALIZING.  Background thread stays alive; only
     the network layer is recycled.  Servo drift is preserved.
 
-C2. Master IP change at runtime
+C2. [DONE] Master IP change at runtime
     ptpengine:unicast_destinations is fixed at init time.
     Fix: ptpd_set_master_ip(handle, const char* ip) — update
     unicast_destinations, cancel outstanding unicast grants with
     CANCEL_UNICAST_TRANSMISSION to the old master, begin Announce
     exchange with the new one.
 
-C3. Network change notification callback
+C3. [DONE] Network change notification callback
     No way for the daemon to tell the embedder that the interface was lost.
     Fix: ptpd_set_network_change_callback(handle, cb) fires when the
     daemon detects an interface loss (socket error, link down), letting
     the embedder call ptpd_set_interface() with the replacement.
 
-C4. Reconfiguration thread safety
+C4. [DONE] Reconfiguration thread safety
     C1 and C2 require writing to RunTimeOpts and the socket from outside
     the protocol thread.  Currently nothing in ptpdlib acquires the
     protocol-thread lock from the public API.
@@ -119,8 +119,32 @@ C4. Reconfiguration thread safety
     by the protocol thread at a safe point (same pattern as the existing
     ios_should_exit flag).
 
-C5. State continuity across reconfiguration
+C5. [DONE] State continuity across reconfiguration
     After an interface or master change the servo currently starts from
     zero (drift = 0, statistics cleared).
     Fix: preserve observedDrift and recent OFM/MPD statistics across
     a reconfiguration so convergence after the switch is fast.
+
+
+── D. SERVO ACCESS ──────────────────────────────────────────────────────────
+
+D1. [DONE] No way to read PI-servo parameters
+    kP, kI, the live error, frequency correction, and integral accumulator
+    are all buried inside PtpClock::servo.  Embedders can't monitor servo
+    health without touching internals.
+    Fix:
+      typedef struct {
+          double  kP;             // proportional gain
+          double  kI;             // integral gain
+          int32_t error_ns;       // OFM (ns) last consumed by the PI step
+          double  correction_ppb; // frequency correction applied to clock
+          double  drift_ppb;      // integral accumulator (observedDrift)
+      } ptpd_servo_params_t;
+      int ptpd_get_servo_params(handle, ptpd_servo_params_t*);
+
+D2. [DONE] No way to tune PI gains at runtime
+    servoKP / servoKI are parsed from the config file at startup and
+    baked into RunTimeOpts.  They cannot be adjusted without restarting.
+    Fix: ptpd_set_servo_gains(handle, double kp, double ki) — writes to
+    both the live PIservo struct (takes effect next tick) and to
+    RunTimeOpts (persists across servo re-init on port-state transitions).

@@ -551,6 +551,35 @@ void ptpd_set_network_change_callback(
   clock->network_change_callback      = callback; /* set last — atomic store */
 }
 
+/**
+ * @brief Read current PI-servo parameters (D1)
+ */
+int ptpd_get_servo_params(PtpdHandle *handle, ptpd_servo_params_t *out) {
+  if (!handle || !out) return -1;
+  PtpClock *clock = handle->clock;
+  out->kP             = clock->servo.kP;
+  out->kI             = clock->servo.kI;
+  out->error_ns       = clock->servo.input;
+  out->correction_ppb = clock->servo.output;
+  out->drift_ppb      = clock->servo.observedDrift;
+  return 0;
+}
+
+/**
+ * @brief Update the PI-servo gains (D2)
+ */
+int ptpd_set_servo_gains(PtpdHandle *handle, double kp, double ki) {
+  if (!handle) return -1;
+  PtpClock *clock = handle->clock;
+  /* Update live servo — takes effect on the next tick */
+  clock->servo.kP = kp;
+  clock->servo.kI = ki;
+  /* Update rtOpts so gains survive servo re-init on port-state transitions */
+  clock->rtOpts->servoKP = kp;
+  clock->rtOpts->servoKI = ki;
+  return 0;
+}
+
 #endif /* PTPD_LIBRARY_MODE */
 
 #ifndef PTPD_LIBRARY_MODE
