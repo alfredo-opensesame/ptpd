@@ -163,7 +163,8 @@ API FUNCTIONS
 
   void ptpd_set_log_level(PtpdHandle* ptp, int level)
     Change log verbosity at runtime without restarting.
-    level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG.
+    level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG,
+           or PTPD_LOG_OFF to suppress all messages.
 
 ── Servo ─────────────────────────────────────────────────────────────────────
 

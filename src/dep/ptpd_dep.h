@@ -25,6 +25,7 @@
 #define LOG_DEBUG2 8
 #define LOG_DEBUG3 9
 #define LOG_DEBUGV 9
+#define LOG_NONE 255
 
 #define EMERGENCY(x, ...) logMessage(LOG_EMERG, x, ##__VA_ARGS__)
 #define ALERT(x, ...) logMessage(LOG_ALERT, x, ##__VA_ARGS__)

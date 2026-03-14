@@ -216,7 +216,7 @@ int         ptpd_get_status(PtpdHandle *ptp, ptpd_status_t *out);
 const char *ptpd_state_name(uint8_t state);         // "SLAVE", "MASTER", …
 void        ptpd_set_state_callback(PtpdHandle *ptp,
                 void (*cb)(uint8_t from, uint8_t to, void *ud), void *ud);
-void        ptpd_set_log_level(PtpdHandle *ptp, int level);  // LOG_ERR … LOG_DEBUG
+void        ptpd_set_log_level(PtpdHandle *ptp, int level);  // LOG_ERR … LOG_DEBUG, or PTPD_LOG_OFF
 ```
 
 `ptpd_get_status()` fills a `ptpd_status_t` snapshot:

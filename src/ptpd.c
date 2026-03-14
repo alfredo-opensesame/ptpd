@@ -403,6 +403,9 @@ void ptpd_set_state_callback(PtpdHandle *ptpClock,
  */
 void ptpd_set_log_level(PtpdHandle *ptpClock, int level) {
   if (!ptpClock) return;
+  if (level < 0) {
+    level = LOG_NONE;
+  }
   ptpClock->clock->rtOpts->logLevel = (Enumeration8)level;
 }
 

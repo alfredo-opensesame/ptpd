@@ -442,6 +442,20 @@ void logMessage(int priority, const char *format, ...) {
   va_start(ap1, format);
   va_start(ap, format);
 
+#ifdef RUNTIME_DEBUG
+  if ((priority >= LOG_DEBUG) && (priority > rtOpts.debug_level)) {
+    goto end;
+  }
+#endif
+
+  /* log level filter */
+  if (rtOpts.logLevel == LOG_NONE) {
+    goto end;
+  }
+  if (priority > rtOpts.logLevel) {
+    goto end;
+  }
+
 #ifdef PTPD_LIBRARY_MODE
   /* Send log message to registered callback if set */
   if (ios_log_callback) {
@@ -452,16 +466,6 @@ void logMessage(int priority, const char *format, ...) {
   }
 #endif /* PTPD_LIBRARY_MODE */
 
-#ifdef RUNTIME_DEBUG
-  if ((priority >= LOG_DEBUG) && (priority > rtOpts.debug_level)) {
-    goto end;
-  }
-#endif
-
-  /* log level filter */
-  if (priority > rtOpts.logLevel) {
-    goto end;
-  }
   /* If we're using a log file and the message has been written OK, we're done*/
   if (rtOpts.eventLog.logEnabled && rtOpts.eventLog.logFP != NULL) {
     if (writeMessage(rtOpts.eventLog.logFP, &rtOpts.eventLog.lastHash, priority,

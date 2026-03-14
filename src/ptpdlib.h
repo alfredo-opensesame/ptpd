@@ -19,6 +19,9 @@
 extern "C" {
 #endif
 
+/** Disable all log output when passed to ptpd_set_log_level(). */
+#define PTPD_LOG_OFF 255
+
 /**
  * Opaque library handle.
  *
@@ -194,7 +197,8 @@ void ptpd_set_state_callback(PtpdHandle *ptpClock,
 /**
  * @brief Change the runtime log verbosity level (A5)
  * @param ptpClock PtpdHandle from ptpd_init()
- * @param level syslog-style level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG
+ * @param level syslog-style level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG,
+ *              or PTPD_LOG_OFF to suppress all messages
  *
  * Takes effect immediately without restarting the daemon.  Equivalent to
  * setting ptpengine:log_level in the configuration, but at runtime.
@@ -204,6 +208,7 @@ void ptpd_set_state_callback(PtpdHandle *ptpClock,
  * Example:
  *   ptpd_set_log_level(ptp, LOG_DEBUG);  // enable verbose output
  *   ptpd_set_log_level(ptp, LOG_ERR);    // quiet mode
+ *   ptpd_set_log_level(ptp, PTPD_LOG_OFF); // disable all messages
  */
 void ptpd_set_log_level(PtpdHandle *ptpClock, int level);
 
