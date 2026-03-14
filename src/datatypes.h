@@ -765,6 +765,13 @@ typedef struct {
 #ifdef PTPD_LIBRARY_MODE
   /* Library mode: clean exit flag set by ptpd_shutdown() */
   volatile Boolean library_should_exit;
+
+  /* A2: last error code set by library API functions */
+  int library_last_error;
+
+  /* A4: state-change callback registered by ptpd_set_state_callback() */
+  void (*state_callback)(uint8_t from_state, uint8_t to_state, void *user_data);
+  void *state_callback_data;
 #endif
 
 } PtpClock;

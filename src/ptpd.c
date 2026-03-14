@@ -224,6 +224,7 @@ int ptpd_start(PtpdHandle *ptpClock) {
 
   if (thread_running) {
     ERROR("ptpd_start: Protocol thread already running\n");
+    ptpClock->library_last_error = PTPD_ERR_RUNNING;
     return -1;
   }
 
@@ -233,9 +234,11 @@ int ptpd_start(PtpdHandle *ptpClock) {
   if (ret != 0) {
     ERROR("ptpd_start: Failed to create protocol thread: %s\n", strerror(ret));
     thread_running = FALSE;
+    ptpClock->library_last_error = PTPD_ERR_THREAD;
     return -1;
   }
 
+  ptpClock->library_last_error = PTPD_OK;
   return 0;
 }
 
@@ -364,6 +367,33 @@ int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out) {
       (ptpClock->currentDS.meanPathDelay.seconds * 1000000000LL);
   out->drift_ppb = (int32_t)ptpClock->servo.observedDrift;
   return 0;
+}
+
+/**
+ * @brief Return last library error code (A2)
+ */
+int ptpd_last_error(PtpdHandle *ptpClock) {
+  if (!ptpClock) return PTPD_ERR_NULL_ARG;
+  return ptpClock->library_last_error;
+}
+
+/**
+ * @brief Register state-change callback (A4)
+ */
+void ptpd_set_state_callback(PtpdHandle *ptpClock,
+    void (*callback)(uint8_t from_state, uint8_t to_state, void *user_data),
+    void *user_data) {
+  if (!ptpClock) return;
+  ptpClock->state_callback      = callback;
+  ptpClock->state_callback_data = user_data;
+}
+
+/**
+ * @brief Set runtime log verbosity (A5)
+ */
+void ptpd_set_log_level(PtpdHandle *ptpClock, int level) {
+  if (!ptpClock) return;
+  ptpClock->rtOpts->logLevel = (Enumeration8)level;
 }
 
 #endif /* PTPD_LIBRARY_MODE */

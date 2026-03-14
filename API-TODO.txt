@@ -10,7 +10,7 @@ A1. Opaque handle
     Fix: forward-declare an opaque  typedef struct PtpdHandle PtpdHandle;
     and return that.  Map to PtpClock* internally.
 
-A2. Error reporting
+A2. [DONE] Error reporting
     ptpd_start() returns only -1 on failure; ptpd_gettime() sets errno but
     nothing else.  No way to distinguish "thread creation failed" from
     "not initialised" from "swclock unavailable".
@@ -22,13 +22,13 @@ A3. [DONE] Graceful stop without destroy
     servo state, allowing pause/resume without reinitialising.
     Critical for iOS background/foreground transitions.
 
-A4. State-change callback
+A4. [DONE] State-change callback
     No way to be notified when the port state changes without polling
     or touching ptpClock->portState directly (an internal field).
     Fix: ptpd_set_state_callback(handle, cb) fires on every
     INITIALIZING → LISTENING → SLAVE / MASTER / PASSIVE / FAULTY transition.
 
-A5. Runtime log level control
+A5. [DONE] Runtime log level control
     Verbosity is baked into argv at init time.
     Fix: ptpd_set_log_level(int level) to change verbosity on the fly
     without restarting the daemon.

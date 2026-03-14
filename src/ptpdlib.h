@@ -55,6 +55,31 @@ typedef PtpClock PtpdHandle;
  */
 
 /**
+ * Error codes returned by ptpd_last_error() (A2).
+ */
+typedef enum {
+    PTPD_OK            =  0, /**< No error                                    */
+    PTPD_ERR_NULL_ARG  = -1, /**< NULL pointer passed to a library function   */
+    PTPD_ERR_INIT      = -2, /**< ptpd_init() failed (see ret code for detail) */
+    PTPD_ERR_THREAD    = -3, /**< pthread_create() failed in ptpd_start()      */
+    PTPD_ERR_RUNNING   = -4, /**< ptpd_start() called while already running    */
+} ptpd_error_t;
+
+/**
+ * @brief Return the last error that occurred on this handle (A2)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @return ptpd_error_t code; PTPD_OK (0) if no error has occurred
+ *
+ * The stored code is set whenever a library API function fails.  It is
+ * cleared to PTPD_OK on a successful ptpd_start().
+ *
+ * Example:
+ *   if (ptpd_start(ptp) != 0)
+ *       fprintf(stderr, "start failed: %d\n", ptpd_last_error(ptp));
+ */
+int ptpd_last_error(PtpdHandle *ptpClock);
+
+/**
  * @brief Initialize PTP daemon for library mode
  * @param argc Argument count (same as main())
  * @param argv Argument vector (same as main())
@@ -140,6 +165,45 @@ void ptpd_shutdown(PtpdHandle *ptpClock);
  *   ptpd_start(ptp);   // foreground — resumes with preserved drift
  */
 void ptpd_stop(PtpdHandle *ptpClock);
+
+/**
+ * @brief Register a state-change callback (A4)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param callback Function called on every port-state transition, or NULL to
+ *                 unregister
+ * @param user_data Opaque pointer forwarded to the callback unchanged
+ *
+ * The callback fires from the protocol thread immediately before the new
+ * state is applied, so @p from_state is the current state and @p to_state
+ * is the state being entered.  It must return quickly.
+ *
+ * Thread safety: safe to call at any time; the pointer write is atomic.
+ *
+ * Example:
+ *   void on_state(uint8_t from, uint8_t to, void *ud) {
+ *       printf("PTP state: %d -> %d\n", from, to);
+ *   }
+ *   ptpd_set_state_callback(ptp, on_state, NULL);
+ */
+void ptpd_set_state_callback(PtpdHandle *ptpClock,
+    void (*callback)(uint8_t from_state, uint8_t to_state, void *user_data),
+    void *user_data);
+
+/**
+ * @brief Change the runtime log verbosity level (A5)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param level syslog-style level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG
+ *
+ * Takes effect immediately without restarting the daemon.  Equivalent to
+ * setting ptpengine:log_level in the configuration, but at runtime.
+ *
+ * Thread safety: the write is atomic on all supported architectures.
+ *
+ * Example:
+ *   ptpd_set_log_level(ptp, LOG_DEBUG);  // enable verbose output
+ *   ptpd_set_log_level(ptp, LOG_ERR);    // quiet mode
+ */
+void ptpd_set_log_level(PtpdHandle *ptpClock, int level);
 
 /**
  * Source of a timestamp returned by ptpd_gettime_ex().

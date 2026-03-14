@@ -396,6 +396,14 @@ void setPortState(PtpClock *ptpClock, Enumeration8 state) {
         portState_getName(state));
   }
 
+#ifdef PTPD_LIBRARY_MODE
+  /* A4: fire state-change callback if registered */
+  if (ptpClock->portDS.portState != state && ptpClock->state_callback) {
+    ptpClock->state_callback(ptpClock->portDS.portState, state,
+                             ptpClock->state_callback_data);
+  }
+#endif
+
   /* "expected state" checks */
 
   ptpClock->portDS.portState = state;
