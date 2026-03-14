@@ -502,6 +502,25 @@ typedef struct {
 
 } RunTimeOpts;
 
+#ifdef PTPD_LIBRARY_MODE
+/**
+ * C4: Async reconfiguration command posted from the public API thread and
+ * consumed by the protocol thread at a safe point in the main loop.
+ * Only one command may be pending at a time; the caller overwrites any
+ * outstanding command atomically by setting pending_cmd_type last.
+ */
+typedef enum {
+    PTPD_PENDING_CMD_NONE       = 0,
+    PTPD_PENDING_CMD_SET_IFACE  = 1, /**< C1: change network interface */
+    PTPD_PENDING_CMD_SET_MASTER = 2, /**< C2: change unicast master IP  */
+} PtpdPendingCmdType;
+
+typedef struct {
+    PtpdPendingCmdType type;
+    char arg[256]; /**< NUL-terminated iface name or IP string */
+} PtpdPendingCmd;
+#endif /* PTPD_LIBRARY_MODE */
+
 /**
  * \struct PtpClock
  * \brief Main program data structure
@@ -772,7 +791,15 @@ typedef struct {
   /* A4: state-change callback registered by ptpd_set_state_callback() */
   void (*state_callback)(uint8_t from_state, uint8_t to_state, void *user_data);
   void *state_callback_data;
-#endif
+
+  /* C3: network interface loss callback (fires when port enters PTP_FAULTY) */
+  void (*network_change_callback)(const char *iface, void *user_data);
+  void *network_change_callback_data;
+
+  /* C4: pending reconfiguration command (set from API; consumed by protocol thread) */
+  volatile PtpdPendingCmdType pending_cmd_type; /**< NONE = nothing pending   */
+  PtpdPendingCmd pending_cmd;                   /**< payload (read only when type != NONE) */
+#endif /* PTPD_LIBRARY_MODE */
 
 } PtpClock;
 

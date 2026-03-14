@@ -225,6 +225,61 @@ void addForeign(Octet *, MsgHeader *, PtpClock *, UInteger8, UInteger32);
    checked for 'port_state'. the actions and events may or may not change
    'port_state' by calling toState(), but once they are done we loop around
    again and perform the actions required for the new 'port_state'. */
+
+#ifdef PTPD_LIBRARY_MODE
+/**
+ * C4: Drain one pending reconfiguration command posted via the public API.
+ *
+ * Must be called only from the protocol thread (safe point: top of the
+ * main for(;;) loop, after library_should_exit is checked).  Both C1
+ * (interface change) and C2 (master-IP change) follow the same pattern:
+ *   1. Capture + clear the pending command atomically.
+ *   2. Apply the new configuration to RunTimeOpts.
+ *   3. Shut down the network layer.
+ *   4. Transition back to PTP_INITIALIZING — the existing init path opens
+ *      a fresh socket, optionally on the new interface.
+ *
+ * C5 — drift continuity: initClock() explicitly does NOT reset
+ * servo.observedDrift (the reset is inside a #if 0 block).  The
+ * restoreDrift() mechanism re-reads the kernel adjtimex frequency at
+ * startup, so drift is naturally preserved across a reconfiguration.
+ */
+static void ptpd_drain_pending_cmd(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
+  if (ptpClock->pending_cmd_type == PTPD_PENDING_CMD_NONE)
+    return;
+
+  /* Snapshot + clear atomically before executing to prevent double-dispatch */
+  PtpdPendingCmd cmd = ptpClock->pending_cmd;
+  ptpClock->pending_cmd_type = PTPD_PENDING_CMD_NONE;
+
+  switch (cmd.type) {
+    case PTPD_PENDING_CMD_SET_IFACE:
+      INFO("C1: applying interface change -> '%s'\n", cmd.arg);
+      strncpy(rtOpts->primaryIfaceName, cmd.arg,
+              sizeof(rtOpts->primaryIfaceName) - 1);
+      rtOpts->primaryIfaceName[sizeof(rtOpts->primaryIfaceName) - 1] = '\0';
+      rtOpts->ifaceName = rtOpts->primaryIfaceName;
+      netShutdown(&ptpClock->netPath);
+      toState(PTP_INITIALIZING, rtOpts, ptpClock);
+      break;
+
+    case PTPD_PENDING_CMD_SET_MASTER:
+      INFO("C2: applying master IP change -> '%s'\n", cmd.arg);
+      strncpy(rtOpts->unicastDestinations, cmd.arg,
+              sizeof(rtOpts->unicastDestinations) - 1);
+      rtOpts->unicastDestinations[sizeof(rtOpts->unicastDestinations) - 1] = '\0';
+      rtOpts->unicastDestinationsSet = TRUE;
+      netShutdown(&ptpClock->netPath);
+      toState(PTP_INITIALIZING, rtOpts, ptpClock);
+      break;
+
+    default:
+      WARNING("C4: unknown pending command type %d, ignoring\n", (int)cmd.type);
+      break;
+  }
+}
+#endif /* PTPD_LIBRARY_MODE */
+
 void protocol(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
   DBG("event POWERUP\n");
 
@@ -283,6 +338,8 @@ void protocol(RunTimeOpts *rtOpts, PtpClock *ptpClock) {
       INFO("Library shutdown requested, exiting protocol loop\n");
       break;
     }
+    /* C4: drain any pending reconfiguration command before the next state tick */
+    ptpd_drain_pending_cmd(rtOpts, ptpClock);
 #endif
 #endif
     /* 20110701: this main loop was rewritten to be more clear */
@@ -401,6 +458,14 @@ void setPortState(PtpClock *ptpClock, Enumeration8 state) {
   if (ptpClock->portDS.portState != state && ptpClock->state_callback) {
     ptpClock->state_callback(ptpClock->portDS.portState, state,
                              ptpClock->state_callback_data);
+  }
+  /* C3: fire network-change callback when the port enters FAULTY state */
+  if (state == PTP_FAULTY && ptpClock->portDS.portState != PTP_FAULTY &&
+      ptpClock->network_change_callback) {
+    const char *iface = (ptpClock->rtOpts && ptpClock->rtOpts->ifaceName)
+                        ? ptpClock->rtOpts->ifaceName : "";
+    ptpClock->network_change_callback(iface,
+                                      ptpClock->network_change_callback_data);
   }
 #endif
 

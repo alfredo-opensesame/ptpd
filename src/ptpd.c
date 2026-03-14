@@ -514,6 +514,43 @@ const char *ptpd_state_name(uint8_t state) {
   }
 }
 
+/**
+ * @brief Post an interface-change command to the protocol thread (C1)
+ */
+void ptpd_set_interface(PtpdHandle *handle, const char *iface) {
+  if (!handle || !iface || !*iface) return;
+  PtpClock *clock = handle->clock;
+  strncpy(clock->pending_cmd.arg, iface, sizeof(clock->pending_cmd.arg) - 1);
+  clock->pending_cmd.arg[sizeof(clock->pending_cmd.arg) - 1] = '\0';
+  clock->pending_cmd.type = PTPD_PENDING_CMD_SET_IFACE;
+  clock->pending_cmd_type = PTPD_PENDING_CMD_SET_IFACE; /* signal — set last */
+}
+
+/**
+ * @brief Post a master-IP-change command to the protocol thread (C2)
+ */
+void ptpd_set_master_ip(PtpdHandle *handle, const char *ip) {
+  if (!handle || !ip || !*ip) return;
+  PtpClock *clock = handle->clock;
+  strncpy(clock->pending_cmd.arg, ip, sizeof(clock->pending_cmd.arg) - 1);
+  clock->pending_cmd.arg[sizeof(clock->pending_cmd.arg) - 1] = '\0';
+  clock->pending_cmd.type = PTPD_PENDING_CMD_SET_MASTER;
+  clock->pending_cmd_type = PTPD_PENDING_CMD_SET_MASTER; /* signal — set last */
+}
+
+/**
+ * @brief Register a network-change callback (C3)
+ */
+void ptpd_set_network_change_callback(
+    PtpdHandle *handle,
+    void (*callback)(const char *iface, void *user_data),
+    void *user_data) {
+  if (!handle) return;
+  PtpClock *clock = handle->clock;
+  clock->network_change_callback_data = user_data;
+  clock->network_change_callback      = callback; /* set last — atomic store */
+}
+
 #endif /* PTPD_LIBRARY_MODE */
 
 #ifndef PTPD_LIBRARY_MODE

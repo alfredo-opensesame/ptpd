@@ -437,6 +437,73 @@ int ptpd_gettime_tai(PtpdHandle *ptpClock, struct timespec *tp);
  */
 int ptpd_timestamp_event(PtpdHandle *ptpClock, ptpd_time_t *out);
 
+/* ── C. RUNTIME RECONFIGURATION ──────────────────────────────────────────── */
+
+/**
+ * @brief Change the active network interface without restarting the daemon (C1)
+ * @param handle  PtpdHandle from ptpd_init()
+ * @param iface   NUL-terminated interface name, e.g. "en0"
+ *
+ * Posts an interface-change command to the protocol thread.  The thread picks
+ * it up at the next safe point (top of the main loop), shuts down the current
+ * socket, copies @p iface into RunTimeOpts, then re-enters PTP_INITIALIZING
+ * to open a fresh socket on the new interface.
+ *
+ * The background thread stays alive; only the network layer is recycled.
+ * Servo drift is preserved across the reconfiguration (C5).
+ *
+ * Thread safety: safe to call from any thread while the daemon is running.
+ * Only one command may be pending at a time; a second call before the first
+ * is consumed overwrites the first.
+ *
+ * Example (Wi-Fi roam handler):
+ *   ptpd_set_interface(ptp, "en1");  // switch to USB Ethernet after Wi-Fi drop
+ */
+void ptpd_set_interface(PtpdHandle *handle, const char *iface);
+
+/**
+ * @brief Change the PTP unicast master IP without restarting the daemon (C2)
+ * @param handle  PtpdHandle from ptpd_init()
+ * @param ip      NUL-terminated master IP string, e.g. "192.168.1.10"
+ *
+ * Posts a master-IP-change command to the protocol thread.  The thread shuts
+ * down the current socket and re-enters PTP_INITIALIZING to begin Announce
+ * exchange with the new master.  Servo drift is preserved (C5).
+ *
+ * Thread safety: same as ptpd_set_interface().
+ *
+ * Example:
+ *   ptpd_set_master_ip(ptp, "10.0.0.1");
+ */
+void ptpd_set_master_ip(PtpdHandle *handle, const char *ip);
+
+/**
+ * @brief Register a callback fired when the network interface is lost (C3)
+ * @param handle    PtpdHandle from ptpd_init()
+ * @param callback  Function to call on interface loss, or NULL to unregister
+ * @param user_data Opaque pointer forwarded to the callback unchanged
+ *
+ * The callback is invoked from the protocol thread whenever the port
+ * transitions into PTP_FAULTY state (which occurs on socket errors, link-down
+ * events, or network layer failures).  @p iface is the interface name at the
+ * time of the failure (may be empty string if unknown).
+ *
+ * Use the callback to call ptpd_set_interface() with a replacement interface.
+ *
+ * Thread safety: safe to register at any time; pointer stores are atomic.
+ *
+ * Example:
+ *   void on_net_change(const char *iface, void *ud) {
+ *       printf("interface '%s' lost, switching to en1\n", iface);
+ *       ptpd_set_interface((PtpdHandle *)ud, "en1");
+ *   }
+ *   ptpd_set_network_change_callback(ptp, on_net_change, ptp);
+ */
+void ptpd_set_network_change_callback(
+    PtpdHandle *handle,
+    void (*callback)(const char *iface, void *user_data),
+    void *user_data);
+
 #ifdef __cplusplus
 }
 #endif
