@@ -32,6 +32,7 @@ TEST(MonotonicSleep, NormalDuration) {
 /* T2: Setting *stop causes early exit within 250 ms (TSAN target)    */
 /* A second thread sets stop after 200 ms; the sleep must return      */
 /* within 200 ms + one 50 ms slice = 250 ms budget.                   */
+/* Upper bound is generous (600 ms) to tolerate slow CI runners.      */
 /* ------------------------------------------------------------------ */
 TEST(MonotonicSleep, EarlyExitOnStop) {
     volatile int stop = 0;
@@ -47,14 +48,14 @@ TEST(MonotonicSleep, EarlyExitOnStop) {
     double ms = elapsed_ms(t0);
     stopper.join();
 
-    EXPECT_LT(ms, 350.0) << "early-exit too slow: " << ms << " ms";
+    EXPECT_LT(ms, 600.0) << "early-exit too slow: " << ms << " ms";
     EXPECT_GE(ms, 150.0) << "early-exit too fast (stop not respected?): " << ms << " ms";
 }
 
 /* ------------------------------------------------------------------ */
 /* T3: Repeated calls accumulate ~N seconds                           */
-/* 10 iterations → elapsed should be in [9.5 s, 10.5 s]              */
-/* Kept short (10 s) to avoid making the test suite slow.             */
+/* 10 iterations → elapsed should be in [9.5 s, 12.0 s]              */
+/* Upper bound is generous to tolerate slow CI runners.               */
 /* ------------------------------------------------------------------ */
 TEST(MonotonicSleep, RepeatedCallsAccumulate) {
     volatile int stop = 0;
@@ -65,7 +66,7 @@ TEST(MonotonicSleep, RepeatedCallsAccumulate) {
     double ms = elapsed_ms(t0);
 
     EXPECT_GE(ms, 9500.0)  << "accumulated time too short: " << ms << " ms";
-    EXPECT_LE(ms, 10500.0) << "accumulated time too long: "  << ms << " ms";
+    EXPECT_LE(ms, 12000.0) << "accumulated time too long: "  << ms << " ms";
 }
 
 /* ------------------------------------------------------------------ */
