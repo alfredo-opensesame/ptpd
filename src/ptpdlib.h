@@ -13,6 +13,7 @@
 #define PTPDLIB_H_
 
 #include "ptpd.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,18 +91,60 @@ int ptpd_is_running(PtpdHandle *ptpClock);
 void ptpd_shutdown(PtpdHandle *ptpClock);
 
 /**
+ * Source of a timestamp returned by ptpd_gettime_ex().
+ */
+typedef enum {
+    PTPD_TIME_SOURCE_SWCLOCK  = 0, /**< swclock, disciplined by PTP servo       */
+    PTPD_TIME_SOURCE_SYSCLOCK = 1, /**< kernel clock_gettime() (fallback/no-PTP)*/
+} ptpd_time_source_t;
+
+/**
+ * Extended timestamp result returned by ptpd_gettime_ex().
+ *
+ * The timestamp in @c ts is always valid when ptpd_gettime_ex() returns 0.
+ * The remaining fields describe the quality of that timestamp.
+ */
+typedef struct {
+    struct timespec    ts;              /**< The timestamp                              */
+    ptpd_time_source_t source;          /**< Where the timestamp came from              */
+    int                is_synchronized; /**< 1 iff state == PTP_SLAVE and servo settled */
+    int64_t            offset_ns;       /**< Last known offset from master (ns)         */
+    int64_t            uncertainty_ns;  /**< swclock maxerror in ns; INT64_MAX when
+                                             unknown (sysclock path or no data yet)      */
+} ptpd_time_t;
+
+/**
+ * @brief Get time with full quality metadata (preferred over ptpd_gettime)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW)
+ * @param out Extended result structure to fill
+ * @return 0 on success, -1 if ptpClock or out is NULL
+ *
+ * Always fills *out and returns 0 (unless arguments are NULL).  On the swclock
+ * path the timestamp is PTP-disciplined; on the SYSCLOCK fallback path it is
+ * plain clock_gettime().  Inspect out->source to distinguish.
+ *
+ * Example:
+ *   ptpd_time_t t;
+ *   ptpd_gettime_ex(ptp, CLOCK_REALTIME, &t);
+ *   if (!t.is_synchronized)
+ *       fprintf(stderr, "PTP not locked (uncertainty ±%lld ns)\n", t.uncertainty_ns);
+ *   use_time(&t.ts);
+ */
+int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out);
+
+/**
  * @brief Get time from PTP daemon's underlying clock
  * @param ptpClock PtpdHandle from ptpd_init()
  * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW)
  * @param tp Timespec structure to receive the time
  * @return 0 on success, -1 on error
  *
- * When ptpd is built with swclock support (BUILD_WITH_SWCLOCK=ON), this
- * function returns time from the software clock that is being disciplined
- * by the PTP servo. Otherwise, it returns system clock time.
- *
- * Applications should use this function instead of clock_gettime() to read
- * the time that PTP is controlling.
+ * Convenience wrapper around ptpd_gettime_ex().  When built with swclock
+ * (BUILD_WITH_SWCLOCK=ON) returns 0 only if the swclock path succeeded;
+ * returns -1 if swclock is unavailable so the caller is never silently given
+ * undisciplined kernel time.  Use ptpd_gettime_ex() when you need quality
+ * metadata or want to handle the sysclock fallback yourself.
  *
  * Example:
  *   struct timespec ts;

@@ -274,26 +274,62 @@ void ptpd_shutdown(PtpdHandle *ptpClock) {
 }
 
 /**
- * @brief Get time from PTP daemon's underlying clock
- * @param ptpClock PTP clock instance
- * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, etc.)
- * @param tp Timespec structure to receive the time
- * @return 0 on success, -1 on error
+ * @brief Get time with full quality metadata (B1+B2)
  */
-int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp) {
-  if (!ptpClock || !tp) {
+int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out) {
+  if (!ptpClock || !out)
     return -1;
-  }
+
+  memset(out, 0, sizeof(*out));
+  out->uncertainty_ns = INT64_MAX;
 
 #ifdef PTPD_USE_SWCLOCK
   if (ptpClock->swclock) {
-    return swclock_gettime((SwClock *)ptpClock->swclock, clk_id, tp);
+    if (swclock_gettime((SwClock *)ptpClock->swclock, clk_id, &out->ts) == 0) {
+      out->source          = PTPD_TIME_SOURCE_SWCLOCK;
+      out->is_synchronized = (ptpClock->portDS.portState == PTP_SLAVE);
+      out->offset_ns =
+          ptpClock->currentDS.offsetFromMaster.nanoseconds +
+          (ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
+      /* Read maxerror via adjtime readback; swclock reports it in µs */
+      struct timex tx;
+      memset(&tx, 0, sizeof(tx));
+      if (swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD)
+        out->uncertainty_ns = (int64_t)tx.maxerror * 1000; /* µs → ns */
+      return 0;
+    }
+    DBG("ptpd_gettime_ex: swclock_gettime failed\n");
   }
-  DBG("ptpd_gettime: swclock expected but not initialized\n");
-  return -1; /* swclock expected but not initialized */
-#else
-  return clock_gettime(clk_id, tp);
 #endif
+
+  /* Fallback: kernel clock — time is valid but not PTP-disciplined */
+  if (clock_gettime(clk_id, &out->ts) != 0)
+    return -1;
+  out->source          = PTPD_TIME_SOURCE_SYSCLOCK;
+  out->is_synchronized = 0;
+  return 0;
+}
+
+/**
+ * @brief Compat wrapper — returns -1 (swclock builds) if source is SYSCLOCK
+ */
+int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp) {
+  if (!ptpClock || !tp)
+    return -1;
+
+  ptpd_time_t t;
+  if (ptpd_gettime_ex(ptpClock, clk_id, &t) != 0)
+    return -1;
+
+#ifdef PTPD_USE_SWCLOCK
+  if (t.source != PTPD_TIME_SOURCE_SWCLOCK) {
+    DBG("ptpd_gettime: swclock path unavailable\n");
+    return -1;
+  }
+#endif
+
+  *tp = t.ts;
+  return 0;
 }
 
 #endif /* PTPD_LIBRARY_MODE */

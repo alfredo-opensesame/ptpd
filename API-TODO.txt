@@ -59,14 +59,14 @@ A8. Thread-safety contract is undocumented
 
 ── B. DISCIPLINED TIME ACCESS ───────────────────────────────────────────────
 
-B1. Silent fallback is dangerous
+B1. [DONE] Silent fallback is dangerous
     When swclock is unavailable ptpd_gettime() quietly falls through to
     clock_gettime().  Caller gets kernel time with no indication the
     PTP-disciplined path was bypassed.
     Fix: return an error or set a flag in the result struct rather than
     silently substituting system time.
 
-B2. No synchronisation validity flag
+B2. [DONE] No synchronisation validity flag
     ptpd_gettime() returns the same way in PTP_SLAVE (locked, sub-ms)
     and PTP_LISTENING (free-running, unknown drift).
     Fix: extend the result to carry validity metadata:
