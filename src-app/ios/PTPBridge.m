@@ -8,6 +8,9 @@
 #import "PTPBridge.h"
 #include "ptpdlib.h"
 #include <pthread.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <sys/socket.h>
 
 static void (^logCallback)(NSString *, int) = nil;
 
@@ -149,7 +152,7 @@ static void ios_log_handler(const char *message, int level) {
     const char **argv = (_mode == PTPModeUnicast) ? argv_unicast  : argv_multicast;
     int          argc = (_mode == PTPModeUnicast) ? argc_unicast  : argc_multicast;
 
-    Integer16 ret = 0;
+    int16_t ret = 0;
 
     // Set up log callback before init
     if (logCallback) {
