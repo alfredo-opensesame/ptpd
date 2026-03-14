@@ -70,7 +70,7 @@ B4. [DONE] No error / uncertainty bounds
     The servo also knows observedDrift.  None is reachable through ptpdlib.
     Fix: expose via ptpd_get_status() (see A7) or ptpd_gettime_ex() (see B2).
 
-B5. clockid_t is a kernel abstraction leak
+B5. [DONE] clockid_t is a kernel abstraction leak
     Passing CLOCK_REALTIME / CLOCK_MONOTONIC to a software clock API
     ties the interface to kernel clock IDs.
     Fix: ptpdlib-native enum:

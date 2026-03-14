@@ -440,6 +440,52 @@ int ptpd_timestamp_event(PtpdHandle *ptpClock, ptpd_time_t *out) {
   return ptpd_gettime_ex(ptpClock, CLOCK_REALTIME, out);
 }
 
+/* Map ptpd_clock_id_t to the corresponding POSIX clockid_t (B5) */
+static clockid_t ptpd_clockid_to_posix(ptpd_clock_id_t clk) {
+  switch (clk) {
+    case PTPD_CLOCK_WALL:      return CLOCK_REALTIME;
+    case PTPD_CLOCK_MONOTONIC: return CLOCK_MONOTONIC;
+    case PTPD_CLOCK_RAW:       return CLOCK_MONOTONIC_RAW;
+    default:                   return CLOCK_REALTIME;
+  }
+}
+
+/**
+ * @brief ptpdlib-native clock selector variant of ptpd_gettime (B5)
+ */
+int ptpd_gettime_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
+                       struct timespec *tp) {
+  if (clk == PTPD_CLOCK_TAI)
+    return ptpd_gettime_tai(ptpClock, tp);
+  return ptpd_gettime(ptpClock, ptpd_clockid_to_posix(clk), tp);
+}
+
+/**
+ * @brief ptpdlib-native clock selector variant of ptpd_gettime_ex (B5)
+ */
+int ptpd_gettime_ex_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
+                          ptpd_time_t *out) {
+  if (clk == PTPD_CLOCK_TAI) {
+    /* Populate quality fields from CLOCK_REALTIME path, then apply TAI offset */
+    if (ptpd_gettime_ex(ptpClock, CLOCK_REALTIME, out) != 0)
+      return -1;
+    if (out->source != PTPD_TIME_SOURCE_SWCLOCK)
+      return -1;
+    struct timex tx;
+    memset(&tx, 0, sizeof(tx));
+#ifdef PTPD_USE_SWCLOCK
+    if (ptpClock->swclock &&
+        swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD &&
+        tx.tai != 0) {
+      out->ts.tv_sec += (time_t)tx.tai;
+      return 0;
+    }
+#endif
+    return -1; /* TAI offset unknown */
+  }
+  return ptpd_gettime_ex(ptpClock, ptpd_clockid_to_posix(clk), out);
+}
+
 #endif /* PTPD_LIBRARY_MODE */
 
 #ifndef PTPD_LIBRARY_MODE

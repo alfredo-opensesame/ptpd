@@ -214,6 +214,20 @@ typedef enum {
 } ptpd_time_source_t;
 
 /**
+ * ptpdlib-native clock selector (B5).
+ *
+ * Use these constants with ptpd_gettime_clock() and ptpd_gettime_ex_clock()
+ * instead of raw POSIX clockid_t values, which are a kernel-level abstraction
+ * that has no meaning outside the OS.
+ */
+typedef enum {
+    PTPD_CLOCK_WALL      = 0, /**< Disciplined wall clock   (→ CLOCK_REALTIME)       */
+    PTPD_CLOCK_MONOTONIC = 1, /**< Monotonic from swclock   (→ CLOCK_MONOTONIC)      */
+    PTPD_CLOCK_TAI       = 2, /**< TAI (= WALL + TAI offset). Uses ptpd_gettime_tai()*/
+    PTPD_CLOCK_RAW       = 3, /**< Kernel uptime passthrough(→ CLOCK_MONOTONIC_RAW)  */
+} ptpd_clock_id_t;
+
+/**
  * Extended timestamp result returned by ptpd_gettime_ex().
  *
  * The timestamp in @c ts is always valid when ptpd_gettime_ex() returns 0.
@@ -268,6 +282,44 @@ int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out);
  *   }
  */
 int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp);
+
+/**
+ * @brief Get time using a ptpdlib-native clock selector (B5)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param clk     ptpd_clock_id_t — PTPD_CLOCK_WALL/MONOTONIC/TAI/RAW
+ * @param tp      Timespec to fill
+ * @return 0 on success, -1 on error
+ *
+ * Convenience alternative to ptpd_gettime() that avoids exposing POSIX
+ * clockid_t values in the caller.  PTPD_CLOCK_TAI delegates to
+ * ptpd_gettime_tai() and returns -1 if the TAI offset is not yet set.
+ *
+ * Example:
+ *   struct timespec ts;
+ *   ptpd_gettime_clock(ptp, PTPD_CLOCK_WALL, &ts);
+ */
+int ptpd_gettime_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
+                       struct timespec *tp);
+
+/**
+ * @brief Get time with quality metadata using a ptpdlib-native clock (B5)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param clk     ptpd_clock_id_t — PTPD_CLOCK_WALL/MONOTONIC/TAI/RAW
+ * @param out     Extended result to fill
+ * @return 0 on success, -1 on error
+ *
+ * Same as ptpd_gettime_ex() but accepts ptpd_clock_id_t.  For
+ * PTPD_CLOCK_TAI the ts field already includes the TAI offset;
+ * source, is_synchronized, offset_ns, and uncertainty_ns are
+ * populated identically to ptpd_gettime_ex(CLOCK_REALTIME).
+ *
+ * Example:
+ *   ptpd_time_t t;
+ *   ptpd_gettime_ex_clock(ptp, PTPD_CLOCK_WALL, &t);
+ *   if (t.is_synchronized) use_time(&t.ts);
+ */
+int ptpd_gettime_ex_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
+                          ptpd_time_t *out);
 
 /**
  * Current PTP daemon status snapshot (A7).
