@@ -264,8 +264,9 @@ BUILD OPTIONS
     Enables ptpd_gettime() / ptpd_gettime_ex() to return swclock time.
     Required for operation without root on macOS/iOS.
 
-  PTPD_IOS=1              Defined by iossim / ios presets.
-    Activates iOS-specific exit handling.
+  PTPD_IOS=ON             (default OFF)
+    Enables iOS-specific code paths and exit handling.
+    iOS presets set this automatically.
     ptpd_set_log_callback() is available on all builds (not iOS-only).
 
   BUILD_PTPD_TESTS=ON     Builds GTest suite in src-gtests/.

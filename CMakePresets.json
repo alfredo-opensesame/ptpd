@@ -34,7 +34,7 @@
         "CMAKE_OSX_DEPLOYMENT_TARGET": "15.0",
         "CMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH": "NO",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_C_FLAGS": "-DPTPD_IOS=1",
+        "PTPD_IOS": "ON",
         "ENABLE_PCAP": "OFF",
         "ENABLE_SNMP": "OFF",
         "ENABLE_DAEMON": "OFF",

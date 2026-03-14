@@ -135,6 +135,10 @@ if(PTPD_LIBRARY_MODE)
     target_compile_definitions(ptpd2 PRIVATE PTPD_LIBRARY_MODE=1)
 endif()
 
+if(PTPD_IOS)
+    target_compile_definitions(ptpd2 PRIVATE PTPD_IOS=1)
+endif()
+
 # Add SwClock compile definition if enabled
 if(BUILD_WITH_SWCLOCK)
     target_compile_definitions(ptpd2 PRIVATE PTPD_USE_SWCLOCK)
@@ -265,9 +269,6 @@ endif()
 # Optional Library Build
 # ==============================================================================
 
-# Option to build library (OFF by default to maintain current behavior)
-option(BUILD_PTPD_LIBRARY "Build ptpd as a library in addition to executable" OFF)
-
 if(BUILD_PTPD_LIBRARY)
     message(STATUS "Building ptpd library (static and shared)")
 
@@ -304,6 +305,10 @@ if(BUILD_PTPD_LIBRARY)
             PTPD_LIBRARY_MODE  # Enable library mode
             _GNU_SOURCE        # Enable BSD-style types and extensions on Linux
         )
+
+        if(PTPD_IOS)
+            target_compile_definitions(${target_name} PRIVATE PTPD_IOS=1)
+        endif()
 
         # Add SwClock compile definition if enabled
         if(BUILD_WITH_SWCLOCK)
