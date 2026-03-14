@@ -424,8 +424,8 @@ void updateLogSize(LogFileHandler *handler) {
  * This either prints the message to syslog, or with timestamp+state to stderr
  */
 
-#ifdef PTPD_IOS
-/* iOS log callback - set via ptpd_set_log_callback() */
+#ifdef PTPD_LIBRARY_MODE
+/* Library-mode log callback - set via ptpd_set_log_callback() */
 static void (*ios_log_callback)(const char *message, int priority) = NULL;
 
 void ptpd_set_log_callback(void (*callback)(const char *, int)) {
@@ -442,15 +442,15 @@ void logMessage(int priority, const char *format, ...) {
   va_start(ap1, format);
   va_start(ap, format);
 
-#ifdef PTPD_IOS
-  /* iOS: Send log message to callback if registered */
+#ifdef PTPD_LIBRARY_MODE
+  /* Send log message to registered callback if set */
   if (ios_log_callback) {
     char message[1024];
     vsnprintf(message, sizeof(message), format, ap1);
     ios_log_callback(message, priority);
     /* Continue to normal logging as well (for debugging) */
   }
-#endif
+#endif /* PTPD_LIBRARY_MODE */
 
 #ifdef RUNTIME_DEBUG
   if ((priority >= LOG_DEBUG) && (priority > rtOpts.debug_level)) {

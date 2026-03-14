@@ -274,6 +274,21 @@ void ptpd_shutdown(PtpdHandle *ptpClock) {
 }
 
 /**
+ * @brief Stop protocol thread without releasing resources (A3)
+ */
+void ptpd_stop(PtpdHandle *ptpClock) {
+  if (!ptpClock || !thread_running)
+    return;
+
+  ptpClock->library_should_exit = TRUE;
+  pthread_join(protocol_thread, NULL);
+  thread_running = FALSE;
+
+  /* Reset flag so ptpd_start() can be called again */
+  ptpClock->library_should_exit = FALSE;
+}
+
+/**
  * @brief Get time with full quality metadata (B1+B2)
  */
 int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out) {
@@ -329,6 +344,25 @@ int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp) {
 #endif
 
   *tp = t.ts;
+  return 0;
+}
+
+/**
+ * @brief Status snapshot (A7 + B4)
+ */
+int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out) {
+  if (!ptpClock || !out)
+    return -1;
+
+  out->state           = ptpClock->portDS.portState;
+  out->is_synchronized = (ptpClock->portDS.portState == PTP_SLAVE);
+  out->offset_ns =
+      ptpClock->currentDS.offsetFromMaster.nanoseconds +
+      (ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
+  out->delay_ns =
+      ptpClock->currentDS.meanPathDelay.nanoseconds +
+      (ptpClock->currentDS.meanPathDelay.seconds * 1000000000LL);
+  out->drift_ppb = (int32_t)ptpClock->servo.observedDrift;
   return 0;
 }
 

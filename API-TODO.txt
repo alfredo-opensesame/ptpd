@@ -16,7 +16,7 @@ A2. Error reporting
     "not initialised" from "swclock unavailable".
     Fix: ptpd_error_t enum + ptpd_last_error(handle) accessor.
 
-A3. Graceful stop without destroy
+A3. [DONE] Graceful stop without destroy
     ptpd_shutdown() is the only stop path and it frees everything.
     Fix: add ptpd_stop() — halts the protocol thread but preserves
     servo state, allowing pause/resume without reinitialising.
@@ -33,12 +33,12 @@ A5. Runtime log level control
     Fix: ptpd_set_log_level(int level) to change verbosity on the fly
     without restarting the daemon.
 
-A6. Log callback should not be iOS-only
+A6. [DONE] Log callback should not be iOS-only
     ptpd_set_log_callback() is guarded by #ifdef PTPD_IOS.
     macOS embedders can't intercept log output either.
     Fix: remove the platform guard; make it available on all builds.
 
-A7. Status snapshot
+A7. [DONE] Status snapshot
     No clean way to read offset, delay, servo drift, or sync quality
     without touching ptpClock->currentDS / ptpClock->servo internals.
     Fix:
@@ -51,32 +51,13 @@ A7. Status snapshot
       } ptpd_status_t;
       int ptpd_get_status(handle, ptpd_status_t*);
 
-A8. Thread-safety contract is undocumented
+A8. [DONE] Thread-safety contract is undocumented
     Unspecified whether ptpd_gettime(), ptpd_is_running(), and
     ptpd_shutdown() are safe to call concurrently or from signal handlers.
     Fix: document the contract explicitly in ptpdlib.h.
 
 
 ── B. DISCIPLINED TIME ACCESS ───────────────────────────────────────────────
-
-B1. [DONE] Silent fallback is dangerous
-    When swclock is unavailable ptpd_gettime() quietly falls through to
-    clock_gettime().  Caller gets kernel time with no indication the
-    PTP-disciplined path was bypassed.
-    Fix: return an error or set a flag in the result struct rather than
-    silently substituting system time.
-
-B2. [DONE] No synchronisation validity flag
-    ptpd_gettime() returns the same way in PTP_SLAVE (locked, sub-ms)
-    and PTP_LISTENING (free-running, unknown drift).
-    Fix: extend the result to carry validity metadata:
-      typedef struct {
-          struct timespec ts;
-          int     is_synchronized; // 1 = PTP_SLAVE and servo converged
-          int64_t offset_ns;       // last known offset from master
-          int64_t uncertainty_ns;  // maxerror from swclock
-      } ptpd_time_t;
-      int ptpd_gettime_ex(handle, clockid_t, ptpd_time_t*);
 
 B3. No TAI access
     swclock internally tracks the TAI-UTC offset (currently 37 s) but

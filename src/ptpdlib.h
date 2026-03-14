@@ -28,6 +28,33 @@ extern "C" {
 typedef PtpClock PtpdHandle;
 
 /**
+ * ── Thread-safety contract ───────────────────────────────────────────────────
+ *
+ * The PTP daemon always runs in a single background thread created by
+ * ptpd_start().  The rules below apply to calls made from *other* threads.
+ *
+ * Safe to call concurrently with the protocol thread (no external lock needed):
+ *   ptpd_is_running()   — reads a volatile Boolean, effectively atomic.
+ *   ptpd_get_status()   — reads individual pointer-size fields; each load is
+ *                         atomic on all supported arches, but the snapshot as
+ *                         a whole is not transactional.
+ *   ptpd_gettime() / ptpd_gettime_ex()
+ *                       — delegates to swclock_gettime() which holds its own
+ *                         internal read-lock.
+ *   ptpd_set_log_callback()
+ *                       — pointer store;  set this before ptpd_start() or
+ *                         while the thread is not in logMessage().
+ *
+ * Must NOT be called concurrently with each other or with ptpd_start():
+ *   ptpd_stop()         — joins the protocol thread; serialise with start.
+ *   ptpd_shutdown()     — joins the protocol thread; do not call from two
+ *                         threads simultaneously.
+ *
+ * Not safe to call from a signal handler (they use pthread_join internally).
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/**
  * @brief Initialize PTP daemon for library mode
  * @param argc Argument count (same as main())
  * @param argv Argument vector (same as main())
@@ -89,6 +116,30 @@ int ptpd_is_running(PtpdHandle *ptpClock);
  * PtpdHandle pointer is invalid and should not be used.
  */
 void ptpd_shutdown(PtpdHandle *ptpClock);
+
+/**
+ * @brief Stop the PTP protocol thread, preserving servo state for restart (A3)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ *
+ * Signals the protocol thread to exit and waits for it to finish, but does
+ * NOT free any resources or reset the servo.  ptpd_start() may be called
+ * again afterwards; the daemon resumes with drift and statistics intact so
+ * re-lock is faster than a cold start.
+ *
+ * This is the correct stop primitive for iOS background/foreground
+ * transitions: stop on backgrounding, restart on foregrounding.
+ *
+ * If the daemon is not running, this is a no-op.
+ *
+ * Thread safety: must not be called concurrently with ptpd_start() or
+ * ptpd_shutdown().
+ *
+ * Example:
+ *   ptpd_stop(ptp);    // background — thread exits, servo state kept
+ *   // ... time passes ...
+ *   ptpd_start(ptp);   // foreground — resumes with preserved drift
+ */
+void ptpd_stop(PtpdHandle *ptpClock);
 
 /**
  * Source of a timestamp returned by ptpd_gettime_ex().
@@ -154,32 +205,59 @@ int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out);
  */
 int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp);
 
-#ifdef PTPD_IOS
 /**
- * @brief Register log message callback for iOS integration
+ * Current PTP daemon status snapshot (A7).
+ * All fields reflect the state at the moment of the ptpd_get_status() call.
+ */
+typedef struct {
+    uint8_t  state;           /**< Port state (PTP_SLAVE, PTP_LISTENING, …)  */
+    int64_t  offset_ns;       /**< Current offsetFromMaster (nanoseconds)     */
+    int64_t  delay_ns;        /**< Current meanPathDelay (nanoseconds)        */
+    int32_t  drift_ppb;       /**< Servo observedDrift (parts per billion)    */
+    int      is_synchronized; /**< 1 when state == PTP_SLAVE                  */
+} ptpd_status_t;
+
+/**
+ * @brief Read a snapshot of current PTP status (A7 + B4)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param out Status snapshot to fill
+ * @return 0 on success, -1 if either argument is NULL
+ *
+ * Returns offset, delay, servo drift, and port state without requiring direct
+ * access to internal ptpClock fields (covers B4 for drift/uncertainty).
+ *
+ * Thread safety: see contract comment above — individual field reads are
+ * atomic but the snapshot is not transactional.
+ *
+ * Example:
+ *   ptpd_status_t s;
+ *   ptpd_get_status(ptp, &s);
+ *   printf("state=%d offset=%lld ns drift=%d ppb\n",
+ *          s.state, (long long)s.offset_ns, s.drift_ppb);
+ */
+int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out);
+
+/**
+ * @brief Register log message callback (available on all library-mode builds) (A6)
  * @param callback Function pointer to receive log messages
  *
- * iOS applications can register a callback to receive all ptpd log messages
- * for display in the UI. The callback receives the formatted message string
- * and priority level (LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG, etc.).
+ * Register a callback to receive all ptpd log messages for display or
+ * forwarding.  The callback receives the formatted message string and a
+ * syslog-style priority level (LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG).
  *
- * The callback is invoked from the PTP daemon thread and should return quickly
- * to avoid blocking protocol operation. It's recommended to copy the message
- * and dispatch to the main thread for UI updates.
+ * The callback is invoked from the PTP daemon thread and must return quickly.
+ * Copy the message and dispatch to another thread for any UI updates.
  *
- * Example (Swift bridging):
- *   void log_callback(const char* message, int priority) {
- *       // Marshal to Swift/UI thread
- *       dispatch_async(dispatch_get_main_queue(), ^{
- *           // Update UI with message
- *       });
+ * Thread safety: safe to register before ptpd_start() or during normal
+ * operation — the pointer store is effectively atomic.
+ *
+ * Example:
+ *   void log_cb(const char *msg, int priority) {
+ *       fprintf(stderr, "[ptp] %s", msg);
  *   }
- *   ptpd_set_log_callback(log_callback);
- *
- * @note Only available when build with -DPTPD_IOS
+ *   ptpd_set_log_callback(log_cb);
  */
 void ptpd_set_log_callback(void (*callback)(const char *message, int priority));
-#endif
 
 #ifdef __cplusplus
 }
