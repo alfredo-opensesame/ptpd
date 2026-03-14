@@ -323,6 +323,49 @@ int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out);
  */
 void ptpd_set_log_callback(void (*callback)(const char *message, int priority));
 
+/**
+ * @brief Get TAI time from the PTP-disciplined clock (B3)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param tp Timespec to fill with TAI time
+ * @return 0 on success; -1 if swclock unavailable or TAI offset unknown (0)
+ *
+ * Returns CLOCK_REALTIME + the TAI-UTC offset maintained by swclock (set by
+ * the PTP servo via ADJ_TAI).  The result is safe to use across leap seconds
+ * because the offset is applied atomically with the timestamp read (both under
+ * the swclock read-lock).
+ *
+ * Returns -1 if swclock is not available or if the TAI offset has never been
+ * set (i.e. is still 0 — indistinguishable from an uninitialised offset).
+ *
+ * Example:
+ *   struct timespec tai;
+ *   if (ptpd_gettime_tai(ptp, &tai) == 0)
+ *       printf("TAI: %ld.%09ld\n", tai.tv_sec, tai.tv_nsec);
+ */
+int ptpd_gettime_tai(PtpdHandle *ptpClock, struct timespec *tp);
+
+/**
+ * @brief Atomically timestamp an external event with the disciplined clock (B6)
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param out Extended timestamp result (same as ptpd_gettime_ex)
+ * @return 0 on success, -1 if either argument is NULL
+ *
+ * Equivalent to ptpd_gettime_ex(handle, CLOCK_REALTIME, out) but documents
+ * the atomicity guarantee explicitly: the swclock read-lock is held for the
+ * duration of the call, so the timestamp is consistent with the servo state
+ * at the exact moment of the call.  No concurrent servo step or drift
+ * correction can interleave.
+ *
+ * Use this instead of calling ptpd_gettime() manually when timestamping
+ * external events (hardware interrupts, audio frames, etc.).
+ *
+ * Example:
+ *   ptpd_time_t ts;
+ *   ptpd_timestamp_event(ptp, &ts);
+ *   record_event(event_id, &ts.ts, ts.is_synchronized);
+ */
+int ptpd_timestamp_event(PtpdHandle *ptpClock, ptpd_time_t *out);
+
 #ifdef __cplusplus
 }
 #endif

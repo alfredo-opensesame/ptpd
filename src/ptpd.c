@@ -396,6 +396,50 @@ void ptpd_set_log_level(PtpdHandle *ptpClock, int level) {
   ptpClock->rtOpts->logLevel = (Enumeration8)level;
 }
 
+/**
+ * @brief TAI time from PTP-disciplined clock (B3)
+ */
+int ptpd_gettime_tai(PtpdHandle *ptpClock, struct timespec *tp) {
+  if (!ptpClock || !tp)
+    return -1;
+
+#ifdef PTPD_USE_SWCLOCK
+  if (!ptpClock->swclock)
+    return -1;
+
+  ptpd_time_t t;
+  if (ptpd_gettime_ex(ptpClock, CLOCK_REALTIME, &t) != 0 ||
+      t.source != PTPD_TIME_SOURCE_SWCLOCK)
+    return -1;
+
+  struct timex tx;
+  memset(&tx, 0, sizeof(tx));
+  int tai_offset = 0;
+  if (swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD)
+    tai_offset = tx.tai;
+
+  if (tai_offset == 0)
+    return -1; /* TAI offset not yet set by servo */
+
+  t.ts.tv_sec += (time_t)tai_offset;
+  *tp = t.ts;
+  return 0;
+#else
+  (void)ptpClock;
+  (void)tp;
+  return -1; /* no swclock, no TAI */
+#endif
+}
+
+/**
+ * @brief Atomically timestamp an external event (B6)
+ */
+int ptpd_timestamp_event(PtpdHandle *ptpClock, ptpd_time_t *out) {
+  /* swclock_gettime() holds its read-lock for the duration, making this
+   * call atomic with respect to any concurrent servo adjustment. */
+  return ptpd_gettime_ex(ptpClock, CLOCK_REALTIME, out);
+}
+
 #endif /* PTPD_LIBRARY_MODE */
 
 #ifndef PTPD_LIBRARY_MODE

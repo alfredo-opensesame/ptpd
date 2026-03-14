@@ -59,13 +59,13 @@ A8. [DONE] Thread-safety contract is undocumented
 
 ── B. DISCIPLINED TIME ACCESS ───────────────────────────────────────────────
 
-B3. No TAI access
+B3. [DONE] No TAI access
     swclock internally tracks the TAI-UTC offset (currently 37 s) but
     it is not surfaced through ptpdlib.
     Fix: ptpd_gettime_tai(handle, struct timespec*) returning
     CLOCK_REALTIME + TAI offset, safe across leap seconds.
 
-B4. No error / uncertainty bounds
+B4. [DONE] No error / uncertainty bounds
     swclock maintains maxerror and esterror per the adjtimex interface.
     The servo also knows observedDrift.  None is reachable through ptpdlib.
     Fix: expose via ptpd_get_status() (see A7) or ptpd_gettime_ex() (see B2).
@@ -79,7 +79,7 @@ B5. clockid_t is a kernel abstraction leak
       PTPD_CLOCK_TAI       — TAI time (wall + leap offset)
       PTPD_CLOCK_RAW       — passthrough to kernel uptime counter
 
-B6. No atomic event timestamping
+B6. [DONE] No atomic event timestamping
     To timestamp an external event using the disciplined clock, callers
     must call ptpd_gettime() themselves with no atomicity guarantee.
     Fix: ptpd_timestamp_event(handle, struct timespec*) that acquires
