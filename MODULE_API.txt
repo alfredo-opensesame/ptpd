@@ -255,6 +255,10 @@ ptpd_init() accepts the same command-line flags as standalone ptpd2:
 
 BUILD OPTIONS
 -------------
+  PTPD_LIBRARY_MODE=ON    (default)
+    Builds `ptpd2` as a static embeddable library target.
+    Set `-DPTPD_LIBRARY_MODE=OFF` to build standalone daemon executable mode.
+
   BUILD_WITH_SWCLOCK=ON   (default on macOS/iOS)
     Links swclock and defines PTPD_USE_SWCLOCK.
     Enables ptpd_gettime() / ptpd_gettime_ex() to return swclock time.

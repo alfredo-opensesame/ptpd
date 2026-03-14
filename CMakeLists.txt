@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(ptpd VERSION 2.3.1 LANGUAGES C)
 
+# Build ptpd2 in embeddable library mode by default.
+# OFF restores standalone daemon executable mode.
+option(PTPD_LIBRARY_MODE "Build ptpd2 target in library mode" ON)
+
 # Consumer mode: when set, imports a pre-built library instead of rebuilding it.
 # Set PTPD_PREBUILT_DIR in a preset's cacheVariables to build only the app or
 # tests without recompiling src/ or libraries/swclock/.

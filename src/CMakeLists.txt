@@ -67,8 +67,7 @@ set(PTPD2_SOURCES
 )
 
 # Check if building in library mode (for iOS or other library use cases)
-# PTPD_LIBRARY_MODE is passed via CMAKE_C_FLAGS
-if(CMAKE_C_FLAGS MATCHES "PTPD_LIBRARY_MODE")
+if(PTPD_LIBRARY_MODE)
     message(STATUS "Building ptpd as static library (PTPD_LIBRARY_MODE enabled)")
     add_library(ptpd2 STATIC ${PTPD2_SOURCES})
     set(PTPD_IS_LIBRARY TRUE)
@@ -131,6 +130,10 @@ target_compile_definitions(ptpd2 PRIVATE
     DATADIR="${CMAKE_INSTALL_FULL_DATADIR}"  # Data directory
     _GNU_SOURCE                # Enable BSD-style types and extensions on Linux
 )
+
+if(PTPD_LIBRARY_MODE)
+    target_compile_definitions(ptpd2 PRIVATE PTPD_LIBRARY_MODE=1)
+endif()
 
 # Add SwClock compile definition if enabled
 if(BUILD_WITH_SWCLOCK)
