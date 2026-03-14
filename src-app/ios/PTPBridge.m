@@ -26,7 +26,7 @@ static void ios_log_handler(const char *message, int level) {
 }
 
 @implementation PTPBridge {
-    PtpClock *_ptpClock;
+    PtpdHandle *_ptpClock;
     NSString *_masterIP;
     NSString *_interface;
     PTPMode   _mode;
@@ -201,7 +201,7 @@ static void ios_log_handler(const char *message, int level) {
     // The _ptpClock pointer may be NULLed by stop() at any time; take a
     // @synchronized snapshot on every iteration to avoid racing with stop().
     while (YES) {
-        PtpClock *clock = nil;
+        PtpdHandle *clock = nil;
         @synchronized(self) { clock = _ptpClock; }
         if (!clock || !ptpd_is_running(clock)) {
             break;
@@ -213,7 +213,7 @@ static void ios_log_handler(const char *message, int level) {
 
     // Atomically take ownership of _ptpClock so stop() cannot also call
     // ptpd_shutdown on the same pointer (double-free crash).
-    PtpClock *clock = nil;
+    PtpdHandle *clock = nil;
     @synchronized(self) {
         clock = _ptpClock;
         _ptpClock = NULL;
@@ -234,7 +234,7 @@ static void ios_log_handler(const char *message, int level) {
 - (void)stop {
     // Atomically take ownership of _ptpClock so run()'s natural-exit path
     // cannot also call ptpd_shutdown on the same pointer (double-free crash).
-    PtpClock *clock = nil;
+    PtpdHandle *clock = nil;
     @synchronized(self) {
         clock = _ptpClock;
         _ptpClock = NULL;

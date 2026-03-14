@@ -65,6 +65,7 @@
 
 #ifdef PTPD_LIBRARY_MODE
 #include <pthread.h>
+#include "ptpdlib.h"
 #endif
 
 RunTimeOpts rtOpts; /* statically allocated run-time configuration data */
@@ -181,8 +182,8 @@ static void ptpd_common_cleanup(void) {
  * @param ret Return code pointer
  * @return Initialized PtpClock pointer or NULL on failure
  */
-PtpClock *ptpd_init(int argc, char **argv, Integer16 *ret) {
-  PtpClock *ptpClock;
+PtpdHandle *ptpd_init(int argc, char **argv, Integer16 *ret) {
+  PtpdHandle *ptpClock;
 
   ptpClock = ptpd_common_init(argc, argv, ret);
   if (ptpClock) {
@@ -213,7 +214,7 @@ static void *ptpd_protocol_thread(void *arg) {
  * @param ptpClock Initialized PTP clock
  * @return 0 on success, -1 on failure
  */
-int ptpd_start(PtpClock *ptpClock) {
+int ptpd_start(PtpdHandle *ptpClock) {
   int ret;
 
   if (!ptpClock) {
@@ -243,7 +244,7 @@ int ptpd_start(PtpClock *ptpClock) {
  * @param ptpClock PTP clock instance
  * @return 1 if running, 0 if stopped
  */
-int ptpd_is_running(PtpClock *ptpClock) {
+int ptpd_is_running(PtpdHandle *ptpClock) {
   (void)ptpClock; /* unused */
   return thread_running ? 1 : 0;
 }
@@ -252,7 +253,7 @@ int ptpd_is_running(PtpClock *ptpClock) {
  * @brief Shutdown PTP daemon and cleanup resources
  * @param ptpClock PTP clock to shutdown
  */
-void ptpd_shutdown(PtpClock *ptpClock) {
+void ptpd_shutdown(PtpdHandle *ptpClock) {
   if (!ptpClock) {
     return;
   }
@@ -279,7 +280,7 @@ void ptpd_shutdown(PtpClock *ptpClock) {
  * @param tp Timespec structure to receive the time
  * @return 0 on success, -1 on error
  */
-int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp) {
+int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp) {
   if (!ptpClock || !tp) {
     return -1;
   }

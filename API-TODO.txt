@@ -1,0 +1,145 @@
+ptpdlib API — Improvement Backlog
+==================================
+
+
+── A. GENERAL API SHAPE ─────────────────────────────────────────────────────
+
+A1. Opaque handle
+    ptpd_init() returns PtpClock* — a massive internal struct.  Callers get
+    access to hundreds of internal fields with no ABI boundary.
+    Fix: forward-declare an opaque  typedef struct PtpdHandle PtpdHandle;
+    and return that.  Map to PtpClock* internally.
+
+A2. Error reporting
+    ptpd_start() returns only -1 on failure; ptpd_gettime() sets errno but
+    nothing else.  No way to distinguish "thread creation failed" from
+    "not initialised" from "swclock unavailable".
+    Fix: ptpd_error_t enum + ptpd_last_error(handle) accessor.
+
+A3. Graceful stop without destroy
+    ptpd_shutdown() is the only stop path and it frees everything.
+    Fix: add ptpd_stop() — halts the protocol thread but preserves
+    servo state, allowing pause/resume without reinitialising.
+    Critical for iOS background/foreground transitions.
+
+A4. State-change callback
+    No way to be notified when the port state changes without polling
+    or touching ptpClock->portState directly (an internal field).
+    Fix: ptpd_set_state_callback(handle, cb) fires on every
+    INITIALIZING → LISTENING → SLAVE / MASTER / PASSIVE / FAULTY transition.
+
+A5. Runtime log level control
+    Verbosity is baked into argv at init time.
+    Fix: ptpd_set_log_level(int level) to change verbosity on the fly
+    without restarting the daemon.
+
+A6. Log callback should not be iOS-only
+    ptpd_set_log_callback() is guarded by #ifdef PTPD_IOS.
+    macOS embedders can't intercept log output either.
+    Fix: remove the platform guard; make it available on all builds.
+
+A7. Status snapshot
+    No clean way to read offset, delay, servo drift, or sync quality
+    without touching ptpClock->currentDS / ptpClock->servo internals.
+    Fix:
+      typedef struct {
+          uint8_t  state;          // PTP_SLAVE, PTP_LISTENING, …
+          int64_t  offset_ns;      // current offsetFromMaster
+          int64_t  delay_ns;       // current meanPathDelay
+          int32_t  drift_ppb;      // servo observedDrift
+          int      is_synchronized;// 1 when state == PTP_SLAVE
+      } ptpd_status_t;
+      int ptpd_get_status(handle, ptpd_status_t*);
+
+A8. Thread-safety contract is undocumented
+    Unspecified whether ptpd_gettime(), ptpd_is_running(), and
+    ptpd_shutdown() are safe to call concurrently or from signal handlers.
+    Fix: document the contract explicitly in ptpdlib.h.
+
+
+── B. DISCIPLINED TIME ACCESS ───────────────────────────────────────────────
+
+B1. Silent fallback is dangerous
+    When swclock is unavailable ptpd_gettime() quietly falls through to
+    clock_gettime().  Caller gets kernel time with no indication the
+    PTP-disciplined path was bypassed.
+    Fix: return an error or set a flag in the result struct rather than
+    silently substituting system time.
+
+B2. No synchronisation validity flag
+    ptpd_gettime() returns the same way in PTP_SLAVE (locked, sub-ms)
+    and PTP_LISTENING (free-running, unknown drift).
+    Fix: extend the result to carry validity metadata:
+      typedef struct {
+          struct timespec ts;
+          int     is_synchronized; // 1 = PTP_SLAVE and servo converged
+          int64_t offset_ns;       // last known offset from master
+          int64_t uncertainty_ns;  // maxerror from swclock
+      } ptpd_time_t;
+      int ptpd_gettime_ex(handle, clockid_t, ptpd_time_t*);
+
+B3. No TAI access
+    swclock internally tracks the TAI-UTC offset (currently 37 s) but
+    it is not surfaced through ptpdlib.
+    Fix: ptpd_gettime_tai(handle, struct timespec*) returning
+    CLOCK_REALTIME + TAI offset, safe across leap seconds.
+
+B4. No error / uncertainty bounds
+    swclock maintains maxerror and esterror per the adjtimex interface.
+    The servo also knows observedDrift.  None is reachable through ptpdlib.
+    Fix: expose via ptpd_get_status() (see A7) or ptpd_gettime_ex() (see B2).
+
+B5. clockid_t is a kernel abstraction leak
+    Passing CLOCK_REALTIME / CLOCK_MONOTONIC to a software clock API
+    ties the interface to kernel clock IDs.
+    Fix: ptpdlib-native enum:
+      PTPD_CLOCK_WALL      — disciplined wall clock (= CLOCK_REALTIME)
+      PTPD_CLOCK_MONOTONIC — monotonic derived from swclock
+      PTPD_CLOCK_TAI       — TAI time (wall + leap offset)
+      PTPD_CLOCK_RAW       — passthrough to kernel uptime counter
+
+B6. No atomic event timestamping
+    To timestamp an external event using the disciplined clock, callers
+    must call ptpd_gettime() themselves with no atomicity guarantee.
+    Fix: ptpd_timestamp_event(handle, struct timespec*) that acquires
+    the swclock read lock internally, guaranteeing the timestamp is
+    consistent with the servo state at the moment of the call.
+
+
+── C. RUNTIME RECONFIGURATION ───────────────────────────────────────────────
+
+C1. Interface change at runtime
+    The network interface is parsed once at ptpd_init() and baked into
+    RunTimeOpts.  When an interface disappears (Wi-Fi roam, USB unplug)
+    the daemon goes FAULTY and never recovers without a full restart.
+    Fix: ptpd_set_interface(handle, const char* iface) — close the
+    current socket, reopen on the new interface, restart the state
+    machine from INITIALIZING.  Background thread stays alive; only
+    the network layer is recycled.  Servo drift is preserved.
+
+C2. Master IP change at runtime
+    ptpengine:unicast_destinations is fixed at init time.
+    Fix: ptpd_set_master_ip(handle, const char* ip) — update
+    unicast_destinations, cancel outstanding unicast grants with
+    CANCEL_UNICAST_TRANSMISSION to the old master, begin Announce
+    exchange with the new one.
+
+C3. Network change notification callback
+    No way for the daemon to tell the embedder that the interface was lost.
+    Fix: ptpd_set_network_change_callback(handle, cb) fires when the
+    daemon detects an interface loss (socket error, link down), letting
+    the embedder call ptpd_set_interface() with the replacement.
+
+C4. Reconfiguration thread safety
+    C1 and C2 require writing to RunTimeOpts and the socket from outside
+    the protocol thread.  Currently nothing in ptpdlib acquires the
+    protocol-thread lock from the public API.
+    Fix: route reconfiguration requests through a command queue consumed
+    by the protocol thread at a safe point (same pattern as the existing
+    ios_should_exit flag).
+
+C5. State continuity across reconfiguration
+    After an interface or master change the servo currently starts from
+    zero (drift = 0, statistics cleared).
+    Fix: preserve observedDrift and recent OFM/MPD statistics across
+    a reconfiguration so convergence after the switch is fast.

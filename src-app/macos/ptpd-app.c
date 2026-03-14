@@ -46,7 +46,7 @@
 /* ------------------------------------------------------------------ */
 /* Globals                                                             */
 /* ------------------------------------------------------------------ */
-static PtpClock    *g_ptp             = NULL;
+static PtpdHandle  *g_ptp             = NULL;
 static int          show_time         = 0;
 static char         servo_log_path[PATH_MAX]   = "";
 static char         swclock_log_path[PATH_MAX] = "";

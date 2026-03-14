@@ -19,24 +19,32 @@ extern "C" {
 #endif
 
 /**
+ * Opaque library handle.  PtpdHandle is a transparent alias for PtpClock
+ * so that callers use the public name while internal code continues to
+ * use PtpClock*.  Field access via the pointer still compiles; the alias
+ * exists to give the public API a stable name independent of internals.
+ */
+typedef PtpClock PtpdHandle;
+
+/**
  * @brief Initialize PTP daemon for library mode
  * @param argc Argument count (same as main())
  * @param argv Argument vector (same as main())
  * @param ret Return code pointer (set on failure)
- * @return Initialized PtpClock pointer or NULL on failure
+ * @return Initialized PtpdHandle pointer or NULL on failure
  *
  * This function only initializes the daemon state. The protocol is not
  * started until ptpd_start() is called.
  *
  * Example:
  *   Integer16 ret;
- *   PtpClock *ptp = ptpd_init(argc, argv, &ret);
+ *   PtpdHandle *ptp = ptpd_init(argc, argv, &ret);
  *   if (!ptp) {
  *       fprintf(stderr, "Init failed with code %d\n", ret);
  *       return ret;
  *   }
  */
-PtpClock *ptpd_init(int argc, char **argv, Integer16 *ret);
+PtpdHandle *ptpd_init(int argc, char **argv, Integer16 *ret);
 
 /**
  * @brief Start PTP daemon in a background thread (non-blocking)
@@ -55,11 +63,11 @@ PtpClock *ptpd_init(int argc, char **argv, Integer16 *ret);
  *   // ... do other work ...
  *   ptpd_shutdown(ptp);
  */
-int ptpd_start(PtpClock *ptpClock);
+int ptpd_start(PtpdHandle *ptpClock);
 
 /**
  * @brief Check if PTP daemon thread is still running
- * @param ptpClock PTP clock instance
+ * @param ptpClock PtpdHandle from ptpd_init()
  * @return 1 if running, 0 if stopped
  *
  * Use this to monitor the daemon state.
@@ -69,21 +77,21 @@ int ptpd_start(PtpClock *ptpClock);
  *       sleep(1);
  *   }
  */
-int ptpd_is_running(PtpClock *ptpClock);
+int ptpd_is_running(PtpdHandle *ptpClock);
 
 /**
  * @brief Shutdown PTP daemon and cleanup resources
- * @param ptpClock PTP clock to shutdown
+ * @param ptpClock PtpdHandle from ptpd_init()
  *
  * Signals the protocol thread to stop and waits for it to terminate.
  * All resources are cleaned up automatically. After this call, the
- * PtpClock pointer is invalid and should not be used.
+ * PtpdHandle pointer is invalid and should not be used.
  */
-void ptpd_shutdown(PtpClock *ptpClock);
+void ptpd_shutdown(PtpdHandle *ptpClock);
 
 /**
  * @brief Get time from PTP daemon's underlying clock
- * @param ptpClock PTP clock instance
+ * @param ptpClock PtpdHandle from ptpd_init()
  * @param clk_id Clock ID (CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW)
  * @param tp Timespec structure to receive the time
  * @return 0 on success, -1 on error
@@ -101,7 +109,7 @@ void ptpd_shutdown(PtpClock *ptpClock);
  *       printf("Time: %ld.%09ld\n", ts.tv_sec, ts.tv_nsec);
  *   }
  */
-int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp);
+int ptpd_gettime(PtpdHandle *ptpClock, clockid_t clk_id, struct timespec *tp);
 
 #ifdef PTPD_IOS
 /**
