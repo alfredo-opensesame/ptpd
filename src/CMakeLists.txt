@@ -85,9 +85,9 @@ endif()
 # The generated file is gitignored; it is an internal implementation detail
 # and is never installed or exposed through ptpdlib.h.
 # ---------------------------------------------------------------------------
-set(_leap_src "${CMAKE_SOURCE_DIR}/resources/leap-seconds.list")
+set(_leap_src "${CMAKE_CURRENT_SOURCE_DIR}/../resources/leap-seconds.list")
 set(_leap_hdr "${CMAKE_CURRENT_SOURCE_DIR}/def/leap_seconds_builtin.h")
-set(_leap_gen "${CMAKE_SOURCE_DIR}/scripts/tools/gen-leap-header.py")
+set(_leap_gen "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tools/gen-leap-header.py")
 
 add_custom_command(
     OUTPUT  "${_leap_hdr}"
