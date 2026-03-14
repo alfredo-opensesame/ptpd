@@ -25,6 +25,7 @@
 #endif
 
 #include "ptpdlib.h"
+#include "ptpdlib_internal.h"
 #include "datatypes.h"
 
 #ifdef PTPD_USE_SWCLOCK
@@ -137,7 +138,7 @@ static void *monitor_thread(void *arg)
 		/* ptp_active=1 only when servo is engaged (kP > 0 means ptpd is
 		 * in SLAVE/UNCALIBRATED state and processing sync messages). */
 		int ptp_active = (g_ptp != NULL) && ptpd_is_running(g_ptp)
-		                 && (g_ptp->servo.kP > 0.0);
+&& (g_ptp->clock->servo.kP > 0.0);
 
 		/* ptpd servo internals (only valid when active) */
 		int32_t offset_ns     = 0;
@@ -152,16 +153,16 @@ static void *monitor_thread(void *arg)
 		int     upd_count     = 0;
 #endif
 		if (ptp_active) {
-			offset_ns     = g_ptp->servo.input;
-			servo_out_ppb = g_ptp->servo.output;
-			obs_drift_ppb = g_ptp->servo.observedDrift;
-			kP            = g_ptp->servo.kP;
-			kI            = g_ptp->servo.kI;
+			offset_ns     = g_ptp->clock->servo.input;
+			servo_out_ppb = g_ptp->clock->servo.output;
+			obs_drift_ppb = g_ptp->clock->servo.observedDrift;
+			kP            = g_ptp->clock->servo.kP;
+			kI            = g_ptp->clock->servo.kI;
 #ifdef PTPD_STATISTICS
-			drift_mean    = g_ptp->servo.driftMean;
-			drift_std     = g_ptp->servo.driftStdDev;
-			drift_med     = g_ptp->servo.driftMedian;
-			upd_count     = g_ptp->servo.updateCount;
+			drift_mean    = g_ptp->clock->servo.driftMean;
+			drift_std     = g_ptp->clock->servo.driftStdDev;
+			drift_med     = g_ptp->clock->servo.driftMedian;
+			upd_count     = g_ptp->clock->servo.updateCount;
 #endif
 		}
 
@@ -171,8 +172,8 @@ static void *monitor_thread(void *arg)
 		long long remaining_phase_ns = 0;
 		swclock_metrics_snapshot_t metrics;
 		int have_metrics = 0;
-		if (ptp_active && g_ptp->swclock) {
-			SwClock *sc = (SwClock *)g_ptp->swclock;
+		if (ptp_active && g_ptp->clock->swclock) {
+			SwClock *sc = (SwClock *)g_ptp->clock->swclock;
 			remaining_phase_ns = swclock_get_remaining_phase_ns(sc);
 			have_metrics       = (swclock_get_metrics(sc, &metrics) == 0);
 		}
@@ -276,8 +277,8 @@ int main(int argc, char **argv)
 
 #ifdef PTPD_USE_SWCLOCK
 	/* Enable swclock internal event log if requested */
-	if (swclock_log_path[0] != '\0' && g_ptp->swclock) {
-		swclock_start_log((SwClock *)g_ptp->swclock, swclock_log_path);
+	if (swclock_log_path[0] != '\0' && g_ptp->clock->swclock) {
+		swclock_start_log((SwClock *)g_ptp->clock->swclock, swclock_log_path);
 		fprintf(stderr, "swclock event log: %s\n", swclock_log_path);
 	}
 #endif
@@ -327,8 +328,8 @@ int main(int argc, char **argv)
 		pthread_join(g_monitor_tid, NULL);
 
 #ifdef PTPD_USE_SWCLOCK
-	if (swclock_log_path[0] != '\0' && g_ptp && g_ptp->swclock)
-		swclock_stop_event_log((SwClock *)g_ptp->swclock);
+	if (swclock_log_path[0] != '\0' && g_ptp && g_ptp->clock->swclock)
+		swclock_stop_event_log((SwClock *)g_ptp->clock->swclock);
 #endif
 
 	if (g_ptp) {

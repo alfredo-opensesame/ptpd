@@ -33,8 +33,7 @@
 #include "test_helpers.h"
 
 extern "C" {
-#include "ptpdlib.h"
-#include "datatypes.h"
+#include "ptpdlib_internal.h"
 #ifdef PTPD_USE_SWCLOCK
 #  include "sw_clock.h"
 #endif
@@ -254,7 +253,7 @@ public:
 
         /* ---- init + start ---- */
         Integer16 ret = 0;
-        PtpClock *ptp = ptpd_init(argc, argv, &ret);
+        PtpdHandle *ptp = ptpd_init(argc, argv, &ret);
         if (!ptp) {
             s_skip = true;
             s_skip_reason = "ptpd_init() failed (ret=" +
@@ -270,7 +269,7 @@ public:
         bool locked = false;
         while (elapsed_ms(t0) < s_lock_timeout_s * 1000.0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            if (ptp && ptpd_is_running(ptp) && ptp->servo.kP > 0.0) {
+            if (ptp && ptpd_is_running(ptp) && ptp->clock->servo.kP > 0.0) {
                 locked = true; break;
             }
         }
@@ -297,17 +296,17 @@ public:
             ServoSample smp = {};
             smp.elapsed_s  = elapsed;
             smp.ptp_active = (ptp && ptpd_is_running(ptp) &&
-                              ptp->servo.kP > 0.0) ? 1 : 0;
+                              ptp->clock->servo.kP > 0.0) ? 1 : 0;
             if (smp.ptp_active) {
-                smp.offset_ns      = ptp->servo.input;
-                smp.servo_out_ppb  = ptp->servo.output;
-                smp.obs_drift_ppb  = ptp->servo.observedDrift;
-                smp.kP             = ptp->servo.kP;
-                smp.kI             = ptp->servo.kI;
+                smp.offset_ns      = ptp->clock->servo.input;
+                smp.servo_out_ppb  = ptp->clock->servo.output;
+                smp.obs_drift_ppb  = ptp->clock->servo.observedDrift;
+                smp.kP             = ptp->clock->servo.kP;
+                smp.kI             = ptp->clock->servo.kI;
 #ifdef PTPD_USE_SWCLOCK
-                if (ptp->swclock)
+                if (ptp->clock->swclock)
                     smp.remaining_phase_ns =
-                        swclock_get_remaining_phase_ns((SwClock *)ptp->swclock);
+                        swclock_get_remaining_phase_ns((SwClock *)ptp->clock->swclock);
 #endif
             }
             s_samples.push_back(smp);

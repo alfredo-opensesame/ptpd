@@ -12,20 +12,22 @@
 #ifndef PTPDLIB_H_
 #define PTPDLIB_H_
 
-#include "ptpd.h"
 #include <stdint.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * Opaque library handle.  PtpdHandle is a transparent alias for PtpClock
- * so that callers use the public name while internal code continues to
- * use PtpClock*.  Field access via the pointer still compiles; the alias
- * exists to give the public API a stable name independent of internals.
+ * Opaque library handle.
+ *
+ * The concrete layout of struct PtpdHandle is private to the ptpd library.
+ * External callers may only hold a PtpdHandle* pointer and pass it to the
+ * API functions declared below.  Do NOT include ptpdlib_internal.h unless
+ * you are implementing ptpd internals.
  */
-typedef PtpClock PtpdHandle;
+typedef struct PtpdHandle PtpdHandle;
 
 /**
  * ── Thread-safety contract ───────────────────────────────────────────────────
@@ -90,14 +92,14 @@ int ptpd_last_error(PtpdHandle *ptpClock);
  * started until ptpd_start() is called.
  *
  * Example:
- *   Integer16 ret;
+ *   int16_t ret;
  *   PtpdHandle *ptp = ptpd_init(argc, argv, &ret);
  *   if (!ptp) {
  *       fprintf(stderr, "Init failed with code %d\n", ret);
  *       return ret;
  *   }
  */
-PtpdHandle *ptpd_init(int argc, char **argv, Integer16 *ret);
+PtpdHandle *ptpd_init(int argc, char **argv, int16_t *ret);
 
 /**
  * @brief Start PTP daemon in a background thread (non-blocking)
@@ -352,6 +354,23 @@ typedef struct {
  *          s.state, (long long)s.offset_ns, s.drift_ppb);
  */
 int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out);
+
+/**
+ * @brief Return a human-readable name for a PTP port state value (A1)
+ * @param state  uint8_t state from ptpd_status_t::state
+ * @return       A static string, e.g. "SLAVE", "LISTENING", "MASTER"; returns
+ *               "UNKNOWN" for unrecognised values. The pointer is valid for
+ *               the lifetime of the process.
+ *
+ * Use this instead of the internal portState_getName() function, which is
+ * not available in opaque-handle builds.
+ *
+ * Example:
+ *   ptpd_status_t s;
+ *   ptpd_get_status(ptp, &s);
+ *   printf("state: %s\n", ptpd_state_name(s.state));
+ */
+const char *ptpd_state_name(uint8_t state);
 
 /**
  * @brief Register log message callback (available on all library-mode builds) (A6)

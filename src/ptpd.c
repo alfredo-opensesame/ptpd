@@ -65,7 +65,8 @@
 
 #ifdef PTPD_LIBRARY_MODE
 #include <pthread.h>
-#include "ptpdlib.h"
+#include <stdlib.h>
+#include "ptpdlib_internal.h"
 #endif
 
 RunTimeOpts rtOpts; /* statically allocated run-time configuration data */
@@ -182,15 +183,21 @@ static void ptpd_common_cleanup(void) {
  * @param ret Return code pointer
  * @return Initialized PtpClock pointer or NULL on failure
  */
-PtpdHandle *ptpd_init(int argc, char **argv, Integer16 *ret) {
-  PtpdHandle *ptpClock;
+PtpdHandle *ptpd_init(int argc, char **argv, int16_t *ret) {
+  PtpClock *clock = ptpd_common_init(argc, argv, ret);
+  if (!clock)
+    return NULL;
 
-  ptpClock = ptpd_common_init(argc, argv, ret);
-  if (ptpClock) {
-    library_ptpClock = ptpClock;
+  PtpdHandle *handle = (PtpdHandle *)malloc(sizeof(PtpdHandle));
+  if (!handle) {
+    ERROR("ptpd_init: failed to allocate handle\n");
+    ptpd_common_cleanup();
+    return NULL;
   }
 
-  return ptpClock;
+  handle->clock    = clock;
+  library_ptpClock = clock;
+  return handle;
 }
 
 /**
@@ -224,21 +231,21 @@ int ptpd_start(PtpdHandle *ptpClock) {
 
   if (thread_running) {
     ERROR("ptpd_start: Protocol thread already running\n");
-    ptpClock->library_last_error = PTPD_ERR_RUNNING;
+    ptpClock->clock->library_last_error = PTPD_ERR_RUNNING;
     return -1;
   }
 
   thread_running = TRUE;
 
-  ret = pthread_create(&protocol_thread, NULL, ptpd_protocol_thread, ptpClock);
+  ret = pthread_create(&protocol_thread, NULL, ptpd_protocol_thread, ptpClock->clock);
   if (ret != 0) {
     ERROR("ptpd_start: Failed to create protocol thread: %s\n", strerror(ret));
     thread_running = FALSE;
-    ptpClock->library_last_error = PTPD_ERR_THREAD;
+    ptpClock->clock->library_last_error = PTPD_ERR_THREAD;
     return -1;
   }
 
-  ptpClock->library_last_error = PTPD_OK;
+  ptpClock->clock->library_last_error = PTPD_OK;
   return 0;
 }
 
@@ -263,7 +270,7 @@ void ptpd_shutdown(PtpdHandle *ptpClock) {
 
   if (thread_running) {
     /* Signal the protocol loop to exit cleanly via the exit flag */
-    ptpClock->library_should_exit = TRUE;
+    ptpClock->clock->library_should_exit = TRUE;
 
     /* Wait for thread to finish */
     pthread_join(protocol_thread, NULL);
@@ -274,6 +281,7 @@ void ptpd_shutdown(PtpdHandle *ptpClock) {
   ptpd_common_cleanup();
 
   library_ptpClock = NULL;
+  free(ptpClock); /* free the PtpdHandle wrapper */
 }
 
 /**
@@ -283,12 +291,12 @@ void ptpd_stop(PtpdHandle *ptpClock) {
   if (!ptpClock || !thread_running)
     return;
 
-  ptpClock->library_should_exit = TRUE;
+  ptpClock->clock->library_should_exit = TRUE;
   pthread_join(protocol_thread, NULL);
   thread_running = FALSE;
 
   /* Reset flag so ptpd_start() can be called again */
-  ptpClock->library_should_exit = FALSE;
+  ptpClock->clock->library_should_exit = FALSE;
 }
 
 /**
@@ -298,21 +306,22 @@ int ptpd_gettime_ex(PtpdHandle *ptpClock, clockid_t clk_id, ptpd_time_t *out) {
   if (!ptpClock || !out)
     return -1;
 
+  PtpClock *clock = ptpClock->clock;
   memset(out, 0, sizeof(*out));
   out->uncertainty_ns = INT64_MAX;
 
 #ifdef PTPD_USE_SWCLOCK
-  if (ptpClock->swclock) {
-    if (swclock_gettime((SwClock *)ptpClock->swclock, clk_id, &out->ts) == 0) {
+  if (clock->swclock) {
+    if (swclock_gettime((SwClock *)clock->swclock, clk_id, &out->ts) == 0) {
       out->source          = PTPD_TIME_SOURCE_SWCLOCK;
-      out->is_synchronized = (ptpClock->portDS.portState == PTP_SLAVE);
+      out->is_synchronized = (clock->portDS.portState == PTP_SLAVE);
       out->offset_ns =
-          ptpClock->currentDS.offsetFromMaster.nanoseconds +
-          (ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
+          clock->currentDS.offsetFromMaster.nanoseconds +
+          (clock->currentDS.offsetFromMaster.seconds * 1000000000LL);
       /* Read maxerror via adjtime readback; swclock reports it in µs */
       struct timex tx;
       memset(&tx, 0, sizeof(tx));
-      if (swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD)
+      if (swclock_adjtime((SwClock *)clock->swclock, &tx) != TIME_BAD)
         out->uncertainty_ns = (int64_t)tx.maxerror * 1000; /* µs → ns */
       return 0;
     }
@@ -357,15 +366,16 @@ int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out) {
   if (!ptpClock || !out)
     return -1;
 
-  out->state           = ptpClock->portDS.portState;
-  out->is_synchronized = (ptpClock->portDS.portState == PTP_SLAVE);
+  PtpClock *clock = ptpClock->clock;
+  out->state           = clock->portDS.portState;
+  out->is_synchronized = (clock->portDS.portState == PTP_SLAVE);
   out->offset_ns =
-      ptpClock->currentDS.offsetFromMaster.nanoseconds +
-      (ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
+      clock->currentDS.offsetFromMaster.nanoseconds +
+      (clock->currentDS.offsetFromMaster.seconds * 1000000000LL);
   out->delay_ns =
-      ptpClock->currentDS.meanPathDelay.nanoseconds +
-      (ptpClock->currentDS.meanPathDelay.seconds * 1000000000LL);
-  out->drift_ppb = (int32_t)ptpClock->servo.observedDrift;
+      clock->currentDS.meanPathDelay.nanoseconds +
+      (clock->currentDS.meanPathDelay.seconds * 1000000000LL);
+  out->drift_ppb = (int32_t)clock->servo.observedDrift;
   return 0;
 }
 
@@ -374,7 +384,7 @@ int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out) {
  */
 int ptpd_last_error(PtpdHandle *ptpClock) {
   if (!ptpClock) return PTPD_ERR_NULL_ARG;
-  return ptpClock->library_last_error;
+  return ptpClock->clock->library_last_error;
 }
 
 /**
@@ -384,8 +394,8 @@ void ptpd_set_state_callback(PtpdHandle *ptpClock,
     void (*callback)(uint8_t from_state, uint8_t to_state, void *user_data),
     void *user_data) {
   if (!ptpClock) return;
-  ptpClock->state_callback      = callback;
-  ptpClock->state_callback_data = user_data;
+  ptpClock->clock->state_callback      = callback;
+  ptpClock->clock->state_callback_data = user_data;
 }
 
 /**
@@ -393,7 +403,7 @@ void ptpd_set_state_callback(PtpdHandle *ptpClock,
  */
 void ptpd_set_log_level(PtpdHandle *ptpClock, int level) {
   if (!ptpClock) return;
-  ptpClock->rtOpts->logLevel = (Enumeration8)level;
+  ptpClock->clock->rtOpts->logLevel = (Enumeration8)level;
 }
 
 /**
@@ -404,7 +414,7 @@ int ptpd_gettime_tai(PtpdHandle *ptpClock, struct timespec *tp) {
     return -1;
 
 #ifdef PTPD_USE_SWCLOCK
-  if (!ptpClock->swclock)
+  if (!ptpClock->clock->swclock)
     return -1;
 
   ptpd_time_t t;
@@ -415,7 +425,7 @@ int ptpd_gettime_tai(PtpdHandle *ptpClock, struct timespec *tp) {
   struct timex tx;
   memset(&tx, 0, sizeof(tx));
   int tai_offset = 0;
-  if (swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD)
+  if (swclock_adjtime((SwClock *)ptpClock->clock->swclock, &tx) != TIME_BAD)
     tai_offset = tx.tai;
 
   if (tai_offset == 0)
@@ -474,8 +484,8 @@ int ptpd_gettime_ex_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
     struct timex tx;
     memset(&tx, 0, sizeof(tx));
 #ifdef PTPD_USE_SWCLOCK
-    if (ptpClock->swclock &&
-        swclock_adjtime((SwClock *)ptpClock->swclock, &tx) != TIME_BAD &&
+    if (ptpClock->clock->swclock &&
+        swclock_adjtime((SwClock *)ptpClock->clock->swclock, &tx) != TIME_BAD &&
         tx.tai != 0) {
       out->ts.tv_sec += (time_t)tx.tai;
       return 0;
@@ -484,6 +494,24 @@ int ptpd_gettime_ex_clock(PtpdHandle *ptpClock, ptpd_clock_id_t clk,
     return -1; /* TAI offset unknown */
   }
   return ptpd_gettime_ex(ptpClock, ptpd_clockid_to_posix(clk), out);
+}
+
+/**
+ * @brief Human-readable name for a PTP port state (A1)
+ */
+const char *ptpd_state_name(uint8_t state) {
+  switch (state) {
+    case PTP_INITIALIZING: return "INITIALIZING";
+    case PTP_FAULTY:       return "FAULTY";
+    case PTP_DISABLED:     return "DISABLED";
+    case PTP_LISTENING:    return "LISTENING";
+    case PTP_PRE_MASTER:   return "PRE_MASTER";
+    case PTP_MASTER:       return "MASTER";
+    case PTP_PASSIVE:      return "PASSIVE";
+    case PTP_UNCALIBRATED: return "UNCALIBRATED";
+    case PTP_SLAVE:        return "SLAVE";
+    default:               return "UNKNOWN";
+  }
 }
 
 #endif /* PTPD_LIBRARY_MODE */

@@ -254,18 +254,16 @@ static void ios_log_handler(const char *message, int level) {
         return status;
     }
 
-    // Get port state
-    const char *stateName = portState_getName(_ptpClock->portDS.portState);
-    strncpy(status.state, stateName, sizeof(status.state) - 1);
+    ptpd_status_t s;
+    if (ptpd_get_status(_ptpClock, &s) != 0) {
+        return status;
+    }
 
-    // Get timing statistics (nanoseconds)
-    status.offset = _ptpClock->currentDS.offsetFromMaster.nanoseconds +
-                   (_ptpClock->currentDS.offsetFromMaster.seconds * 1000000000LL);
-    status.delay = _ptpClock->currentDS.meanPathDelay.nanoseconds +
-                  (_ptpClock->currentDS.meanPathDelay.seconds * 1000000000LL);
-
-    // Drift is not easily accessible from public API, leave as 0 for now
-    status.drift = 0.0;
+    strncpy(status.state, ptpd_state_name(s.state), sizeof(status.state) - 1);
+    status.state[sizeof(status.state) - 1] = '\0';
+    status.offset = s.offset_ns;
+    status.delay  = s.delay_ns;
+    status.drift  = (double)s.drift_ppb;
 
     return status;
 }

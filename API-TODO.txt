@@ -4,7 +4,7 @@ ptpdlib API — Improvement Backlog
 
 ── A. GENERAL API SHAPE ─────────────────────────────────────────────────────
 
-A1. Opaque handle
+A1. [DONE] Opaque handle
     ptpd_init() returns PtpClock* — a massive internal struct.  Callers get
     access to hundreds of internal fields with no ABI boundary.
     Fix: forward-declare an opaque  typedef struct PtpdHandle PtpdHandle;
