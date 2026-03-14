@@ -152,6 +152,15 @@ API FUNCTIONS
       int32_t  drift_ppb       — servo observedDrift (ppb)
       int      is_synchronized — 1 when state == PTP_SLAVE
 
+  int ptpd_get_grandmaster_id(PtpdHandle* ptp, char* out, int out_len)
+    Write the current grandmaster ClockIdentity as 16 lowercase hex
+    digits plus NUL (for example: 2ccf67fffe64d7ce).
+    out_len must be at least 17.
+
+  int ptpd_get_current_interface(PtpdHandle* ptp, char* out, int out_len)
+    Write the currently active network interface name (including runtime
+    switch/failover). Returns -1 if unavailable or if out is too small.
+
   const char* ptpd_state_name(uint8_t state)
     Convert a state value to a string: "SLAVE", "MASTER", "LISTENING", …
     Returns "UNKNOWN" for unrecognised values.

@@ -213,6 +213,8 @@ code.
 
 ```c
 int         ptpd_get_status(PtpdHandle *ptp, ptpd_status_t *out);
+int         ptpd_get_grandmaster_id(PtpdHandle *ptp, char *out, int out_len);   // 16 hex chars + NUL
+int         ptpd_get_current_interface(PtpdHandle *ptp, char *out, int out_len);
 const char *ptpd_state_name(uint8_t state);         // "SLAVE", "MASTER", …
 void        ptpd_set_state_callback(PtpdHandle *ptp,
                 void (*cb)(uint8_t from, uint8_t to, void *ud), void *ud);
@@ -233,6 +235,13 @@ typedef struct {
 
 `ptpd_set_state_callback()` fires on every port-state transition; use
 `ptpd_state_name()` to convert the `uint8_t` state values to strings.
+
+`ptpd_get_grandmaster_id()` writes the current grandmaster ClockIdentity as
+16 lowercase hex digits (for example `2ccf67fffe64d7ce`) into `out`.
+Provide a buffer of at least 17 bytes.
+
+`ptpd_get_current_interface()` returns the currently active interface name
+(including runtime switch/failover).
 
 ### Servo Parameters
 

@@ -380,6 +380,62 @@ int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out) {
 }
 
 /**
+ * @brief Return current grandmaster ClockIdentity as hex string
+ */
+int ptpd_get_grandmaster_id(PtpdHandle *ptpClock, char *out, int out_len) {
+  int i;
+  int pos = 0;
+  PtpClock *clock;
+
+  if (!ptpClock || !out || out_len < ((CLOCK_IDENTITY_LENGTH * 2) + 1))
+    return -1;
+
+  clock = ptpClock->clock;
+
+  for (i = 0; i < CLOCK_IDENTITY_LENGTH; i++) {
+    int written = snprintf(out + pos, out_len - pos, "%02x",
+                           (unsigned char)clock->parentDS.grandmasterIdentity[i]);
+    if (written != 2)
+      return -1;
+    pos += written;
+  }
+
+  out[pos] = '\0';
+  return 0;
+}
+
+/**
+ * @brief Return currently active network interface name
+ */
+int ptpd_get_current_interface(PtpdHandle *ptpClock, char *out, int out_len) {
+  PtpClock *clock;
+  const char *iface = NULL;
+  int written;
+
+  if (!ptpClock || !out || out_len <= 0)
+    return -1;
+
+  clock = ptpClock->clock;
+  if (!clock || !clock->rtOpts)
+    return -1;
+
+  if (clock->rtOpts->ifaceName && clock->rtOpts->ifaceName[0]) {
+    iface = (const char *)clock->rtOpts->ifaceName;
+  } else if (clock->rtOpts->primaryIfaceName[0]) {
+    iface = (const char *)clock->rtOpts->primaryIfaceName;
+  }
+
+  if (!iface)
+    return -1;
+
+  written = snprintf(out, out_len, "%s", iface);
+  if (written < 0 || written >= out_len)
+    return -1;
+
+  return 0;
+}
+
+/**
  * @brief Return last library error code (A2)
  */
 int ptpd_last_error(PtpdHandle *ptpClock) {

@@ -361,6 +361,40 @@ typedef struct {
 int ptpd_get_status(PtpdHandle *ptpClock, ptpd_status_t *out);
 
 /**
+ * @brief Get the current grandmaster ClockIdentity as lowercase hex
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param out Destination buffer for the ID string
+ * @param out_len Size of @p out in bytes; must be at least 17
+ * @return 0 on success, -1 on invalid args or insufficient buffer size
+ *
+ * Writes 16 hex digits plus a terminating NUL, e.g. "2ccf67fffe64d7ce".
+ *
+ * Example:
+ *   char gm_id[17];
+ *   if (ptpd_get_grandmaster_id(ptp, gm_id, sizeof(gm_id)) == 0)
+ *       printf("GM: %s\n", gm_id);
+ */
+int ptpd_get_grandmaster_id(PtpdHandle *ptpClock, char *out, int out_len);
+
+/**
+ * @brief Get the currently active network interface name
+ * @param ptpClock PtpdHandle from ptpd_init()
+ * @param out Destination buffer for the interface name
+ * @param out_len Size of @p out in bytes
+ * @return 0 on success, -1 on invalid args, unavailable interface, or
+ *         insufficient buffer size
+ *
+ * Returns the interface currently in use by the daemon (including runtime
+ * failover or interface switches applied via ptpd_set_interface()).
+ *
+ * Example:
+ *   char iface[64];
+ *   if (ptpd_get_current_interface(ptp, iface, sizeof(iface)) == 0)
+ *       printf("iface: %s\n", iface);
+ */
+int ptpd_get_current_interface(PtpdHandle *ptpClock, char *out, int out_len);
+
+/**
  * @brief Snapshot of all PI-servo runtime parameters (D1)
  *
  * Populated by ptpd_get_servo_params().  All fields reflect the servo state
