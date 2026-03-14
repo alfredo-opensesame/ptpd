@@ -149,11 +149,13 @@ if it's POSIX compatible, if you succeed, report it to ptpd-devel@sourceforge.ne
 #define PTP_ETHER_TYPE 0x88f7
 #define PTP_ETHER_PEER "01:80:c2:00:00:0E"
 
+#ifndef UNICAST_MAX_DESTINATIONS
 #ifdef PTPD_UNICAST_MAX
 #define UNICAST_MAX_DESTINATIONS PTPD_UNICAST_MAX
 #else
 #define UNICAST_MAX_DESTINATIONS 16
 #endif /* PTPD_UNICAST_MAX */
+#endif /* UNICAST_MAX_DESTINATIONS */
 
 /* dummy clock driver designation in preparation for generic clock driver API */
 #define DEFAULT_CLOCKDRIVER "kernelclock"
