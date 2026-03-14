@@ -649,7 +649,7 @@ dictionary * iniparser_load(const char * ininame)
     dictionary * dict ;
 
     if ((in=fopen(ininame, "r"))==NULL) {
-        fprintf(stderr, "iniparser: cannot open %s\n", ininame);
+        WARNING("iniparser: cannot open %s\n", ininame);
         return NULL ;
     }
 
@@ -673,10 +673,10 @@ dictionary * iniparser_load(const char * ininame)
             continue;
         /* Safety check against buffer overflows */
         if (line[len]!='\n') {
-            fprintf(stderr,
-                    "iniparser: input line too long or no newline in the end in %s (%d)\n",
-                    ininame,
-                    lineno);
+            WARNING(
+                "iniparser: input line too long or no newline in the end in %s (%d)\n",
+                ininame,
+                lineno);
             dictionary_del(&dict);
             fclose(in);
             return NULL ;
@@ -710,10 +710,10 @@ dictionary * iniparser_load(const char * ininame)
             break ;
 
             case LINE_ERROR:
-            fprintf(stderr, "iniparser: syntax error in %s (%d):\n",
+                WARNING("iniparser: syntax error in %s (%d):\n",
                     ininame,
                     lineno);
-            fprintf(stderr, "-> %s\n", line);
+                WARNING("-> %s\n", line);
             errs++ ;
             break;
 
@@ -723,7 +723,7 @@ dictionary * iniparser_load(const char * ininame)
         memset(line, 0, ASCIILINESZ);
         last=0;
         if (errs<0) {
-            fprintf(stderr, "iniparser: memory allocation failure\n");
+            WARNING("iniparser: memory allocation failure\n");
             break ;
         }
     }

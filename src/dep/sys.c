@@ -686,10 +686,12 @@ void logStatistics(PtpClock *ptpClock) {
     return;
   }
 
-  if (rtOpts.statisticsLog.logEnabled && rtOpts.statisticsLog.logFP != NULL)
+  if (rtOpts.statisticsLog.logEnabled && rtOpts.statisticsLog.logFP != NULL) {
     destination = rtOpts.statisticsLog.logFP;
-  else
-    destination = stdout;
+  } else {
+    /* Do not emit statistics to console when statistics log output is unavailable. */
+    return;
+  }
 
   if (ptpClock->resetStatisticsLog) {
     ptpClock->resetStatisticsLog = FALSE;

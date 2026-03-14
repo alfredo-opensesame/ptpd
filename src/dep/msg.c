@@ -137,7 +137,7 @@ static inline int bufGuard(int max, long base, int len, long beginning,
 #ifdef RUNTIME_DEBUG
   int ok = ((beginning - base) < len) && ((beginning + size - base) < len) &&
            ((beginning - base) < max) && ((beginning + size - base) < max);
-  printf(
+  DBGV(
       "bufGuard: beginning %ld end %ld: maxlen: %d size %d (%ld %ld %d): %s\n",
       beginning - base, beginning + size - base, len, size, base, beginning,
       size, ok ? "OK" : "!");
