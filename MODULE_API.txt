@@ -10,6 +10,9 @@ ptpdlib exposes ptpd as an embeddable C library.  The protocol engine
 runs in a background thread; all API calls are non-blocking and
 thread-safe with respect to the caller.
 
+The public handle is an opaque typedef: PtpdHandle.  Callers hold only
+a pointer; the concrete layout is private to the library.
+
 When built with -DBUILD_WITH_SWCLOCK=ON (the macOS/iOS default), ptpd
 disciplines a software clock (swclock) instead of the kernel clock,
 making root privileges unnecessary and enabling operation on iOS.
@@ -20,74 +23,184 @@ LIFECYCLE
 
   1. Configure and initialise
      -------------------------
-     Integer16 ret;
-     PtpClock *ptp = ptpd_init(argc, argv, &ret);
+     int16_t ret;
+     PtpdHandle *ptp = ptpd_init(argc, argv, &ret);
      // argc/argv carry the same flags as the standalone ptpd2 binary
      // (interface, config file, log level, …).
      // Returns NULL on failure; ret holds the error code.
+     // Use ptpd_last_error(ptp) for a ptpd_error_t code after any failure.
 
-  2. Start the protocol engine
+  2. (Optional) Register callbacks before starting
+     -----------------------------------------------
+     ptpd_set_log_callback(my_log_handler);   // all builds, not iOS-only
+     ptpd_set_state_callback(ptp, on_state, NULL);
+     ptpd_set_network_change_callback(ptp, on_net_change, ptp);
+
+  3. Start the protocol engine
      --------------------------
      if (ptpd_start(ptp) != 0) { /* handle error */ }
      // Launches the background thread and returns immediately.
      // The state machine progresses:
      //   INITIALIZING → LISTENING → SLAVE (or MASTER / PASSIVE)
 
-  3. Read disciplined time  (optional)
-     -----------------------------------
+  4. Read disciplined time  (optional)
+     ------------------------------------
      struct timespec ts;
      ptpd_gettime(ptp, CLOCK_REALTIME, &ts);
-     // When swclock is active this reads the software clock being
-     // disciplined by the PTP servo.  Otherwise falls back to the
-     // system clock.
+     // Returns -1 if swclock unavailable — never silently gives undisciplined time.
 
-  4. Monitor liveness  (optional)
-     --------------------------------
-     while (ptpd_is_running(ptp)) { sleep(1); }
+     // Preferred: full quality metadata
+     ptpd_time_t t;
+     ptpd_gettime_ex(ptp, CLOCK_REALTIME, &t);
+     // t.is_synchronized, t.offset_ns, t.uncertainty_ns, t.source
 
-  5. Shutdown
-     ---------
-     ptpd_shutdown(ptp);
-     // Signals the thread to stop, waits for termination, and frees
-     // all resources.  ptp is invalid after this call.
+     // Native clock enum (avoids exposing POSIX clockid_t in caller):
+     ptpd_gettime_clock(ptp, PTPD_CLOCK_WALL, &ts);     // wall clock
+     ptpd_gettime_clock(ptp, PTPD_CLOCK_TAI,  &ts);     // TAI
+     ptpd_gettime_clock(ptp, PTPD_CLOCK_MONOTONIC, &ts);
+
+  5. Monitor status  (optional)
+     ----------------------------
+     ptpd_status_t s;
+     ptpd_get_status(ptp, &s);
+     printf("state=%s offset=%lld ns drift=%d ppb\n",
+            ptpd_state_name(s.state), (long long)s.offset_ns, s.drift_ppb);
+
+  6. Stop (preserve servo) or shutdown
+     ------------------------------------
+     ptpd_stop(ptp);     // halt thread, keep servo state; restart with ptpd_start()
+     ptpd_shutdown(ptp); // halt + free all resources; ptp is invalid after this
 
 
 API FUNCTIONS
 -------------
 
-  PtpClock* ptpd_init(int argc, char** argv, Integer16* ret)
+── Lifecycle ────────────────────────────────────────────────────────────────
+
+  PtpdHandle* ptpd_init(int argc, char** argv, int16_t* ret)
     Parse configuration and initialise daemon state.
     Does NOT start the protocol or spawn any thread.
-    Returns an opaque PtpClock* on success, NULL on failure.
+    Returns an opaque PtpdHandle* on success, NULL on failure.
     *ret is set to a non-zero error code on failure.
 
-  int ptpd_start(PtpClock* ptpClock)
+  int ptpd_last_error(PtpdHandle* ptp)
+    Return the last ptpd_error_t code (PTPD_OK=0 if no error).
+    Codes: PTPD_ERR_NULL_ARG, PTPD_ERR_INIT, PTPD_ERR_THREAD,
+           PTPD_ERR_RUNNING.
+
+  int ptpd_start(PtpdHandle* ptp)
     Start the PTP protocol engine in a background thread.
-    Returns 0 on success, -1 on failure (thread could not be created).
-    Must be called exactly once after ptpd_init().
+    Returns 0 on success, -1 on failure.
+    May be called again after ptpd_stop() to resume.
 
-  int ptpd_is_running(PtpClock* ptpClock)
-    Returns 1 while the background thread is alive, 0 when it has
-    exited (e.g. due to a fatal error or ptpd_shutdown()).
+  int ptpd_is_running(PtpdHandle* ptp)
+    Returns 1 while the background thread is alive, 0 when stopped.
 
-  int ptpd_gettime(PtpClock* ptpClock, clockid_t clk_id,
-                   struct timespec* tp)
-    Read the clock being disciplined by ptpd.
-    Supported clk_id values (swclock build):
-      CLOCK_REALTIME       — PTP-disciplined virtual wall clock
-      CLOCK_MONOTONIC      — virtual monotonic derived from swclock
-      CLOCK_MONOTONIC_RAW  — passthrough to kernel uptime counter
-    Falls back to clock_gettime() when swclock is not available.
-    Returns 0 on success, -1 on error (errno set).
+  void ptpd_stop(PtpdHandle* ptp)
+    Halt the protocol thread WITHOUT freeing resources or resetting the
+    servo.  ptpd_start() may be called again afterwards; the daemon
+    resumes with drift and statistics intact.
+    Intended for iOS background/foreground transitions.
 
-  void ptpd_shutdown(PtpClock* ptpClock)
+  void ptpd_shutdown(PtpdHandle* ptp)
     Signal, join, and fully destroy the daemon.
-    Safe to call from any thread.
-    After return, ptpClock is freed and must not be used.
+    After return, ptp is freed and must not be used.
+
+── Time access ───────────────────────────────────────────────────────────────
+
+  int ptpd_gettime(PtpdHandle* ptp, clockid_t clk_id, struct timespec* tp)
+    Read the PTP-disciplined clock.  Returns -1 if swclock unavailable
+    (never silently falls back to undisciplined kernel time).
+    clk_id: CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW.
+
+  int ptpd_gettime_ex(PtpdHandle* ptp, clockid_t clk_id, ptpd_time_t* out)
+    Preferred variant.  Fills ptpd_time_t with:
+      ts              — the timestamp
+      source          — PTPD_TIME_SOURCE_SWCLOCK or SYSCLOCK
+      is_synchronized — 1 iff state == PTP_SLAVE and servo settled
+      offset_ns       — last known OFM (ns)
+      uncertainty_ns  — swclock maxerror (ns); INT64_MAX if unknown
+
+  int ptpd_gettime_clock(PtpdHandle* ptp, ptpd_clock_id_t clk,
+                         struct timespec* tp)
+  int ptpd_gettime_ex_clock(PtpdHandle* ptp, ptpd_clock_id_t clk,
+                             ptpd_time_t* out)
+    Same as above but accept ptpd_clock_id_t instead of POSIX clockid_t.
+    ptpd_clock_id_t values:
+      PTPD_CLOCK_WALL      — disciplined wall clock (CLOCK_REALTIME)
+      PTPD_CLOCK_MONOTONIC — monotonic from swclock (CLOCK_MONOTONIC)
+      PTPD_CLOCK_TAI       — wall + TAI-UTC offset
+      PTPD_CLOCK_RAW       — kernel uptime (CLOCK_MONOTONIC_RAW)
+
+  int ptpd_gettime_tai(PtpdHandle* ptp, struct timespec* tp)
+    Return CLOCK_REALTIME + TAI-UTC offset (atomically under swclock
+    read-lock).  Returns -1 if offset is 0 / unknown.
+
+  int ptpd_timestamp_event(PtpdHandle* ptp, ptpd_time_t* out)
+    Atomically timestamp an external event.  Equivalent to
+    ptpd_gettime_ex(CLOCK_REALTIME) but documents that the swclock
+    read-lock is held for the duration — no servo correction can
+    interleave.
+
+── Status and monitoring ─────────────────────────────────────────────────────
+
+  int ptpd_get_status(PtpdHandle* ptp, ptpd_status_t* out)
+    Fill ptpd_status_t snapshot:
+      uint8_t  state           — port state (PTP_SLAVE, PTP_LISTENING, …)
+      int64_t  offset_ns       — current offsetFromMaster (ns)
+      int64_t  delay_ns        — current meanPathDelay (ns)
+      int32_t  drift_ppb       — servo observedDrift (ppb)
+      int      is_synchronized — 1 when state == PTP_SLAVE
+
+  const char* ptpd_state_name(uint8_t state)
+    Convert a state value to a string: "SLAVE", "MASTER", "LISTENING", …
+    Returns "UNKNOWN" for unrecognised values.
+
+  void ptpd_set_state_callback(PtpdHandle* ptp,
+      void (*cb)(uint8_t from, uint8_t to, void* ud), void* ud)
+    Fire cb on every port-state transition.  Called from the protocol
+    thread; must return quickly.
+
+  void ptpd_set_log_level(PtpdHandle* ptp, int level)
+    Change log verbosity at runtime without restarting.
+    level: LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG.
+
+── Servo ─────────────────────────────────────────────────────────────────────
+
+  int ptpd_get_servo_params(PtpdHandle* ptp, ptpd_servo_params_t* out)
+    Fill ptpd_servo_params_t snapshot:
+      double  kP             — proportional gain
+      double  kI             — integral gain
+      int32_t error_ns       — OFM (ns) last consumed by the PI step
+      double  correction_ppb — frequency correction applied to clock (ppb)
+      double  drift_ppb      — integral accumulator / observedDrift (ppb)
+
+  int ptpd_set_servo_gains(PtpdHandle* ptp, double kp, double ki)
+    Update PI gains at runtime.  Writes to both the live servo (takes
+    effect next tick) and RunTimeOpts (persists across servo re-init on
+    port-state transitions).
+
+── Runtime reconfiguration ───────────────────────────────────────────────────
+
+  void ptpd_set_interface(PtpdHandle* ptp, const char* iface)
+    Switch to a different network interface without restarting.  The
+    protocol thread picks up the change at the next safe point; servo
+    drift is preserved.
+
+  void ptpd_set_master_ip(PtpdHandle* ptp, const char* ip)
+    Switch unicast master IP without restarting.  Same threading model
+    as ptpd_set_interface().
+
+  void ptpd_set_network_change_callback(PtpdHandle* ptp,
+      void (*cb)(const char* iface, void* ud), void* ud)
+    Fire cb when the port transitions to PTP_FAULTY (link loss, socket
+    error).  Call ptpd_set_interface() from the callback to recover.
+
+── Logging ───────────────────────────────────────────────────────────────────
 
   void ptpd_set_log_callback(void (*cb)(const char* message, int priority))
-    [iOS only — available when built with -DPTPD_IOS]
     Register a function that receives every ptpd log line.
+    Available on all library-mode builds (macOS and iOS).
     priority mirrors syslog levels: LOG_ERR, LOG_WARNING, LOG_INFO, …
     The callback is invoked from the PTP thread; copy the message and
     dispatch to the UI thread rather than blocking.
@@ -95,15 +208,14 @@ API FUNCTIONS
 
 PORT STATES
 -----------
-The protocol state machine cycles through these values
-(accessible via ptpClock->portState, type Enumeration8):
-
   PTP_INITIALIZING  Startup; not yet listening.
   PTP_LISTENING     Waiting for Announce messages from a master.
   PTP_SLAVE         Locked to a grandmaster; clock is being disciplined.
   PTP_MASTER        Acting as grandmaster (multicast or unicast mode).
   PTP_PASSIVE       Backup port; receiving but not disciplining.
   PTP_FAULTY        Error state; will auto-recover to INITIALIZING.
+
+Use ptpd_state_name(s.state) to convert numeric state to a string.
 
 
 CONFIGURATION (argv / config file)
@@ -132,11 +244,12 @@ BUILD OPTIONS
 -------------
   BUILD_WITH_SWCLOCK=ON   (default on macOS/iOS)
     Links swclock and defines PTPD_USE_SWCLOCK.
-    Enables ptpd_gettime() to return software-clock time.
+    Enables ptpd_gettime() / ptpd_gettime_ex() to return swclock time.
     Required for operation without root on macOS/iOS.
 
   PTPD_IOS=1              Defined by iossim / ios presets.
-    Activates ptpd_set_log_callback() and iOS-specific exit handling.
+    Activates iOS-specific exit handling.
+    ptpd_set_log_callback() is available on all builds (not iOS-only).
 
   BUILD_PTPD_TESTS=ON     Builds GTest suite in src-gtests/.
 
@@ -144,22 +257,34 @@ BUILD OPTIONS
 TYPICAL EMBEDDING PATTERN (macOS / iOS)
 -----------------------------------------
   // Build argv from interface + config
-  char *argv[] = { "ptpd", "-i", "en5", "-f", "/path/to/ptpd.conf", NULL };
+  char *args[] = { "ptpd", "-i", "en5", "-f", "/path/to/ptpd.conf", NULL };
   int   argc   = 5;
 
-  Integer16 ret;
-  PtpClock *ptp = ptpd_init(argc, argv, &ret);
+  int16_t ret;
+  PtpdHandle *ptp = ptpd_init(argc, args, &ret);
   if (!ptp) { /* ret holds error code */ return ret; }
 
-  #ifdef PTPD_IOS
+  // Register callbacks (optional)
   ptpd_set_log_callback(my_log_handler);
-  #endif
+  ptpd_set_state_callback(ptp, my_state_cb, NULL);
+  ptpd_set_network_change_callback(ptp, my_net_cb, ptp);
 
   if (ptpd_start(ptp) != 0) { ptpd_shutdown(ptp); return -1; }
 
   // Read disciplined time at any point:
-  struct timespec ts;
-  ptpd_gettime(ptp, CLOCK_REALTIME, &ts);
+  ptpd_time_t t;
+  ptpd_gettime_ex(ptp, CLOCK_REALTIME, &t);
+
+  // Monitor status:
+  ptpd_status_t s;
+  ptpd_get_status(ptp, &s);
+  printf("state=%s offset=%lld ns\n",
+         ptpd_state_name(s.state), (long long)s.offset_ns);
+
+  // iOS background transition: pause without losing servo state
+  ptpd_stop(ptp);
+  // ... later on foreground:
+  ptpd_start(ptp);   // resumes with preserved drift
 
   // Stop when done:
   ptpd_shutdown(ptp);

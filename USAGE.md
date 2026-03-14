@@ -17,7 +17,10 @@ common deployment scenarios.
    - [Initialisation](#initialisation)
    - [Starting and Stopping](#starting-and-stopping)
    - [Reading Time](#reading-time)
-   - [iOS Log Callback](#ios-log-callback)
+   - [Status and State](#status-and-state)
+   - [Servo Parameters](#servo-parameters)
+   - [Runtime Reconfiguration](#runtime-reconfiguration)
+   - [Log Callback](#log-callback)
 4. [Minimal Integration Example](#minimal-integration-example)
 5. [PTP Configuration](#ptp-configuration)
    - [Passing Configuration to the Library](#passing-configuration-to-the-library)
@@ -151,52 +154,134 @@ All types and functions are declared in [`src/ptpdlib.h`](src/ptpdlib.h).
 ### Initialisation
 
 ```c
-PtpClock *ptpd_init(int argc, char **argv, Integer16 *ret);
+PtpdHandle *ptpd_init(int argc, char **argv, int16_t *ret);
+int         ptpd_last_error(PtpdHandle *ptp);  // ptpd_error_t code
 ```
 
-Parses command-line arguments (or a config file passed via `-c`), allocates and
-initialises all internal state, and returns a `PtpClock` handle.  The protocol
-does **not** start yet.  Returns `NULL` on failure; `*ret` is set to a non-zero
-error code.
+`ptpd_init()` parses command-line arguments (or a config file passed via `-c`),
+allocates and initialises all internal state, and returns an opaque
+`PtpdHandle`.  The protocol does **not** start yet.  Returns `NULL` on failure;
+`*ret` is set to a non-zero error code.  On failure (or any subsequent API
+error) call `ptpd_last_error()` for a `ptpd_error_t` code.
 
 ### Starting and Stopping
 
 ```c
-int  ptpd_start(PtpClock *ptpClock);   // 0 = OK, -1 = error
-int  ptpd_is_running(PtpClock *ptpClock); // 1 = running, 0 = stopped
-void ptpd_shutdown(PtpClock *ptpClock);
+int  ptpd_start(PtpdHandle *ptp);      // 0 = OK, -1 = error
+int  ptpd_is_running(PtpdHandle *ptp); // 1 = running, 0 = stopped
+void ptpd_stop(PtpdHandle *ptp);       // halt thread, preserve servo state
+void ptpd_shutdown(PtpdHandle *ptp);   // halt + free all resources
 ```
 
 `ptpd_start()` launches the PTP protocol engine in a new background thread and
 returns immediately.  `ptpd_shutdown()` signals the thread to stop, waits for
-it to terminate, and frees all resources.  After `ptpd_shutdown()` the
-`PtpClock` pointer is invalid.
+it to terminate, and frees all resources — the handle is invalid afterwards.
+
+`ptpd_stop()` halts the protocol thread **without** resetting the servo, so a
+subsequent `ptpd_start()` resumes with drift and statistics intact.  This is
+the correct primitive for iOS background/foreground transitions.
 
 ### Reading Time
 
 ```c
-int ptpd_gettime(PtpClock *ptpClock, clockid_t clk_id, struct timespec *tp);
+// Simple read — returns -1 (never silently falls back to undisciplined time)
+int ptpd_gettime(PtpdHandle *ptp, clockid_t clk_id, struct timespec *tp);
+
+// Preferred: full quality metadata
+int ptpd_gettime_ex(PtpdHandle *ptp, clockid_t clk_id, ptpd_time_t *out);
+
+// Native clock enum — avoids exposing POSIX clockid_t in caller
+int ptpd_gettime_clock(PtpdHandle *ptp, ptpd_clock_id_t clk, struct timespec *tp);
+int ptpd_gettime_ex_clock(PtpdHandle *ptp, ptpd_clock_id_t clk, ptpd_time_t *out);
+
+// TAI time (wall + leap-second offset)
+int ptpd_gettime_tai(PtpdHandle *ptp, struct timespec *tp);
+
+// Atomic event timestamp (swclock read-lock held for the entire call)
+int ptpd_timestamp_event(PtpdHandle *ptp, ptpd_time_t *out);
 ```
 
-Returns the time from the clock backend that ptpd is disciplining.  When built
-with `BUILD_WITH_SWCLOCK=ON` this queries the software clock servo directly;
-otherwise it falls through to `clock_gettime()`.  Use this instead of
-`clock_gettime()` so your application always reads the PTP-corrected time.
+`ptpd_gettime_ex()` fills a `ptpd_time_t` which carries the timestamp plus
+`is_synchronized`, `offset_ns`, `uncertainty_ns`, and a `source` tag indicating
+whether the result came from the PTP-disciplined swclock or the kernel fallback.
 
-Supported `clk_id` values: `CLOCK_REALTIME`, `CLOCK_MONOTONIC`,
-`CLOCK_MONOTONIC_RAW`.
+The `ptpd_clock_id_t` enum (`PTPD_CLOCK_WALL`, `PTPD_CLOCK_MONOTONIC`,
+`PTPD_CLOCK_TAI`, `PTPD_CLOCK_RAW`) avoids leaking POSIX clock IDs into calling
+code.
 
-### iOS Log Callback
+### Status and State
 
-When built with `PTPD_IOS` defined, register a C callback to receive log
-messages:
+```c
+int         ptpd_get_status(PtpdHandle *ptp, ptpd_status_t *out);
+const char *ptpd_state_name(uint8_t state);         // "SLAVE", "MASTER", …
+void        ptpd_set_state_callback(PtpdHandle *ptp,
+                void (*cb)(uint8_t from, uint8_t to, void *ud), void *ud);
+void        ptpd_set_log_level(PtpdHandle *ptp, int level);  // LOG_ERR … LOG_DEBUG
+```
+
+`ptpd_get_status()` fills a `ptpd_status_t` snapshot:
+
+```c
+typedef struct {
+    uint8_t  state;           // PTP_SLAVE, PTP_LISTENING, …
+    int64_t  offset_ns;       // current offsetFromMaster (ns)
+    int64_t  delay_ns;        // current meanPathDelay (ns)
+    int32_t  drift_ppb;       // servo observedDrift (ppb)
+    int      is_synchronized; // 1 when state == PTP_SLAVE
+} ptpd_status_t;
+```
+
+`ptpd_set_state_callback()` fires on every port-state transition; use
+`ptpd_state_name()` to convert the `uint8_t` state values to strings.
+
+### Servo Parameters
+
+```c
+int ptpd_get_servo_params(PtpdHandle *ptp, ptpd_servo_params_t *out);
+int ptpd_set_servo_gains(PtpdHandle *ptp, double kp, double ki);
+```
+
+`ptpd_get_servo_params()` fills:
+
+```c
+typedef struct {
+    double  kP;             // proportional gain
+    double  kI;             // integral gain
+    int32_t error_ns;       // OFM (ns) last consumed by the PI step
+    double  correction_ppb; // frequency correction applied to clock (ppb)
+    double  drift_ppb;      // integral accumulator / observedDrift (ppb)
+} ptpd_servo_params_t;
+```
+
+`ptpd_set_servo_gains()` writes to both the live servo (takes effect next tick)
+and to `RunTimeOpts` so the gains survive servo re-initialisation on
+port-state transitions.
+
+### Runtime Reconfiguration
+
+```c
+void ptpd_set_interface(PtpdHandle *ptp, const char *iface);
+void ptpd_set_master_ip(PtpdHandle *ptp, const char *ip);
+void ptpd_set_network_change_callback(PtpdHandle *ptp,
+         void (*cb)(const char *iface, void *ud), void *ud);
+```
+
+These post commands to a queue consumed by the protocol thread at a safe point;
+servo drift is preserved across the reconfiguration.  Use
+`ptpd_set_network_change_callback()` to be notified when the port goes FAULTY
+(socket error, link down) so you can call `ptpd_set_interface()` with a
+replacement.
+
+### Log Callback
 
 ```c
 void ptpd_set_log_callback(void (*callback)(const char *message, int priority));
 ```
 
-The callback is invoked from the PTP daemon thread; copy the message and
-dispatch to the main thread for any UI updates.
+Available on all library-mode builds (macOS and iOS).  The callback is invoked
+from the PTP daemon thread; copy the message and dispatch to the main thread
+for any UI updates.  `priority` mirrors syslog levels (`LOG_ERR`, `LOG_WARNING`,
+`LOG_INFO`, `LOG_DEBUG`).
 
 ---
 
@@ -213,7 +298,7 @@ demonstrates the full lifecycle:
 #include <signal.h>
 #include <unistd.h>
 
-static PtpClock *g_ptp = NULL;
+static PtpdHandle *g_ptp = NULL;
 
 void signal_handler(int sig) {
     if (g_ptp) { ptpd_shutdown(g_ptp); g_ptp = NULL; }
@@ -221,7 +306,7 @@ void signal_handler(int sig) {
 }
 
 int main(int argc, char **argv) {
-    Integer16 ret;
+    int16_t ret;
 
     signal(SIGINT,  signal_handler);
     signal(SIGTERM, signal_handler);
@@ -268,7 +353,7 @@ Configuration is passed through `argc`/`argv` exactly as it would be on the
 
 ```c
 char *args[] = { "ptpd", "-c", "/path/to/ptpd.conf", NULL };
-PtpClock *ptp = ptpd_init(3, args, &ret);
+PtpdHandle *ptp = ptpd_init(3, args, &ret);
 ```
 
 **2. Inline key=value arguments**:
@@ -281,7 +366,7 @@ char *args[] = {
     "--global:ignore_lock=y",
     NULL
 };
-PtpClock *ptp = ptpd_init(4, args, &ret);
+PtpdHandle *ptp = ptpd_init(4, args, &ret);
 ```
 
 Both can be combined; inline arguments always take priority over the file.
