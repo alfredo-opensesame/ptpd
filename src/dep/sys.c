@@ -1535,14 +1535,22 @@ void getTime(TimeInternal *time) {
       /* Normal path: swclock is ready. */
       if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_REALTIME, &tp) < 0) {
         PERROR("swclock_gettime() failed, exiting.");
+#ifdef PTPD_LIBRARY_MODE
+        ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
         exit(0);
+#endif
       }
       time->seconds = tp.tv_sec;
       time->nanoseconds = tp.tv_nsec;
     } else if (G_ptpClock) {
       /* G_ptpClock is set but swclock is NULL — genuine programming error. */
       DBG("getTime: swclock expected but not initialized, exiting.\n");
+#ifdef PTPD_LIBRARY_MODE
+      ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
       exit(1);
+#endif
     } else {
       /* G_ptpClock not yet allocated (early startup / config validation).
        * Fall back to the system clock so startup paths work correctly. */
@@ -1557,7 +1565,11 @@ void getTime(TimeInternal *time) {
     struct timespec tp;
     if (clock_gettime(CLOCK_REALTIME, &tp) < 0) {
       PERROR("clock_gettime() failed, exiting.");
+#ifdef PTPD_LIBRARY_MODE
+      ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
       exit(0);
+#endif
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;
@@ -1583,14 +1595,22 @@ void getTimeMonotonic(TimeInternal *time) {
       /* Normal path: swclock is ready. */
       if (swclock_gettime((SwClock *)G_ptpClock->swclock, CLOCK_MONOTONIC, &tp) < 0) {
         PERROR("swclock_gettime(MONOTONIC) failed, exiting.");
+#ifdef PTPD_LIBRARY_MODE
+        ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
         exit(0);
+#endif
       }
       time->seconds = tp.tv_sec;
       time->nanoseconds = tp.tv_nsec;
     } else if (G_ptpClock) {
       /* G_ptpClock is set but swclock is NULL — genuine programming error. */
       DBG("getTimeMonotonic: swclock expected but not initialized, exiting.\n");
+#ifdef PTPD_LIBRARY_MODE
+      ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
       exit(1);
+#endif
     } else {
       /* G_ptpClock not yet allocated (early startup / config validation).
        * Fall back to a system clock read. */
@@ -1609,7 +1629,11 @@ void getTimeMonotonic(TimeInternal *time) {
     if (clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
 #endif /* CLOCK_MONOTONIC */
       PERROR("clock_gettime() failed, exiting.");
+#ifdef PTPD_LIBRARY_MODE
+    ptpd_library_fail(G_ptpClock, PTPD_ERR_CLOCK);
+#else
       exit(0);
+#endif
     }
     time->seconds = tp.tv_sec;
     time->nanoseconds = tp.tv_nsec;

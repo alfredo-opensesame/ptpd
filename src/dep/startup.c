@@ -132,6 +132,15 @@ void catchSignals(int sig) {
  */
 void do_signal_close(PtpClock *ptpClock) {
 
+#ifdef PTPD_LIBRARY_MODE
+  if (ptpClock != NULL) {
+    ptpClock->library_should_exit = TRUE;
+    ptpClock->library_last_error = PTPD_OK;
+  }
+  NOTIFY("Library shutdown requested on close signal\n");
+  return;
+#endif
+
   timingDomain.shutdown(&timingDomain);
 
   NOTIFY("Shutdown on close signal\n");
@@ -254,7 +263,7 @@ void applyConfig(dictionary *baseConfig, RunTimeOpts *rtOpts,
      * regardless of compile options. Anyhow, if we're here, the daemon will no
      * doubt segfault soon anyway
      */
-    abort();
+    ptpd_library_fail(ptpClock, PTPD_ERR_INTERNAL);
   }
 
 /* clean up */
@@ -1021,12 +1030,14 @@ configcheck:
   }
 
   /* establish signal handlers */
+#ifndef PTPD_LIBRARY_MODE
   signal(SIGINT, catchSignals);
   signal(SIGTERM, catchSignals);
   signal(SIGHUP, catchSignals);
 
   signal(SIGUSR1, catchSignals);
   signal(SIGUSR2, catchSignals);
+#endif
 
 #if defined PTPD_SNMP
   /* Start SNMP subsystem */

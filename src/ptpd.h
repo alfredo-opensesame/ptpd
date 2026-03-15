@@ -72,6 +72,11 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+
+#ifdef PTPD_LIBRARY_MODE
+#include "ptpdlib.h"
+#endif
+
 #ifdef HAVE_SYS_TIMEX_H
 #ifndef PTPD_USE_SWCLOCK
 /* Skip sys/timex.h when using swclock - it provides its own timex compatibility
@@ -194,13 +199,28 @@
 
 #include "dep/alarms.h"
 
+#ifdef PTPD_LIBRARY_MODE
+void ptpd_library_fail(PtpClock *ptpClock, int errorCode)
+    __attribute__((noreturn));
+#endif
+
 /* NOTE: this macro can be refactored into a function */
+#ifdef PTPD_LIBRARY_MODE
+#define XMALLOC(ptr, size)                                                     \
+  do {                                                                         \
+    if (!((ptr) = malloc(size))) {                                             \
+      PERROR("failed to allocate memory");                                     \
+      ptpd_library_fail(ptpClock, PTPD_ERR_NOMEM);                             \
+    }                                                                          \
+  } while (0)
+#else
 #define XMALLOC(ptr, size)                                                     \
   if (!((ptr) = malloc(size))) {                                               \
     PERROR("failed to allocate memory");                                       \
     ptpdShutdown(ptpClock);                                                    \
     exit(1);                                                                   \
   }
+#endif
 
 #define SAFE_FREE(pointer)                                                     \
   if (pointer != NULL) {                                                       \

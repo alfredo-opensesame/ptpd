@@ -65,6 +65,7 @@
 
 #ifdef PTPD_LIBRARY_MODE
 #include <pthread.h>
+#include <setjmp.h>
 #include <stdlib.h>
 #include "ptpdlib_internal.h"
 #endif
@@ -89,6 +90,31 @@ TimingDomain timingDomain;
 static pthread_t protocol_thread;
 static volatile Boolean thread_running = FALSE;
 static PtpClock *library_ptpClock = NULL;
+static jmp_buf library_fatal_env;
+static volatile Boolean library_fatal_env_active = FALSE;
+
+static int ptpd_library_begin_fatal_scope(void) {
+  library_fatal_env_active = TRUE;
+  return setjmp(library_fatal_env);
+}
+
+static void ptpd_library_end_fatal_scope(void) {
+  library_fatal_env_active = FALSE;
+}
+
+void ptpd_library_fail(PtpClock *ptpClock, int errorCode) {
+  if (ptpClock) {
+    ptpClock->library_last_error = errorCode;
+    ptpClock->library_should_exit = TRUE;
+  }
+
+  if (!library_fatal_env_active) {
+    thread_running = FALSE;
+    pthread_exit(NULL);
+  }
+
+  longjmp(library_fatal_env, 1);
+}
 #endif
 
 /* Common initialization function used by both main() and library API */
@@ -184,7 +210,18 @@ static void ptpd_common_cleanup(void) {
  * @return Initialized PtpClock pointer or NULL on failure
  */
 PtpdHandle *ptpd_init(int argc, char **argv, int16_t *ret) {
-  PtpClock *clock = ptpd_common_init(argc, argv, ret);
+  PtpClock *clock;
+
+  if (ptpd_library_begin_fatal_scope() != 0) {
+    ptpd_library_end_fatal_scope();
+    if (ret) {
+      *ret = 2;
+    }
+    return NULL;
+  }
+
+  clock = ptpd_common_init(argc, argv, ret);
+  ptpd_library_end_fatal_scope();
   if (!clock)
     return NULL;
 
@@ -209,8 +246,12 @@ static void *ptpd_protocol_thread(void *arg) {
   /* global variable for message(), please see comment on top of this file */
   G_ptpClock = ptpClock;
 
-  /* do the protocol engine - this is a forever loop */
-  protocol(&rtOpts, ptpClock);
+  if (ptpd_library_begin_fatal_scope() == 0) {
+    /* do the protocol engine - this is a forever loop */
+    protocol(&rtOpts, ptpClock);
+  }
+
+  ptpd_library_end_fatal_scope();
 
   thread_running = FALSE;
   return NULL;

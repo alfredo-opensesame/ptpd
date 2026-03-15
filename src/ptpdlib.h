@@ -68,6 +68,9 @@ typedef enum {
     PTPD_ERR_INIT      = -2, /**< ptpd_init() failed (see ret code for detail) */
     PTPD_ERR_THREAD    = -3, /**< pthread_create() failed in ptpd_start()      */
     PTPD_ERR_RUNNING   = -4, /**< ptpd_start() called while already running    */
+    PTPD_ERR_CLOCK     = -5, /**< fatal clock access failure in library mode   */
+    PTPD_ERR_NOMEM     = -6, /**< memory allocation failed in library mode     */
+    PTPD_ERR_INTERNAL  = -7, /**< internal fatal error in library mode         */
 } ptpd_error_t;
 
 /**
