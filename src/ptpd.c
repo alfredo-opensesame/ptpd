@@ -84,6 +84,7 @@ Boolean startupInProgress;
 PtpClock *G_ptpClock = NULL;
 
 TimingDomain timingDomain;
+static Boolean cleanup_done = FALSE;
 
 #ifdef PTPD_LIBRARY_MODE
 /* Library mode: threading support */
@@ -123,6 +124,7 @@ static PtpClock *ptpd_common_init(int argc, char **argv, Integer16 *ret) {
   TimingService *ts;
 
   startupInProgress = TRUE;
+  cleanup_done = FALSE;
 
   memset(&timingDomain, 0, sizeof(timingDomain));
   timingDomainSetup(&timingDomain);
@@ -186,6 +188,11 @@ static PtpClock *ptpd_common_init(int argc, char **argv, Integer16 *ret) {
 
 /* Common cleanup function */
 static void ptpd_common_cleanup(void) {
+  if (cleanup_done) {
+    return;
+  }
+  cleanup_done = TRUE;
+
 #ifdef PTPD_USE_SWCLOCK
   /* Destroy software clock instance if it was created */
   if (G_ptpClock && G_ptpClock->swclock) {

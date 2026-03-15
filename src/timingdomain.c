@@ -731,8 +731,19 @@ static int timingDomainShutdown(TimingDomain *domain) {
     service = domain->services[i];
     if (service != NULL) {
       service->shutdown(service);
+      domain->services[i] = NULL;
     }
   }
+
+  domain->serviceCount = 0;
+  domain->current = NULL;
+  domain->best = NULL;
+  domain->preferred = NULL;
+  domain->noneAvailable = TRUE;
+  domain->availableCount = 0;
+  domain->operationalCount = 0;
+  domain->idleCount = 0;
+  domain->controlCount = 0;
 
   INFO_LOCAL("Timing domain shutdown complete\n");
 
